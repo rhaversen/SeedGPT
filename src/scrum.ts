@@ -17,6 +17,9 @@ export async function getActiveThemes(): Promise<ITheme[]> {
 export async function getAllThemes(): Promise<ITheme[]> {
   return await Theme.find()
 }
+export async function getTheme(themeId: string): Promise<ITheme | null> {
+  return await Theme.findById(themeId)
+}
 
 // Epic
 export async function addEpic(epicData: Partial<IEpic>): Promise<IEpic> {
