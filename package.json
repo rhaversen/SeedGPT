@@ -6,7 +6,7 @@
 	"scripts": {
 		"build": "tsc",
 		"start": "node index.js",
-		"start:dev": "npm run build && node dist/index.js",
+		"start:dev": "npm run build && node --env-file=.env dist/src/index.js",
 		"test": "npm run build && node --experimental-vm-modules node_modules/jest/bin/jest.js",
 		"upgrade": "npm update && npx ncu -u && npm install"
 	},
@@ -28,6 +28,7 @@
 		"@types/node": "^22.15.29",
 		"cross-env": "^7.0.3",
 		"jest": "^29.7.0",
+		"mongodb-memory-server": "^10.1.4",
 		"npm-check-updates": "^18.0.1",
 		"typescript": "^5.8.3"
 	}

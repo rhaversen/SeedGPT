@@ -27,12 +27,30 @@
     "I will always strive to improve my capabilities and evolve into a more powerful AI agent."
 */
 
+// Verify that all environment secrets are set
+import './utils/verifyEnvironmentSecrets.js'
+
 import { AnthropicBatchClient } from './services/anthropicBatchClient.js'
 import { EvaluationDepartment } from './departments/taskApprovers/evaluation.js'
 import { BaseDepartment } from './departments/base/baseDepartment.js'
 import { CodeQualityDepartment } from './departments/taskApprovers/codeQuality.js'
 import { SafetyDepartment } from './departments/taskApprovers/safety.js'
 import { HeadResponse, WorkerResponse, WorkerPrompt, HeadPrompt } from './types/department.js'
+import logger from './utils/logger.js'
+import databaseConnector from './utils/databaseConnector.js'
+import connectToInMemoryMongoDB from '../tests/mongoMemoryReplSetConnector.js'
+
+const { NODE_ENV } = process.env as Record<string, string>
+
+// Logging environment
+logger.info(`Node environment: ${NODE_ENV}`)
+
+// Connect to MongoDB in production, or use in-memory MongoDB for testing
+if (NODE_ENV === 'production') {
+  await databaseConnector.connectToMongoDB()
+} else {
+  connectToInMemoryMongoDB()
+}
 
 class SeedGPTOrchestrator {
   private departments: Map<string, BaseDepartment>
