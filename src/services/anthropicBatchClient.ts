@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { WorkerResponse, BatchPromptRequest, BatchPromptResponse, HeadPrompt } from '../types/department.js'
+import logger from '../utils/logger.js'
 
 export interface BatchResponse {
   id: string
@@ -42,7 +43,7 @@ export class AnthropicBatchClient {
 
       return batch.id
     } catch (error) {
-      console.error('Error creating batch:', error)
+      logger.error('Error creating batch', { error })
       throw error
     }
   }
@@ -51,7 +52,7 @@ export class AnthropicBatchClient {
     try {
       return await this.client.messages.batches.retrieve(batchId)
     } catch (error) {
-      console.error(`Error retrieving batch ${batchId}:`, error)
+      logger.error(`Error retrieving batch ${batchId}:`, { error })
       throw error
     }
   }
@@ -100,7 +101,7 @@ export class AnthropicBatchClient {
 
       return { responses }
     } catch (error) {
-      console.error(`Error retrieving batch results for ${batchId}:`, error)
+      logger.error(`Error retrieving batch results for ${batchId}:`, { error })
       throw error
     }
   }

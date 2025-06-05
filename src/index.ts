@@ -49,14 +49,14 @@ class SeedGPTOrchestrator {
   }
 
   async run(): Promise<void> {
-    console.log('🚀 SeedGPT Orchestrator starting...')
+    logger.info('🚀 SeedGPT Orchestrator starting...')
 
     try {
-      console.log('Starting task validator tick...')
+      logger.info('Starting task validator tick...')
       const headResponses = await this.handleTaskValidatorTick()
-      console.log('✅ All prompts processed successfully. Orchestrator run completed.')
+      logger.info('✅ All prompts processed successfully. Orchestrator run completed.')
     } catch (error) {
-      console.error('Error in orchestrator:', error)
+      logger.error('Error in orchestrator:', { error })
     }
   }
 
@@ -64,82 +64,82 @@ class SeedGPTOrchestrator {
     const workerPrompts: WorkerPrompt[] = []
 
     for (const department of this.departments.values()) {
-      console.log(`Generating worker prompts for department: ${department.getId()}`)
+      logger.info(`Generating worker prompts for department: ${department.getId()}`)
       try {
         const departmentPrompts = await department.getDepartmentWorkerBatchPrompts()
-        console.log(`Generated ${departmentPrompts.length} worker prompts for ${department.getId()}`)
+        logger.info(`Generated ${departmentPrompts.length} worker prompts for ${department.getId()}`)
         workerPrompts.push(...departmentPrompts)
       } catch (error) {
-        console.error(`Error generating worker prompts for department ${department.getId()}:`, error)
+        logger.error(`Error generating worker prompts for department ${department.getId()}:`, { error })
       }
     }
 
     if (workerPrompts.length === 0) {
-      console.log('No worker prompts generated. Exiting orchestrator.')
+      logger.info('No worker prompts generated. Exiting orchestrator.')
       return null
     }
 
-    console.log(`Total worker prompts generated: ${workerPrompts.length}`)
+    logger.info(`Total worker prompts generated: ${workerPrompts.length}`)
     const workerResponses = await this.executeBatch(workerPrompts, 'worker') as WorkerResponse[] | null
 
     if (!workerResponses) {
-      console.log('No worker responses received. Exiting orchestrator.')
+      logger.info('No worker responses received. Exiting orchestrator.')
       return null
     }
 
-    console.log(`Total worker responses received: ${workerResponses.length}`)
+    logger.info(`Total worker responses received: ${workerResponses.length}`)
 
-    console.log('Processing head prompts for each department...')
+    logger.info('Processing head prompts for each department...')
     const headPrompts: HeadPrompt[] = []
 
     for (const department of this.departments.values()) {
-      console.log(`Generating head prompts for department: ${department.getId()}`)
+      logger.info(`Generating head prompts for department: ${department.getId()}`)
       try {
         const departmentHeadPrompts = await department.getDepartmentHeadBatchPrompts(workerResponses)
-        console.log(`Generated ${departmentHeadPrompts.length} head prompts for ${department.getId()}`)
+        logger.info(`Generated ${departmentHeadPrompts.length} head prompts for ${department.getId()}`)
         headPrompts.push(...departmentHeadPrompts)
       } catch (error) {
-        console.error(`Error generating head prompts for department ${department.getId()}:`, error)
+        logger.error(`Error generating head prompts for department ${department.getId()}:`, { error })
       }
     }
 
     if (headPrompts.length === 0) {
-      console.log('No head prompts generated. Exiting orchestrator.')
+      logger.info('No head prompts generated. Exiting orchestrator.')
       return null
     }
 
-    console.log(`Total head prompts generated: ${headPrompts.length}`)
+    logger.info(`Total head prompts generated: ${headPrompts.length}`)
 
     const headResponses = await this.executeBatch(headPrompts, 'head') as HeadResponse[] | null
     if (!headResponses) {
-      console.log('No head responses received. Exiting orchestrator.')
+      logger.info('No head responses received. Exiting orchestrator.')
       return null
     }
-    console.log(`Total head responses received: ${headResponses.length}`)
+    logger.info(`Total head responses received: ${headResponses.length}`)
     return headResponses
   }
 
   private async executeBatch(prompts: WorkerPrompt[] | HeadPrompt[], batchType: 'worker' | 'head') {
     const batchId = await this.batchClient.processBatch({ prompts, model: batchType === 'worker' ? 'low' : 'mid' })
-    console.log(`${batchType} batch created with ID: ${batchId}`)
+    logger.info(`${batchType} batch created with ID: ${batchId}`)
 
     await this.batchClient.awaitBatchCompletion(batchId)
-    console.log(`${batchType} batch ${batchId} completed successfully.`)
+    logger.info(`${batchType} batch ${batchId} completed successfully.`)
 
     const batchResponse = await this.batchClient.getBatchStatus(batchId)
-    console.log(`${batchType} batch ${batchId} responses received.`)
+    logger.info(`${batchType} batch ${batchId} responses received.`)
 
     if (batchResponse.processing_status !== 'ended') {
-      console.error(`${batchType} batch ${batchId} did not complete successfully. Status: ${batchResponse.processing_status}`)
+      logger.error(`${batchType} batch ${batchId} did not complete successfully. Status: ${batchResponse.processing_status}`)
       return null
     }
 
     const batchResults = await this.batchClient.getBatchResults(batchId)
-    console.log(`${batchType} batch ${batchId} results retrieved.`)
-    console.log(`Total ${batchType} responses received: ${batchResults.responses.length}`)
+    logger.info(`${batchType} batch ${batchId} results retrieved.`)
+    logger.info(`Total ${batchType} responses received: ${batchResults.responses.length}`)
 
     if (batchResults.responses.length === 0) {
-      console.log(`No ${batchType} responses received. Exiting orchestrator.`)
+      logger.info(`No ${batchType} responses received. Exiting orchestrator.`)
       return null
     }
 
@@ -148,4 +148,4 @@ class SeedGPTOrchestrator {
 }
 
 const orchestrator = new SeedGPTOrchestrator()
-orchestrator.run().catch(console.error)
+orchestrator.run().catch(logger.error)

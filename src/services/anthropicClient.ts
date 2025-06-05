@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import logger from '../utils/logger.js'
 
 export class AnthropicClient {
   private client: Anthropic
@@ -32,7 +33,7 @@ export class AnthropicClient {
       }
       return ''
     } catch (error) {
-      console.error('Error sending message to Anthropic:', error)
+      logger.error('Error sending message to Anthropic:', { error })
       throw error
     }
   }
