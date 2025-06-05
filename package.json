@@ -6,7 +6,7 @@
 	"scripts": {
 		"build": "tsc",
 		"start": "node index.js",
-		"start:dev": "npm run build && node --env-file=.env dist/src/index.js",
+		"dev": "npm run build && node --env-file=.env dist/development/index.js",
 		"test": "npm run build && node --experimental-vm-modules node_modules/jest/bin/jest.js",
 		"upgrade": "npm update && npx ncu -u && npm install"
 	},

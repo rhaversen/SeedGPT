@@ -1,6 +1,6 @@
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import mongoose from 'mongoose'
-import logger from '../src/utils/logger.js'
+import logger from '../app/utils/logger.js'
 
 let replSet: MongoMemoryReplSet
 
