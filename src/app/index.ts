@@ -33,7 +33,6 @@ import './utils/verifyEnvironmentSecrets.js'
 import { TaskValidator } from './services/taskValidator.js'
 import logger from './utils/logger.js'
 import databaseConnector from './utils/databaseConnector.js'
-import connectToInMemoryMongoDB from '../tests/mongoMemoryReplSetConnector.js'
 
 const { NODE_ENV } = process.env as Record<string, string>
 
@@ -43,8 +42,6 @@ logger.info(`Node environment: ${NODE_ENV}`)
 // Connect to MongoDB in production, or use in-memory MongoDB for testing
 if (NODE_ENV === 'production') {
   await databaseConnector.connectToMongoDB()
-} else {
-  connectToInMemoryMongoDB()
 }
 
 class SeedGPTOrchestrator {
