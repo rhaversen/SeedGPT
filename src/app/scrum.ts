@@ -83,6 +83,9 @@ export async function getEligibleTasks(): Promise<ITask[]> {
     ]
   })
 }
+export async function getPendingTasks(): Promise<ITask[]> {
+  return await Task.find({ status: 'pending' })
+}
 export async function getAllTasks(): Promise<ITask[]> {
   return await Task.find()
 }

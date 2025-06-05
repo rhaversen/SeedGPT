@@ -1,6 +1,6 @@
 import { BaseDepartment } from '../base/baseDepartment.js'
 import { WorkerResponse, WorkerPrompt, HeadPrompt } from '../../types/department.js'
-import { getEligibleTasks, getTask } from '../../scrum.js'
+import { getPendingTasks, getTask } from '../../scrum.js'
 
 interface WorkerCodeQualityResult {
   maintainability: number
@@ -20,7 +20,7 @@ export class CodeQualityDepartment extends BaseDepartment {
   }
   async getDepartmentWorkerBatchPrompts(): Promise<WorkerPrompt[]> {
     const prompts: WorkerPrompt[] = []
-    const tasks = await getEligibleTasks()
+    const tasks = await getPendingTasks()
 
     for (const task of tasks) {
       const basePrompt = `

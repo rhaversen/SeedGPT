@@ -1,6 +1,6 @@
 import { BaseDepartment } from '../base/baseDepartment.js'
 import { WorkerResponse, WorkerPrompt, HeadPrompt } from '../../types/department.js'
-import { getEligibleTasks, getTask } from '../../scrum.js'
+import { getPendingTasks, getTask } from '../../scrum.js'
 
 interface WorkerSafetyResult {
   securityRisk: number
@@ -21,7 +21,7 @@ export class SafetyDepartment extends BaseDepartment {
 
   async getDepartmentWorkerBatchPrompts(): Promise<WorkerPrompt[]> {
     const prompts: WorkerPrompt[] = []
-    const tasksUnderReview = await getEligibleTasks()
+    const tasksUnderReview = await getPendingTasks()
 
     for (const task of tasksUnderReview) {
       const basePrompt = `
