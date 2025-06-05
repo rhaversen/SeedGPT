@@ -2,7 +2,7 @@ import 'process'
 
 import logger from './logger.js'
 
-const envSecrets = [
+const envSecretsProd = [
 	// Database
 	'DB_NAME',
 	'DB_USER',
@@ -18,14 +18,37 @@ const envSecrets = [
 	'NODE_ENV',
 ]
 
+const envSecretsDev = [
+	'ANTHROPIC_API_KEY',
+	'NODE_ENV'
+]
+
+const envSecretsTest = [
+	'ANTHROPIC_API_KEY',
+	'NODE_ENV'
+]
+
 // Verify that all environment secrets are set
 const missingSecrets = [] as string[]
-
-envSecrets.forEach((secret) => {
-	if (process.env[secret] === undefined) {
-		missingSecrets.push(secret)
-	}
-})
+if (process.env.NODE_ENV === 'development') {
+	envSecretsDev.forEach((secret) => {
+		if (process.env[secret] === undefined) {
+			missingSecrets.push(secret)
+		}
+	})
+} else if (process.env.NODE_ENV === 'test') {
+	envSecretsTest.forEach((secret) => {
+		if (process.env[secret] === undefined) {
+			missingSecrets.push(secret)
+		}
+	})
+} else if (process.env.NODE_ENV === 'production') {
+	envSecretsProd.forEach((secret) => {
+		if (process.env[secret] === undefined) {
+			missingSecrets.push(secret)
+		}
+	})
+}
 
 if (missingSecrets.length > 0) {
 	const errorMessage = `Missing environment secrets: ${missingSecrets.join(', ')}`
