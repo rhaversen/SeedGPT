@@ -18,60 +18,46 @@ async function seedDatabase(): Promise<void> {
 	await Story.deleteMany({})
 	await Task.deleteMany({})
 
-	// Seed themes relevant to autonomous AI development
-	const themeData = [
-		{ name: 'AI Reasoning', description: 'Enhancing decision-making and problem-solving capabilities', priority: 'high' },
-		{ name: 'Code Generation', description: 'Improving automated code creation and refactoring', priority: 'high' },
-		{ name: 'Self-Monitoring', description: 'Building systems for autonomous performance tracking', priority: 'medium' },
-		{ name: 'Tool Integration', description: 'Expanding available tools and APIs for development tasks', priority: 'medium' },
-		{ name: 'Safety Systems', description: 'Implementing safeguards for autonomous operations', priority: 'high' },
-		{ name: 'Learning & Adaptation', description: 'Developing capabilities for continuous improvement', priority: 'medium' },
-		{ name: 'Task Management', description: 'Optimizing workflow and task orchestration', priority: 'medium' },
-		{ name: 'Quality Assurance', description: 'Automated testing and validation systems', priority: 'high' }
-	]
-	const themes = await Theme.insertMany(themeData)
+	const themes = await Theme.insertMany([
+		{ name: 'Department Enhancement', description: 'Improving the three-department task validation system (evaluation, code-quality, safety)', priority: 'high' },
+		{ name: 'Batch Processing Optimization', description: 'Enhancing AnthropicBatchClient efficiency and reliability', priority: 'high' },
+		{ name: 'Database Layer Improvements', description: 'Optimizing MongoDB operations and schema design', priority: 'medium' },
+		{ name: 'Task Orchestration', description: 'Improving the SeedGPT orchestrator workflow and error handling', priority: 'high' },
+		{ name: 'Development Infrastructure', description: 'CI/CD, testing, and deployment pipeline enhancements', priority: 'medium' },
+		{ name: 'Code Quality Systems', description: 'Static analysis, linting, and automated code improvements', priority: 'medium' }
+	])
 	logger.info(`Seeded ${themes.length} themes`)
-	// Seed epics for autonomous AI development
-	const epicData = [
-		{ title: 'Enhanced Code Analysis', description: 'Develop advanced code understanding and generation capabilities', priority: 'high' },
-		{ title: 'Autonomous Testing Framework', description: 'Build comprehensive automated testing and validation systems', priority: 'high' },
-		{ title: 'Self-Improvement Pipeline', description: 'Create systems for continuous learning and capability enhancement', priority: 'medium' },
-		{ title: 'Advanced Tool Integration', description: 'Expand available development tools and API integrations', priority: 'medium' },
-		{ title: 'Safety & Governance System', description: 'Implement robust safety checks and operational governance', priority: 'high' },
-		{ title: 'Intelligent Task Orchestration', description: 'Optimize task scheduling and dependency management', priority: 'medium' },
-		{ title: 'Context-Aware Development', description: 'Build systems for better project understanding and context retention', priority: 'medium' },
-		{ title: 'Performance Optimization Engine', description: 'Develop automated performance monitoring and optimization', priority: 'low' }
-	]
-	const epics = await Epic.insertMany(epicData)
+
+	const epics = await Epic.insertMany([
+		{ title: 'Enhanced Department Worker System', description: 'Improve the worker-head department architecture with better prompt templates and response parsing', priority: 'high' },
+		{ title: 'Robust Batch Processing Pipeline', description: 'Build resilient batch processing with retry logic, monitoring, and error recovery', priority: 'high' },
+		{ title: 'Advanced Task Management', description: 'Implement sophisticated task dependencies, splitting, and approval workflows', priority: 'medium' },
+		{ title: 'Comprehensive Testing Framework', description: 'Create end-to-end testing for the entire SeedGPT pipeline using in-memory MongoDB', priority: 'high' },
+		{ title: 'Production-Ready Deployment', description: 'Enhance Docker, Kubernetes, and CI/CD pipeline for reliable production deployment', priority: 'medium' },
+		{ title: 'Monitoring & Observability', description: 'Implement comprehensive logging, metrics, and performance monitoring', priority: 'medium' }
+	])
 	logger.info(`Seeded ${epics.length} epics`)
-	// Seed stories for AI development features
-	const storyData = [
-		{ title: 'AST Code Parser', description: 'Implement abstract syntax tree parsing for better code understanding', priority: 'high' },
-		{ title: 'Pattern Recognition Engine', description: 'Build system to identify code patterns and anti-patterns', priority: 'medium' },
-		{ title: 'Automated Unit Test Generator', description: 'Create intelligent unit test generation for new functions', priority: 'high' },
-		{ title: 'Integration Test Framework', description: 'Build comprehensive integration testing capabilities', priority: 'medium' },
-		{ title: 'Capability Assessment Module', description: 'Develop self-assessment of current AI capabilities', priority: 'medium' },
-		{ title: 'Learning Progress Tracker', description: 'Track and analyze learning progress over iterations', priority: 'low' },
-		{ title: 'GitHub API Enhancement', description: 'Expand GitHub integration for better repository management', priority: 'medium' },
-		{ title: 'VS Code Extension Creator', description: 'Build tool to automatically create VS Code extensions', priority: 'low' },
-		{ title: 'Code Safety Validator', description: 'Implement static analysis for security vulnerabilities', priority: 'high' },
-		{ title: 'Deployment Safety Checks', description: 'Add pre-deployment validation and rollback mechanisms', priority: 'high' },
-		{ title: 'Dependency Manager', description: 'Intelligent dependency resolution and conflict detection', priority: 'medium' },
-		{ title: 'Task Priority Engine', description: 'Optimize task scheduling based on complexity and dependencies', priority: 'low' },
-		{ title: 'Project Context Manager', description: 'Maintain and utilize project history and context', priority: 'medium' },
-		{ title: 'Code Documentation Generator', description: 'Automatically generate comprehensive code documentation', priority: 'low' },
-		{ title: 'Performance Profiler', description: 'Monitor and analyze system performance metrics', priority: 'low' },
-		{ title: 'Resource Usage Optimizer', description: 'Optimize CPU, memory, and API usage patterns', priority: 'low' }
-	]
-	const stories = await Story.insertMany(storyData)
+
+	const stories = await Story.insertMany([
+		{ title: 'Department Prompt Optimization', description: 'Improve worker and head prompt templates for better AI responses', priority: 'high' },
+		{ title: 'Response Parser Enhancement', description: 'Make JSON parsing more robust and handle edge cases', priority: 'high' },
+		{ title: 'Batch Status Monitoring', description: 'Add real-time monitoring for Anthropic batch processing', priority: 'medium' },
+		{ title: 'Task Context Enrichment', description: 'Enhance task context with file references and dependency information', priority: 'medium' },
+		{ title: 'Database Connection Resilience', description: 'Improve MongoDB connection handling and retry logic', priority: 'high' },
+		{ title: 'Schema Migration System', description: 'Implement database schema versioning and migration tools', priority: 'low' },
+		{ title: 'Integration Test Suite', description: 'Create comprehensive tests for the TaskValidator and department workflows', priority: 'high' },
+		{ title: 'Performance Benchmarking', description: 'Add performance metrics and benchmarking for key operations', priority: 'low' },
+		{ title: 'Container Optimization', description: 'Optimize Docker image size and startup performance', priority: 'medium' },
+		{ title: 'Environment Configuration', description: 'Improve environment variable management and validation', priority: 'medium' }
+	])
 	logger.info(`Seeded ${stories.length} stories`)
-	// Seed tasks with proper department approvals for AI development
-	const taskData = [
+
+	const tasks = await Task.insertMany([
 		{
-			title: 'Implement TypeScript AST Parser',
-			description: 'Create a TypeScript Abstract Syntax Tree parser to analyze code structure and identify improvement opportunities',
+			title: 'Enhance EvaluationDepartment Response Parsing',
+			description: 'Improve the parseWorkerResponses method in EvaluationDepartment to handle malformed JSON and partial responses more gracefully',
 			priority: 'high',
-			context: 'Requires understanding of TypeScript compiler API, AST node types, and the existing codebase structure in src/app/models/ and src/app/services/. Review typescript package documentation and existing file parsing utilities.',
+			context: 'Located in src/app/departments/taskApprovers/evaluation.ts. The current implementation logs warnings but could be more robust. Review the parseJSON method in BaseDepartment and add fallback mechanisms for common JSON parsing failures.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
@@ -79,21 +65,10 @@ async function seedDatabase(): Promise<void> {
 			]
 		},
 		{
-			title: 'Build Code Pattern Detector',
-			description: 'Develop a system to identify common code patterns, anti-patterns, and potential improvements',
-			priority: 'medium',
-			context: 'Study existing code quality tools, ESLint rules configuration, and analyze patterns in src/app/ directories. Review code-quality service implementations and static analysis libraries.',
-			approvals: [
-				{ department: 'evaluation', approved: false },
-				{ department: 'code-quality', approved: false },
-				{ department: 'safety', approved: false }
-			]
-		},
-		{
-			title: 'Create Function Test Generator',
-			description: 'Build an intelligent system that generates comprehensive unit tests for TypeScript functions',
+			title: 'Add Batch Processing Retry Logic',
+			description: 'Implement retry mechanisms in AnthropicBatchClient for failed batch operations and network timeouts',
 			priority: 'high',
-			context: 'Study testing frameworks (Jest, Vitest), examine existing test files in src/tests/, understand function signatures parsing, and review test generation libraries. Analyze src/app/ structure for test patterns.',
+			context: 'Enhance src/app/services/anthropicBatchClient.ts with exponential backoff retry logic for processBatch, getBatchStatus, and result fetching operations. Consider rate limiting and API error codes.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
@@ -101,10 +76,10 @@ async function seedDatabase(): Promise<void> {
 			]
 		},
 		{
-			title: 'Implement End-to-End Test Suite',
-			description: 'Create comprehensive integration tests for the entire SeedGPT orchestration pipeline',
+			title: 'Implement Task Dependency Tracking',
+			description: 'Add dependency relationships between tasks in the Task schema and update the TaskValidator to respect dependencies',
 			priority: 'medium',
-			context: 'Review src/app/orchestrator/ files, understand workflow dependencies, examine database models in src/app/models/, and study integration testing frameworks like Playwright or Cypress.',
+			context: 'Modify src/app/models/task.schema.ts to include a dependencies field (array of task IDs). Update src/app/services/taskValidator.ts to process tasks in dependency order and handle circular dependencies.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
@@ -112,10 +87,10 @@ async function seedDatabase(): Promise<void> {
 			]
 		},
 		{
-			title: 'Build Capability Self-Assessment',
-			description: 'Develop a system for SeedGPT to evaluate its own capabilities and identify improvement areas',
+			title: 'Optimize MongoDB Connection Pooling',
+			description: 'Enhance database connection management in databaseConnector.ts with proper connection pooling and health checks',
 			priority: 'medium',
-			context: 'Analyze src/app/services/ implementations, understand capability tracking systems, review performance metrics collection, and study self-assessment algorithms in AI systems.',
+			context: 'Update src/app/utils/databaseConnector.ts to configure mongoose connection pooling options, add connection health monitoring, and implement graceful shutdown handling.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
@@ -123,10 +98,10 @@ async function seedDatabase(): Promise<void> {
 			]
 		},
 		{
-			title: 'Create Learning Metrics Dashboard',
-			description: 'Build a monitoring system to track learning progress and capability improvements over time',
+			title: 'Add Department Worker Count Configuration',
+			description: 'Make the worker count configurable per department instead of hardcoded to 10',
 			priority: 'low',
-			context: 'Study dashboard frameworks (React, Vue), examine data visualization libraries (Chart.js, D3), review src/app/utils/logger.js for metrics collection patterns, and understand time-series data storage.',
+			context: 'Modify src/app/departments/base/baseDepartment.ts to accept worker count in constructor or through configuration. Consider different worker counts for different department types based on complexity.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
@@ -134,32 +109,10 @@ async function seedDatabase(): Promise<void> {
 			]
 		},
 		{
-			title: 'Enhance GitHub Repository Management',
-			description: 'Expand GitHub API integration for better branch management, PR creation, and repository operations',
-			priority: 'medium',
-			context: 'Review GitHub API documentation, examine existing Git integration in src/app/services/, understand authentication patterns, and study repository management workflows in the codebase.',
-			approvals: [
-				{ department: 'evaluation', approved: false },
-				{ department: 'code-quality', approved: false },
-				{ department: 'safety', approved: false }
-			]
-		},
-		{
-			title: 'Build VS Code Extension Generator',
-			description: 'Create a tool that automatically generates VS Code extensions based on development needs',
-			priority: 'low',
-			context: 'Study VS Code Extension API, examine extension manifest structure, review yeoman generators, understand TypeScript compilation for extensions, and analyze existing extension templates.',
-			approvals: [
-				{ department: 'evaluation', approved: false },
-				{ department: 'code-quality', approved: false },
-				{ department: 'safety', approved: false }
-			]
-		},
-		{
-			title: 'Implement Static Security Analysis',
-			description: 'Build automated security vulnerability detection for code changes and new features',
+			title: 'Create TaskValidator Integration Tests',
+			description: 'Build comprehensive integration tests for the TaskValidator using the in-memory MongoDB setup',
 			priority: 'high',
-			context: 'Review security scanning tools (ESLint security plugins, Snyk, OWASP), examine src/app/ for security patterns, understand vulnerability databases, and study static analysis techniques.',
+			context: 'Create test file in src/tests/ that uses mongoMemoryReplSetConnector.ts to test complete TaskValidator workflows. Test worker batch processing, head batch processing, and approval updates.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
@@ -167,10 +120,32 @@ async function seedDatabase(): Promise<void> {
 			]
 		},
 		{
-			title: 'Create Deployment Rollback System',
-			description: 'Implement automated rollback mechanisms for failed deployments or problematic changes',
+			title: 'Implement Structured Logging Context',
+			description: 'Enhance the logger utility to include structured context like request IDs, batch IDs, and task IDs',
+			priority: 'medium',
+			context: 'Update src/app/utils/logger.ts to support request correlation IDs and structured logging context. Ensure batch processing operations can be traced across the entire pipeline.',
+			approvals: [
+				{ department: 'evaluation', approved: false },
+				{ department: 'code-quality', approved: false },
+				{ department: 'safety', approved: false }
+			]
+		},
+		{
+			title: 'Add Batch Processing Metrics',
+			description: 'Implement metrics collection for batch processing performance, success rates, and response times',
+			priority: 'medium',
+			context: 'Enhance AnthropicBatchClient to collect and log performance metrics. Track batch creation time, processing duration, success/failure rates, and response quality metrics.',
+			approvals: [
+				{ department: 'evaluation', approved: false },
+				{ department: 'code-quality', approved: false },
+				{ department: 'safety', approved: false }
+			]
+		},
+		{
+			title: 'Improve Department Prompt Templates',
+			description: 'Enhance the prompt templates in all three departments to produce more consistent and parseable responses',
 			priority: 'high',
-			context: 'Study deployment pipelines, examine Docker configurations, understand Git operations for rollbacks, review health check implementations, and analyze deployment scripts in the project.',
+			context: 'Review and update prompt templates in src/app/departments/taskApprovers/ (evaluation.ts, codeQuality.ts, safety.ts) to improve JSON response consistency and provide clearer evaluation criteria.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
@@ -178,10 +153,10 @@ async function seedDatabase(): Promise<void> {
 			]
 		},
 		{
-			title: 'Build Dependency Conflict Resolver',
-			description: 'Create intelligent dependency management with automatic conflict resolution',
+			title: 'Add Environment Variable Validation',
+			description: 'Enhance verifyEnvironmentSecrets.ts to validate not just presence but also format and validity of environment variables',
 			priority: 'medium',
-			context: 'Examine package.json and package-lock.json, study npm/yarn dependency resolution algorithms, understand semantic versioning, and review dependency management tools like npm-check-updates.',
+			context: 'Update src/app/utils/verifyEnvironmentSecrets.ts to validate API key formats, database connection strings, and other environment variables beyond just checking existence.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
@@ -189,21 +164,10 @@ async function seedDatabase(): Promise<void> {
 			]
 		},
 		{
-			title: 'Implement Smart Task Prioritization',
-			description: 'Build an AI-driven task prioritization system based on dependencies, complexity, and impact',
-			priority: 'low',
-			context: 'Study task scheduling algorithms, examine src/app/models/task.schema.js, understand dependency graphs, review priority calculation systems, and analyze workflow optimization techniques.',
-			approvals: [
-				{ department: 'evaluation', approved: false },
-				{ department: 'code-quality', approved: false },
-				{ department: 'safety', approved: false }
-			]
-		},
-		{
-			title: 'Create Project Context Memory',
-			description: 'Develop a system to maintain and utilize project history, decisions, and context across iterations',
+			title: 'Implement Task Context File References',
+			description: 'Enhance task context to include specific file paths and code references for better department evaluation',
 			priority: 'medium',
-			context: 'Study context management systems, examine database schemas in src/app/models/, understand memory storage patterns, review decision tracking systems, and analyze project history formats.',
+			context: 'Modify task schema and TaskValidator to include file references in task context. This will help departments make more informed decisions about code changes and dependencies.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
@@ -211,40 +175,17 @@ async function seedDatabase(): Promise<void> {
 			]
 		},
 		{
-			title: 'Build Automated Documentation Generator',
-			description: 'Create a system that automatically generates and maintains comprehensive code documentation',
-			priority: 'low',
-			context: 'Study documentation generators (JSDoc, TypeDoc), examine existing documentation patterns, understand comment parsing, review markdown generation libraries, and analyze code structure in src/app/.',
-			approvals: [
-				{ department: 'evaluation', approved: false },
-				{ department: 'code-quality', approved: false },
-				{ department: 'safety', approved: false }
-			]
-		},
-		{
-			title: 'Implement Performance Monitoring',
-			description: 'Build real-time performance monitoring for system resources and operation efficiency',
-			priority: 'low',
-			context: 'Study Node.js performance APIs, examine monitoring libraries (prom-client, node-clinic), understand metrics collection patterns, review src/app/utils/ for existing monitoring, and analyze system resource tracking.',
-			approvals: [
-				{ department: 'evaluation', approved: false },
-				{ department: 'code-quality', approved: false },
-				{ department: 'safety', approved: false }
-			]
-		},
-		{
-			title: 'Create Resource Usage Optimizer',
-			description: 'Develop intelligent optimization for CPU, memory, and API usage to minimize costs',
-			priority: 'low',
-			context: 'Study resource optimization techniques, examine Node.js profiling tools, understand memory management patterns, review API rate limiting implementations, and analyze performance bottlenecks in existing services.',
+			title: 'Add Graceful Error Recovery',
+			description: 'Implement graceful error recovery in the main orchestrator for partial batch failures and department unavailability',
+			priority: 'high',
+			context: 'Enhance src/app/index.ts orchestrator to handle partial failures gracefully, allowing some tasks to proceed even if others fail, and implement proper cleanup on errors.',
 			approvals: [
 				{ department: 'evaluation', approved: false },
 				{ department: 'code-quality', approved: false },
 				{ department: 'safety', approved: false }
 			]
 		}
-	]
-	const tasks = await Task.insertMany(taskData)
+	])
 	logger.info(`Seeded ${tasks.length} tasks`)
 	logger.info('Database seeded successfully')
 }
