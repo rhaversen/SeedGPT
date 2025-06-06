@@ -26,12 +26,23 @@ export class AnthropicBatchClient {
   async processBatch(request: BatchRequest<WorkerPrompt | HeadPrompt>): Promise<string> {
     logger.info(`Creating batch with ${request.prompts.length} prompts using model: ${request.model}`)
 
+    const workerDepartmentLogged = new Set<DepartmentType>()
+    const headDepartmentLogged = new Set<DepartmentType>()
+
     const batchRequests = request.prompts.map((prompt: WorkerPrompt | HeadPrompt) => {
       let customId: string
       if ('workerIndex' in prompt) {
         customId = `worker-${prompt.department}-${prompt.taskId}-${prompt.workerIndex}`
+        if (!workerDepartmentLogged.has(prompt.department)) {
+          logger.info(`First worker message from ${prompt.department}:`, { message: prompt.prompt })
+          workerDepartmentLogged.add(prompt.department)
+        }
       } else {
         customId = `head-${prompt.department}-${prompt.taskId}`
+        if (!headDepartmentLogged.has(prompt.department)) {
+          logger.info(`First head message from ${prompt.department}:`, { message: prompt.prompt })
+          headDepartmentLogged.add(prompt.department)
+        }
       }
 
       return {
@@ -63,20 +74,27 @@ export class AnthropicBatchClient {
 
   async getBatchStatus(batchId: string) {
     try {
-      return await this.client.messages.batches.retrieve(batchId)
+      console.log(`Retrieving batch status for ID: ${batchId}`)
+      const status = await this.client.messages.batches.retrieve(batchId)
+      logger.info(`Batch ${batchId} status retrieved:`, { status })
+      return status
     } catch (error) {
       logger.error(`Error retrieving batch ${batchId}:`, { error })
       throw error
     }
   }
 
-  async awaitBatchCompletion(batchId: string, timeoutMs: number = 1000 * 60 * 60 * 24): Promise<void> {
+  async awaitBatchCompletion(batchId: string): Promise<void> {
+    const timeoutMs = 1000 * 60 * 60 * 24 // 24 hours timeout
     const startTime = Date.now()
     while (true) {
+      logger.info(`Checking batch status for ID: ${batchId}`)
       const batch = await this.getBatchStatus(batchId)
       if (batch.processing_status !== 'in_progress') {
+        logger.info(`Batch ${batchId} is no longer in progress. Current status: ${batch.processing_status}`)
         return
       }
+      logger.info(`Batch ${batchId} is still in progress. Current status: ${batch.processing_status}`)
       if (Date.now() - startTime > timeoutMs) {
         throw new Error(`Batch ${batchId} did not complete within ${timeoutMs}ms. Current status: ${batch.processing_status}`)
       }
@@ -109,8 +127,12 @@ export class AnthropicBatchClient {
       const errorText = await resultsResponse.text()
       logger.error(`Failed to fetch batch results: ${resultsResponse.status} ${resultsResponse.statusText}`, { errorText })
       throw new Error(`Failed to fetch batch results: ${resultsResponse.status} ${resultsResponse.statusText}. Response: ${errorText}`)
-    } const resultsText = await resultsResponse.text()
+    }
+
+    const resultsText = await resultsResponse.text()
     const results = resultsText.trim().split('\n').map(line => JSON.parse(line))
+
+    const departmentLogged = new Set<DepartmentType>()
 
     const responses: WorkerResponse[] = results.map((result, index) => {
       if (!result.custom_id) {
@@ -127,6 +149,11 @@ export class AnthropicBatchClient {
       const workerIndex = parseInt(customIdParts[customIdParts.length - 1])
       const taskId = customIdParts[customIdParts.length - 2]
       const department = customIdParts.slice(1, -2).join('-') as DepartmentType
+
+      if (!departmentLogged.has(department)) {
+        logger.info(`First worker response from ${department}:`, { response: content })
+        departmentLogged.add(department)
+      }
 
       return {
         taskId,
@@ -168,6 +195,8 @@ export class AnthropicBatchClient {
     } const resultsText = await resultsResponse.text()
     const results = resultsText.trim().split('\n').map(line => JSON.parse(line))
 
+    const departmentLogged = new Set<DepartmentType>()
+
     const responses: HeadResponse[] = results.map((result, index) => {
       if (!result.custom_id) {
         throw new Error(`Head result at index ${index} is missing custom_id`)
@@ -183,6 +212,11 @@ export class AnthropicBatchClient {
       // Department can contain hyphens, so we need to parse from the end
       const taskId = customIdParts[customIdParts.length - 1]
       const department = customIdParts.slice(1, -1).join('-') as DepartmentType
+
+      if (!departmentLogged.has(department)) {
+        logger.info(`First head response from ${department}:`, { response: content })
+        departmentLogged.add(department)
+      }
 
       const parsed = this.parseJSON<{ approved: boolean, feedback?: string }>(content)
       return {
