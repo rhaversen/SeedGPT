@@ -1,7 +1,9 @@
 import { Schema, model, Document } from 'mongoose'
 
+export type DepartmentType = 'evaluation' | 'code-quality' | 'safety'
+
 export interface ITaskApproval {
-  department: 'evaluation' | 'code-quality' | 'safety'
+  department: DepartmentType
   approved: boolean
   feedback?: string
 }

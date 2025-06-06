@@ -1,36 +1,36 @@
-export interface DepartmentPrompt {
-  department: string
+export type DepartmentType = 'evaluation' | 'code-quality' | 'safety'
+export type ModelType = 'low' | 'mid' | 'high'
+
+export interface BaseTaskIdentifier {
   taskId: string
+  department: DepartmentType
+}
+
+export interface WorkerPrompt extends BaseTaskIdentifier {
+  workerIndex: number
   prompt: string
 }
 
-export interface WorkerPrompt extends DepartmentPrompt {
-  workerId: string
+export interface HeadPrompt extends BaseTaskIdentifier {
+  prompt: string
+  workerResponses: WorkerResponse[]
 }
 
-export interface HeadPrompt extends DepartmentPrompt {
-  headId: string
-}
-
-export interface WorkerResponse {
-  workerId: string
-  taskId: string
-  department: string
+export interface WorkerResponse extends BaseTaskIdentifier {
+  workerIndex: number
   response: string
 }
 
-export interface HeadResponse {
-  taskId: string
+export interface HeadResponse extends BaseTaskIdentifier {
   approved: boolean
-  department: string
-  report?: string
+  feedback?: string
 }
 
-export interface BatchPromptRequest {
-  prompts: WorkerPrompt[] | HeadPrompt[]
-  model: 'low' | 'mid' | 'high'
+export interface BatchRequest<T extends WorkerPrompt | HeadPrompt> {
+  prompts: T[]
+  model: ModelType
 }
 
-export interface BatchPromptResponse {
-  responses: WorkerResponse[] | HeadResponse[]
+export interface BatchResponse<T extends WorkerResponse | HeadResponse> {
+  responses: T[]
 }

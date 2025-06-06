@@ -1,8 +1,7 @@
-import { BaseDepartment } from '../base/baseDepartment.js'
+import { BaseDepartment, TaskContext } from '../base/baseDepartment.js'
 import { WorkerResponse, WorkerPrompt, HeadPrompt } from '../../types/department.js'
-import { getPendingTasks, getTask } from '../../scrum.js'
 
-interface WorkerCodeQualityResult {
+interface CodeQualityResult {
   maintainability: number
   performance: number
   testability: number
@@ -13,17 +12,12 @@ interface WorkerCodeQualityResult {
 }
 
 export class CodeQualityDepartment extends BaseDepartment {
-  id = 'code-quality'
-
   constructor() {
     super('code-quality')
   }
-  async getDepartmentWorkerBatchPrompts(): Promise<WorkerPrompt[]> {
-    const prompts: WorkerPrompt[] = []
-    const tasks = await getPendingTasks()
 
-    for (const task of tasks) {
-      const basePrompt = `
+  getWorkerPromptTemplate(): string {
+    return `
 You are a senior software architect reviewing code quality implications. Analyze this task:
 
 Task: $(TASK_TITLE)
@@ -38,7 +32,7 @@ Assess these on a 1-10 scale (10 = best, 1 = worst):
 
 Identify quality issues and suggest improvements.
 
-Respond ONLY in JSON, e.g.:
+Respond ONLY in JSON:
 {
   "maintainability": 6,
   "performance": 8,
@@ -48,78 +42,30 @@ Respond ONLY in JSON, e.g.:
   "qualityIssues": ["..."],
   "improvements": ["..."]
 }`.trim()
-
-      prompts.push(...this.generateWorkerPrompts(
-        { id: task.id.toString(), title: task.title, description: task.description },
-        basePrompt
-      ))
-    }
-
-    return prompts
   }
 
-  async getDepartmentHeadBatchPrompts(responses: WorkerResponse[]): Promise<HeadPrompt[]> {
-    const grouped: Record<string, WorkerResponse[]> = {}
-
-    for (const resp of responses) {
-      grouped[resp.taskId] = grouped[resp.taskId] || []
-      grouped[resp.taskId].push(resp)
-    }
-
-    const taskIds = Object.keys(grouped)
-    const tasks = await Promise.all(taskIds.map(id => getTask(id)))
-
-    const prompts: HeadPrompt[] = []
-
-    taskIds.forEach((taskId, index) => {
-      const task = tasks[index]
-      const reps = grouped[taskId]
-
-      if (!task) {
-        return
-      }
-
-      const parsedResults: WorkerCodeQualityResult[] = reps
-        .map(r => this.parseJSON<WorkerCodeQualityResult>(r.response))
-        .filter((x): x is WorkerCodeQualityResult => x !== null)
-
-      if (parsedResults.length === 0) {
-        return
-      }
-
-      const summary = parsedResults.map((a, i) =>
-        `Worker ${i + 1}:
-  Maintainability=${a.maintainability},
-  Performance=${a.performance},
-  Testability=${a.testability},
-  TechDebt=${a.techDebtRisk},
-  DependencyComplexity=${a.dependencyComplexity}
-  Issues: ${a.qualityIssues.join(', ')}
-  Improvements: ${a.improvements.join(', ')}`
-      ).join('\n\n')
-
-      prompts.push({
-        department: this.id,
-        taskId,
-        headId: `${this.id}-head-${taskId}`,
-        prompt: `You are a technical lead reviewing code quality assessments. Decide if this task meets quality standards or needs enhancements.
-
-Original Task:
-Title: ${task.title}
-Description: ${task.description}
+  getHeadPromptTemplate(): string {
+    return `You are a technical lead reviewing code quality assessments. Decide if this task meets quality standards or needs enhancements.
 
 Worker Assessments:
-${summary}
+\${summary}
 
 Respond ONLY in JSON:
-If approved:
-{ "approved": true }
-
-If not approved:
-{ "approved": false, "report": "..." }`
-      })
-    })
-
-    return prompts
+If approved: { "approved": true }
+If not approved: { "approved": false, "feedback": "..." }`
+  }
+  parseWorkerResponses<T>(responses: WorkerResponse[]): T[] {
+    return responses
+      .map(r => this.parseJSON<CodeQualityResult>(r.response))
+      .filter((result): result is CodeQualityResult => result !== null) as T[]
+  }
+  createSummary<T>(results: T[]): string {
+    return (results as any[]).map((result: any, index) =>
+      `Worker ${index + 1}:
+  Maintainability=${result.maintainability}, Performance=${result.performance}, Testability=${result.testability}
+  TechDebt=${result.techDebtRisk}, DependencyComplexity=${result.dependencyComplexity}
+  Issues: ${result.qualityIssues.join(', ')}
+  Improvements: ${result.improvements.join(', ')}`
+    ).join('\n\n')
   }
 }

@@ -1,8 +1,8 @@
 import { WorkerResponse, WorkerPrompt, HeadPrompt } from '../../types/department.js'
-import { BaseDepartment } from '../base/baseDepartment.js'
-import { getPendingTasks, getTask } from '../../scrum.js'
+import { BaseDepartment, TaskContext } from '../base/baseDepartment.js'
+import logger from '../../utils/logger.js'
 
-interface WorkerEvaluationResult {
+interface EvaluationResult {
   clarity: number
   feasibility: number
   scope: number
@@ -12,18 +12,12 @@ interface WorkerEvaluationResult {
 }
 
 export class EvaluationDepartment extends BaseDepartment {
-  id = 'evaluation'
-
   constructor() {
     super('evaluation')
   }
 
-  async getDepartmentWorkerBatchPrompts(): Promise<WorkerPrompt[]> {
-    const prompts: WorkerPrompt[] = []
-    const tasksUnderReview = await getPendingTasks()
-
-    for (const task of tasksUnderReview) {
-      const basePrompt = `
+  getWorkerPromptTemplate(): string {
+    return `
 You are an expert task evaluator. Assess this software development task:
 
 Task: $(TASK_TITLE)
@@ -38,7 +32,7 @@ Evaluate on a 1–10 scale:
 
 Provide suggestions for improvement.
 
-Respond ONLY in JSON, e.g.:
+Respond ONLY in JSON:
 {
   "clarity": 8,
   "feasibility": 7,
@@ -46,75 +40,40 @@ Respond ONLY in JSON, e.g.:
   "effort": 5,
   "impact": 9,
   "suggestions": ["..."]
-}
-      `.trim()
-
-      prompts.push(...this.generateWorkerPrompts(
-        { id: task.id.toString(), title: task.title, description: task.description },
-        basePrompt
-      ))
-    }
-
-    return prompts
+}`.trim()
   }
 
-  async getDepartmentHeadBatchPrompts(responses: WorkerResponse[]): Promise<HeadPrompt[]> {
-    const grouped: Record<string, WorkerResponse[]> = {}
-
-    for (const resp of responses) {
-      grouped[resp.taskId] = grouped[resp.taskId] || []
-      grouped[resp.taskId].push(resp)
-    }
-
-    const taskIds = Object.keys(grouped)
-    const tasks = await Promise.all(taskIds.map(id => getTask(id)))
-
-    const prompts: HeadPrompt[] = []
-
-    taskIds.forEach((taskId, index) => {
-      const task = tasks[index]
-      const reps = grouped[taskId]
-
-      if (!task) {
-        return
-      }
-
-      const parsed: WorkerEvaluationResult[] = reps
-        .map(r => this.parseJSON<WorkerEvaluationResult>(r.response))
-        .filter((x): x is WorkerEvaluationResult => x !== null)
-
-      if (parsed.length === 0) {
-        return
-      }
-
-      const summary = parsed.map((e, i) =>
-        `Worker ${i + 1}:
-  Clarity=${e.clarity}, Feasibility=${e.feasibility}, Scope=${e.scope}, Effort=${e.effort}, Impact=${e.impact}
-  Suggestions: ${e.suggestions.join(', ')}`
-      ).join('\n\n')
-
-      prompts.push({
-        department: this.id,
-        taskId,
-        headId: `${this.id}-head-${taskId}`,
-        prompt: `You are a senior project manager reviewing task evaluations. Based on multiple worker assessments, decide if this task is approved.
-
-Original Task:
-Title: ${task.title}
-Description: ${task.description}
+  getHeadPromptTemplate(): string {
+    return `You are a senior project manager reviewing task evaluations. Based on multiple worker assessments, decide if this task is approved.
 
 Worker Evaluations:
-${summary}
+\${summary}
 
 Respond ONLY in JSON:
-If approved:
-{ "approved": true }
-
-If not approved:
-{ "approved": false, "report": "..." }`
+If approved: { "approved": true }
+If not approved: { "approved": false, "feedback": "..." }`
+  }  parseWorkerResponses<T>(responses: WorkerResponse[]): T[] {
+    logger.info(`Evaluation: Parsing ${responses.length} worker responses`)
+    
+    const results = responses
+      .map((r, index) => {
+        logger.info(`Evaluation: Worker response ${index}:`, { taskId: r.taskId, response: r.response })
+        const parsed = this.parseJSON<EvaluationResult>(r.response)
+        if (!parsed) {
+          logger.warn(`Evaluation: Failed to parse worker response ${index} for task ${r.taskId}`)
+        }
+        return parsed
       })
-    })
-
-    return prompts
+      .filter((result): result is EvaluationResult => result !== null)
+    
+    logger.info(`Evaluation: Successfully parsed ${results.length} out of ${responses.length} responses`)
+    return results as T[]
+  }
+  createSummary<T>(results: T[]): string {
+    return (results as any[]).map((result: any, index) =>
+      `Worker ${index + 1}:
+  Clarity=${result.clarity}, Feasibility=${result.feasibility}, Scope=${result.scope}, Effort=${result.effort}, Impact=${result.impact}
+  Suggestions: ${result.suggestions.join(', ')}`
+    ).join('\n\n')
   }
 }
