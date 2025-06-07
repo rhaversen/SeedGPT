@@ -33,14 +33,26 @@ export abstract class BaseDepartment {
       description: task.description
     }))
 
+    if (taskContexts.length === 0) {
+      logger.info(`${this.departmentType}: No pending tasks to evaluate`)
+      return []
+    }
+
     const promptTemplate = this.getWorkerPromptTemplate()
-    return this.createWorkerPrompts(taskContexts, promptTemplate)
+    const prompts = this.createWorkerPrompts(taskContexts, promptTemplate)
+
+    logger.info(`🔧 ${this.departmentType}: Generated ${prompts.length} worker prompts for ${taskContexts.length} tasks`)
+
+    return prompts
   }
+
   async getDepartmentHeadBatchPrompts(responses: WorkerResponse[]): Promise<HeadPrompt[]> {
     const taskGroups = this.groupResponsesByTask(responses)
     const prompts: HeadPrompt[] = []
+    const tasks = await getPendingTasks()
+    const taskContextMap = new Map(tasks.map(task => [task.id.toString(), { id: task.id.toString(), title: task.title, description: task.description }]))
 
-    logger.info(`${this.departmentType}: Processing ${taskGroups.size} task groups`)
+    logger.info(`🎯 ${this.departmentType}: Processing ${taskGroups.size} tasks for head evaluation`)
 
     for (const [taskId, workerResponses] of taskGroups.entries()) {
       logger.info(`${this.departmentType}: Task ${taskId} has ${workerResponses.length} worker responses`)

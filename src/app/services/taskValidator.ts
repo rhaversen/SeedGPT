@@ -26,8 +26,12 @@ export class TaskValidator {
       logger.info('No pending tasks found. Exiting task validator.')
       return
     }
-
-    logger.info(`Found ${pendingTasks.length} pending tasks to validate`)
+    
+    logger.info(`🔍 Starting validation for ${pendingTasks.length} pending tasks`)
+    logger.info(`📋 Tasks to validate:`)
+    pendingTasks.forEach((task, index) => {
+      logger.info(`   ${index + 1}. "${task.title}"`)
+    })
 
     const workerResponses = await this.executeWorkerBatch()
     if (!workerResponses) {
@@ -35,22 +39,46 @@ export class TaskValidator {
       return
     }
 
+    logger.info(`📥 Received ${workerResponses.length} worker responses, proceeding to department heads`)
+
     const headResponses = await this.executeHeadBatch(workerResponses)
     if (!headResponses) {
       logger.error('Failed to get head responses')
       return
     }
 
+    const approvedTasks = headResponses.filter(r => r.approved).length
+    const rejectedTasks = headResponses.filter(r => !r.approved).length
+    logger.info(`📊 Department validation complete: ${approvedTasks} approved, ${rejectedTasks} rejected`)
+
+    // Log department-specific breakdown
+    const departmentResults = new Map<string, {approved: number, rejected: number}>()
+    headResponses.forEach(response => {
+      const dept = response.department
+      if (!departmentResults.has(dept)) {
+        departmentResults.set(dept, {approved: 0, rejected: 0})
+      }
+      if (response.approved) {
+        departmentResults.get(dept)!.approved++
+      } else {
+        departmentResults.get(dept)!.rejected++
+      }
+    })
+
+    logger.info(`🏢 Department breakdown:`)
+    departmentResults.forEach((results, dept) => {
+      logger.info(`   ${dept}: ✅ ${results.approved} approved, ❌ ${results.rejected} rejected`)
+    })
+
     await this.updateTaskApprovals(headResponses)
   }
-
+  
   private async executeWorkerBatch(): Promise<WorkerResponse[] | null> {
     logger.info('Generating worker prompts for all departments...')
     const workerPrompts: WorkerPrompt[] = []
     for (const department of this.departments.values()) {
       try {
         const departmentPrompts = await department.getDepartmentWorkerBatchPrompts()
-        logger.info(`Generated ${departmentPrompts.length} worker prompts for ${department.getDepartmentType()}`)
         workerPrompts.push(...departmentPrompts)
       } catch (error) {
         logger.error(`Error generating worker prompts for department ${department.getDepartmentType()}:`, { error })
@@ -62,7 +90,7 @@ export class TaskValidator {
       return null
     }
 
-    logger.info(`Total worker prompts generated: ${workerPrompts.length}`)
+    logger.info(`🔧 Processing ${workerPrompts.length} worker evaluations across ${this.departments.size} departments`)
     
     const batchId = await this.batchClient.processBatch({ 
       prompts: workerPrompts, 
@@ -78,14 +106,12 @@ export class TaskValidator {
     logger.info(`Total worker responses received: ${batchResults.responses.length}`)
     return batchResults.responses
   }
-
+  
   private async executeHeadBatch(workerResponses: WorkerResponse[]): Promise<HeadResponse[] | null> {
-    logger.info('Generating head prompts for all departments...')
     const headPrompts: HeadPrompt[] = []
     for (const department of this.departments.values()) {
       try {
         const departmentHeadPrompts = await department.getDepartmentHeadBatchPrompts(workerResponses)
-        logger.info(`Generated ${departmentHeadPrompts.length} head prompts for ${department.getDepartmentType()}`)
         headPrompts.push(...departmentHeadPrompts)
       } catch (error) {
         logger.error(`Error generating head prompts for department ${department.getDepartmentType()}:`, { error })
@@ -97,7 +123,7 @@ export class TaskValidator {
       return null
     }
 
-    logger.info(`Total head prompts generated: ${headPrompts.length}`)
+    logger.info(`🎯 Processing ${headPrompts.length} department head evaluations`)
 
     const batchId = await this.batchClient.processBatch({ 
       prompts: headPrompts, 
@@ -113,10 +139,8 @@ export class TaskValidator {
     logger.info(`Total head responses received: ${batchResults.responses.length}`)
     return batchResults.responses
   }
-
-  private async updateTaskApprovals(headResponses: HeadResponse[]): Promise<void> {
-    logger.info('Updating task approvals...')
-    
+  
+  private async updateTaskApprovals(headResponses: HeadResponse[]): Promise<void> {    
     const taskUpdates = new Map<string, Map<DepartmentType, {approved: boolean, feedback?: string}>>()
 
     for (const response of headResponses) {
@@ -130,6 +154,8 @@ export class TaskValidator {
       })
     }
 
+    logger.info(`💾 Updating ${taskUpdates.size} tasks with department approvals`)
+
     for (const [taskId, departmentApprovals] of taskUpdates.entries()) {
       const updates = {
         approvals: Array.from(departmentApprovals.entries()).map(([department, approval]) => ({
@@ -141,12 +167,32 @@ export class TaskValidator {
 
       try {
         await updateTask(taskId, updates)
-        logger.info(`Updated task ${taskId} with approvals from ${departmentApprovals.size} departments`)
+        
+        const approvedDepts = Array.from(departmentApprovals.entries()).filter(([_, approval]) => approval.approved).map(([dept]) => dept)
+        const rejectedDepts = Array.from(departmentApprovals.entries()).filter(([_, approval]) => !approval.approved).map(([dept]) => dept)
+        
+        logger.info(`   📋 Task ${taskId}:`)
+        if (approvedDepts.length > 0) {
+          logger.info(`     ✅ Approved by: ${approvedDepts.join(', ')}`)
+        }
+        if (rejectedDepts.length > 0) {
+          logger.info(`     ❌ Rejected by: ${rejectedDepts.join(', ')}`)
+        }
+        
+        // Show detailed LLM feedback for each department
+        for (const [dept, approval] of departmentApprovals.entries()) {
+          if (approval.feedback && approval.feedback.trim()) {
+            const status = approval.approved ? '✅' : '❌'
+            logger.info(`       ${status} ${dept}: "${approval.feedback}"`)
+          } else if (!approval.approved) {
+            logger.info(`       ❌ ${dept}: No specific feedback provided`)
+          }
+        }
       } catch (error) {
         logger.error(`Error updating task ${taskId}:`, { error })
       }
     }
 
-    logger.info('Task approval updates completed')
+    logger.info(`🏁 Task validation completed for ${taskUpdates.size} tasks`)
   }
 }

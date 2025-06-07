@@ -50,14 +50,14 @@ class SeedGPTOrchestrator {
   constructor() {
     this.taskValidator = new TaskValidator()
   }  async run(): Promise<void> {
-    logger.info('🚀 SeedGPT Orchestrator starting...')
+    logger.info('🚀 SeedGPT Orchestrator starting task validation process...')
+    logger.info(`🏢 Departments initialized: evaluation, code-quality, safety`)
 
     try {
-      logger.info('Starting task validator tick...')
-      this.taskValidator.validateTasks()
-      logger.info('✅ All prompts processed successfully. Orchestrator run completed.')
+      await this.taskValidator.validateTasks()
+      logger.info('✅ Task validation process completed successfully')
     } catch (error) {
-      logger.error('Error in orchestrator:', { error })
+      logger.error('❌ Error in orchestrator:', { error })
     }
   }
 }
