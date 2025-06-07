@@ -1,15 +1,4 @@
-import { BaseDepartment, TaskContext } from '../base/baseDepartment.js'
-import { WorkerResponse, WorkerPrompt, HeadPrompt } from '../../types/department.js'
-
-interface CodeQualityResult {
-  maintainability: number
-  performance: number
-  testability: number
-  techDebtRisk: number
-  dependencyComplexity: number
-  qualityIssues: string[]
-  improvements: string[]
-}
+import { BaseDepartment } from '../base/baseDepartment.js'
 
 export class CodeQualityDepartment extends BaseDepartment {
   constructor() {
@@ -18,54 +7,94 @@ export class CodeQualityDepartment extends BaseDepartment {
 
   getWorkerPromptTemplate(): string {
     return `
-You are a senior software architect reviewing code quality implications. Analyze this task:
+You are a senior software architect conducting code quality analysis.
 
-Task: $(TASK_TITLE)
+<task>
+Title: $(TASK_TITLE)
 Description: $(TASK_DESC)
+</task>
 
-Assess these on a 1-10 scale (10 = best, 1 = worst):
-- Maintainability: Code clarity, modularity, documentation
-- Performance: Efficiency, scalability, resource usage
-- Testability: Ease of unit/integration testing
-- Tech Debt Risk: Will this introduce complexity or duplication?
-- Dependency Complexity: Third-party requirements, version conflicts
+Please analyze this task step by step using this framework:
 
-Identify quality issues and suggest improvements.
+<analysis_framework>
+1. MAINTAINABILITY REVIEW:
+   - Will resulting code be readable and modifiable?
+   - Does it follow good architectural patterns?
+   - Are abstractions appropriate?
 
-Respond ONLY in JSON:
+2. PERFORMANCE IMPACT:
+   - Any obvious bottlenecks or inefficiencies?
+   - Resource usage implications?
+   - Scalability considerations?
+
+3. TESTABILITY ASSESSMENT:
+   - Can changes be unit tested?
+   - Are dependencies mockable?
+   - Is error handling testable?
+
+4. TECHNICAL DEBT EVALUATION:
+   - Does this add or reduce complexity?
+   - Are shortcuts being taken?
+   - Long-term maintenance burden?
+
+5. DEPENDENCY ANALYSIS:
+   - New external dependencies needed?
+   - Are they well-maintained and secure?
+   - Do they align with existing architecture?
+
+6. COVERAGE ASSESSMENT: Evaluate code quality concern completeness
+   - Does this task adequately address code quality implications?
+   - Are architectural and maintainability impacts properly considered?
+   - What quality aspects might be missing from the task description?
+</analysis_framework>
+
+Work through each point above, then provide your assessment. Rate 1-10 (most development tasks should score 6+ unless serious concerns exist):
+
 {
-  "maintainability": 6,
-  "performance": 8,
-  "testability": 5,
-  "techDebtRisk": 7,
-  "dependencyComplexity": 4,
-  "qualityIssues": ["..."],
-  "improvements": ["..."]
+  "maintainability": number,
+  "performance": number,
+  "testability": number,
+  "techDebtRisk": number,
+  "dependencyComplexity": number,
+  "coverage": number,
+  "improvements": ["only include for serious quality concerns"]
 }`.trim()
   }
 
   getHeadPromptTemplate(): string {
-    return `You are a technical lead reviewing code quality assessments. Decide if this task meets quality standards or needs enhancements.
+    return `
+You are a technical lead making code quality approval decisions.
 
-Worker Assessments:
-\${summary}
+<task>
+Title: $(TASK_TITLE)
+Description: $(TASK_DESC)
+</task>
 
-Respond ONLY in JSON:
-If approved: { "approved": true }
-If not approved: { "approved": false, "feedback": "..." }`
-  }
-  parseWorkerResponses<T>(responses: WorkerResponse[]): T[] {
-    return responses
-      .map(r => this.parseJSON<CodeQualityResult>(r.response))
-      .filter((result): result is CodeQualityResult => result !== null) as T[]
-  }
-  createSummary<T>(results: T[]): string {
-    return (results as any[]).map((result: any, index) =>
-      `Worker ${index + 1}:
-  Maintainability=${result.maintainability}, Performance=${result.performance}, Testability=${result.testability}
-  TechDebt=${result.techDebtRisk}, DependencyComplexity=${result.dependencyComplexity}
-  Issues: ${result.qualityIssues.join(', ')}
-  Improvements: ${result.improvements.join(', ')}`
-    ).join('\n\n')
-  }
+<quality_assessments>
+$(WORKER_SUMMARIES)
+</quality_assessments>
+
+Please work through your approval decision using this process:
+
+<approval_logic>
+1. ANALYZE WORKER CONSENSUS: Review quality assessment patterns
+2. EVALUATE MAINTAINABILITY: Will code remain manageable?
+3. ASSESS TECHNICAL DEBT: Acceptable complexity trade-offs?
+4. REVIEW PERFORMANCE: Any significant bottlenecks introduced?
+5. CHECK TESTABILITY: Can changes be properly validated?
+</approval_logic>
+
+QUALITY STANDARDS:
+- Code remains maintainable and debuggable
+- No significant technical debt accumulation
+- Performance impact within acceptable bounds
+- Changes are testable and verifiable
+
+Think through your evaluation process above, then make your approval decision:
+
+If quality standards are met:
+{ "approved": true }
+
+If serious quality concerns exist:
+{ "approved": false, "feedback": "Specific quality issues that must be addressed" }`.trim()  }
 }

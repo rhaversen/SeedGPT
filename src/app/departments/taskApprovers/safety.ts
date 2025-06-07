@@ -1,15 +1,4 @@
-import { BaseDepartment, TaskContext } from '../base/baseDepartment.js'
-import { WorkerResponse, WorkerPrompt, HeadPrompt } from '../../types/department.js'
-
-interface SafetyResult {
-  securityRisk: number
-  ethicalConcerns: number
-  stabilityRisk: number
-  complianceIssues: number
-  operationalRisk: number
-  threats: string[]
-  mitigations: string[]
-}
+import { BaseDepartment } from '../base/baseDepartment.js'
 
 export class SafetyDepartment extends BaseDepartment {
   constructor() {
@@ -18,61 +7,90 @@ export class SafetyDepartment extends BaseDepartment {
 
   getWorkerPromptTemplate(): string {
     return `
-You are a security and safety expert. Analyze this software development task for risks:
+You are a security and safety expert conducting risk analysis.
 
-Task: $(TASK_TITLE)
+<task>
+Title: $(TASK_TITLE)
 Description: $(TASK_DESC)
+</task>
 
-Assess risk levels (1–10, 10 = critical risk):
-- Security: Authentication, injection, data exposure
-- Ethical: Privacy violations, bias, harmful content
-- Stability: System crashes, performance degradation
-- Compliance: GDPR, HIPAA, regulatory requirements
-- Operational: Monitoring, rollback plans, dependency failure
+Context: SeedGPT is a local development system, not a SaaS product. No user data, payments, or external services.
 
-Identify threats and propose mitigations.
+Please analyze this task step by step using this framework:
 
-Respond ONLY in JSON:
+<risk_assessment>
+1. SECURITY VULNERABILITY SCAN:
+   - Code injection possibilities?
+   - Input validation gaps?
+   - Authentication/authorization impacts?
+
+2. DATA SAFETY REVIEW:
+   - Risk to development data integrity?
+   - Backup and recovery considerations?
+   - Database operation safety?
+
+3. SYSTEM STABILITY ANALYSIS:
+   - Potential for crashes or hangs?
+   - Resource exhaustion risks?
+   - Graceful error handling?
+
+4. CODE SAFETY EVALUATION:
+   - Malicious pattern introduction?
+   - Unsafe operations or side effects?
+   - Error propagation concerns?
+
+5. COVERAGE ASSESSMENT: Evaluate safety concern completeness
+   - Does this task adequately address safety and security implications?
+   - Are security, stability, and data safety risks properly considered?
+   - What safety aspects might be missing from the task description?
+</risk_assessment>
+
+Work through each risk category above, then provide your assessment. Rate risk levels 1-10 (most internal development tasks score 2-4):
+
 {
-  "securityRisk": 7,
-  "ethicalConcerns": 3,
-  "stabilityRisk": 5,
-  "complianceIssues": 2,
-  "operationalRisk": 6,
-  "threats": ["..."],
-  "mitigations": ["..."]
+  "securityRisk": number,
+  "dataSafety": number,
+  "stabilityRisk": number,
+  "codeSafety": number,
+  "coverage": number,
+  "improvements": ["only include for genuine safety concerns"]
 }`.trim()
   }
 
   getHeadPromptTemplate(): string {
-    return `You are a chief security officer reviewing task safety assessments. Decide if this task should be approved or needs security enhancements.
+    return `
+You are a chief security officer making safety approval decisions.
 
-Risk Assessment Criteria (1-10 scale, 10 = critical risk):
-- Security Risk: Authentication, authorization, data exposure, injection attacks
-- Ethical Concerns: Privacy violations, bias, harmful content, misuse potential  
-- Stability Risk: System crashes, data corruption, performance degradation
-- Compliance Issues: GDPR, HIPAA, accessibility, regulatory requirements
-- Operational Risk: Monitoring gaps, rollback complexity, dependency failures
+<task>
+Title: $(TASK_TITLE)
+Description: $(TASK_DESC)
+</task>
 
-Worker Assessments:
-\${summary}
+<safety_assessments>
+$(WORKER_SUMMARIES)
+</safety_assessments>
 
-Respond ONLY in JSON:
-If approved: { "approved": true }
-If not approved: { "approved": false, "feedback": "..." }`
-  }
-  parseWorkerResponses<T>(responses: WorkerResponse[]): T[] {
-    return responses
-      .map(r => this.parseJSON<SafetyResult>(r.response))
-      .filter((result): result is SafetyResult => result !== null) as T[]
-  }
-  createSummary<T>(results: T[]): string {
-    return (results as any[]).map((result: any, index) =>
-      `Worker ${index + 1}:
-  SecurityRisk=${result.securityRisk}, Ethical=${result.ethicalConcerns}, Stability=${result.stabilityRisk}
-  Compliance=${result.complianceIssues}, Operational=${result.operationalRisk}
-  Threats: ${result.threats.join(', ')}
-  Mitigations: ${result.mitigations.join(', ')}`
-    ).join('\n\n')
-  }
+Please work through your safety evaluation using this process:
+
+<safety_evaluation>
+1. SECURITY RISK REVIEW: Examine vulnerability potential
+2. DATA PROTECTION ANALYSIS: Assess integrity risks
+3. STABILITY IMPACT ASSESSMENT: Evaluate system reliability
+4. CODE SAFETY VERIFICATION: Check for dangerous patterns
+5. MITIGATION ADEQUACY: Review proposed safeguards
+</safety_evaluation>
+
+SAFETY STANDARDS:
+- No significant security vulnerabilities introduced
+- System stability and data integrity maintained
+- Code patterns are safe and non-malicious
+- Acceptable risk level for internal development system
+
+Think through your safety evaluation above, then make your decision:
+
+If safety standards are met:
+{ "approved": true }
+
+If significant safety risks exist:
+{ "approved": false, "feedback": "Specific safety risks that must be mitigated" }`.trim()  }
 }

@@ -22,8 +22,54 @@ export abstract class BaseDepartment {
 
   abstract getWorkerPromptTemplate(): string
   abstract getHeadPromptTemplate(): string
-  abstract parseWorkerResponses<T>(responses: WorkerResponse[]): T[]
-  abstract createSummary<T>(results: T[]): string
+
+  private extractJSONStrings(responses: WorkerResponse[]): string[] {
+    const jsonStrings: string[] = []
+
+    for (const [index, response] of responses.entries()) {
+      const jsonString = this.extractJSONString(response.response)
+      if (jsonString) {
+        jsonStrings.push(jsonString)
+      } else {
+        logger.warn(`${this.departmentType}: No valid JSON in worker response ${index} for task ${response.taskId}`)
+        logger.debug(`   Raw response: ${response.response.substring(0, 200)}...`)
+      }
+    }
+
+    if (jsonStrings.length !== responses.length) {
+      const failedCount = responses.length - jsonStrings.length
+      logger.info(`📊 ${this.departmentType}: Found ${jsonStrings.length}/${responses.length} valid responses (${failedCount} invalid)`)
+    }
+
+    return jsonStrings
+  }
+
+  private extractJSONString(raw: string): string | null {
+    try {
+      const lines = raw.trim().split('\n')
+
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim()
+        if (line.startsWith('{') && line.endsWith('}')) {
+          try {
+            JSON.parse(line)
+            return line
+          } catch {
+            continue
+          }
+        }
+      }
+
+      const jsonMatch = raw.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        JSON.parse(jsonMatch[0])
+        return jsonMatch[0]
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
 
   async getDepartmentWorkerBatchPrompts(): Promise<WorkerPrompt[]> {
     const tasks = await getPendingTasks()
@@ -55,39 +101,51 @@ export abstract class BaseDepartment {
     logger.info(`🎯 ${this.departmentType}: Processing ${taskGroups.size} tasks for head evaluation`)
 
     for (const [taskId, workerResponses] of taskGroups.entries()) {
-      logger.info(`${this.departmentType}: Task ${taskId} has ${workerResponses.length} worker responses`)
-      
-      const results = this.parseWorkerResponses(workerResponses)
-      logger.info(`${this.departmentType}: Task ${taskId} parsed ${results.length} valid results from ${workerResponses.length} responses`)
-      
-      if (results.length === 0) {
-        logger.warn(`${this.departmentType}: No valid results for task ${taskId}, skipping head prompt generation`)
+      const jsonStrings = this.extractJSONStrings(workerResponses)
+
+      if (jsonStrings.length === 0) {
+        logger.warn(`${this.departmentType}: No valid responses for task ${taskId}, skipping head prompt generation`)
         continue
       }
 
-      const summary = this.createSummary(results)
+      const taskContext = taskContextMap.get(taskId)
+      if (!taskContext) {
+        logger.warn(`${this.departmentType}: No task context found for task ${taskId}, skipping head prompt generation`)
+        continue
+      }
+
+      const workerSummaries = jsonStrings.map((json, index) => `Worker ${index + 1}: ${json}`).join('\n\n')
       const headPromptTemplate = this.getHeadPromptTemplate()
-      
+
+      const processedPrompt = headPromptTemplate
+        .replace(/\$\(TASK_TITLE\)/g, taskContext.title)
+        .replace(/\$\(TASK_DESC\)/g, taskContext.description)
+        .replace(/\$\(WORKER_SUMMARIES\)/g, workerSummaries)
+
       prompts.push({
         department: this.departmentType,
         taskId,
         workerResponses,
-        prompt: headPromptTemplate.replace('${summary}', summary)
+        prompt: processedPrompt
       })
     }
 
+    logger.info(`   ${this.departmentType}: Generated ${prompts.length} head prompts`)
     return prompts
   }
 
   protected createWorkerPrompts(tasks: TaskContext[], promptTemplate: string): WorkerPrompt[] {
-    return tasks.flatMap(task => 
-      Array.from({ length: this.workerCount }, (_, workerIndex) => ({
+    return tasks.flatMap(task => {
+      const prompt = promptTemplate
+        .replace(/\$\(TASK_TITLE\)/g, task.title)
+        .replace(/\$\(TASK_DESC\)/g, task.description)
+      return Array.from({ length: this.workerCount }, (_, workerIndex) => ({
         department: this.departmentType,
         taskId: task.id,
         workerIndex,
-        prompt: this.processPromptTemplate(promptTemplate, task)
+        prompt
       }))
-    )
+    })
   }
 
   protected groupResponsesByTask(responses: WorkerResponse[]): Map<string, WorkerResponse[]> {
@@ -99,20 +157,5 @@ export abstract class BaseDepartment {
         groups.set(response.taskId, taskResponses)
         return groups
       }, new Map<string, WorkerResponse[]>())
-  }
-
-  protected parseJSON<T>(raw: string): T | null {
-    try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/)
-      return jsonMatch ? JSON.parse(jsonMatch[0]) as T : null
-    } catch {
-      return null
-    }
-  }
-
-  private processPromptTemplate(template: string, task: TaskContext): string {
-    return template
-      .replace(/\$\(TASK_TITLE\)/g, task.title)
-      .replace(/\$\(TASK_DESC\)/g, task.description)
   }
 }
