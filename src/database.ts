@@ -1,10 +1,9 @@
 import mongoose from 'mongoose'
-import { MongoMemoryReplSet } from 'mongodb-memory-server'
 
 import { config } from './config.js'
 import logger from './logger.js'
 
-let replSet: MongoMemoryReplSet | null = null
+let replSet: InstanceType<typeof import('mongodb-memory-server').MongoMemoryReplSet> | null = null
 
 export async function connectToDatabase(): Promise<void> {
 	if (config.isProduction) {
@@ -26,6 +25,7 @@ export async function connectToDatabase(): Promise<void> {
 	}
 
 	logger.info('Starting in-memory MongoDB replica set...')
+	const { MongoMemoryReplSet } = await import('mongodb-memory-server')
 	replSet = new MongoMemoryReplSet()
 	await replSet.start()
 	await replSet.waitUntilRunning()
