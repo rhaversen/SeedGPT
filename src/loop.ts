@@ -37,8 +37,12 @@ export async function run(): Promise<void> {
 			if (attempt > 0) {
 				logger.warn(`Attempt ${attempt + 1}/${config.maxRetries + 1}: ${lastError?.slice(0, 200)}`)
 				await memory.store(`Attempt ${attempt} failed for "${plan.title}"${prNumber ? ` (PR #${prNumber})` : ''}: ${lastError?.slice(0, 500)}`)
-				await git.resetToMain(gitClient)
-				edits = await session.fixPatch(lastError!)
+				const touchedFiles = edits
+					.filter(e => e.type !== 'delete')
+					.map(e => e.filePath)
+				const allFiles = [...new Set([...plan.filesToRead, ...touchedFiles])]
+				const currentFiles = await codebase.readFiles(config.workspacePath, allFiles)
+				edits = await session.fixPatch(lastError!, currentFiles)
 			}
 
 				if (edits.length === 0) {
@@ -49,6 +53,7 @@ export async function run(): Promise<void> {
 			try {
 				await git.applyEdits(edits)
 			} catch (err) {
+				await gitClient.checkout(['.'])
 				lastError = err instanceof Error ? err.message : String(err)
 				continue
 			}
@@ -57,7 +62,7 @@ export async function run(): Promise<void> {
 				await git.commitAndPush(gitClient, plan.title)
 				prNumber = await github.openPR(branchName, plan.title, plan.description)
 			} else {
-				await git.commitAndPush(gitClient, `fix: ${plan.title} (attempt ${attempt + 1})`, true)
+				await git.commitAndPush(gitClient, `fix: ${plan.title} (attempt ${attempt + 1})`)
 			}
 
 			const result = await pipeline.awaitChecks(gitClient)

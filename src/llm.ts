@@ -202,8 +202,7 @@ Operation types:
 Rules:
 - Make minimal, correct changes that preserve all existing functionality.
 - Do not modify files or sections not relevant to the plan.
-- If a previous attempt failed, carefully analyze what went wrong. Do NOT repeat the same mistake.
-- Each attempt applies to the ORIGINAL files (the branch is reset before each attempt).`
+- If a previous attempt failed, carefully analyze what went wrong and submit only the targeted fix — do not regenerate edits that already applied successfully.`
 
 export async function plan(recentMemory: string, fileTree: string, gitLog: string): Promise<Plan> {
 	logger.info('Asking LLM for a plan...')
@@ -314,8 +313,12 @@ export class PatchSession {
 		return this.requestEdits()
 	}
 
-	async fixPatch(error: string): Promise<EditOperation[]> {
+	async fixPatch(error: string, currentFiles: Record<string, string>): Promise<EditOperation[]> {
 		logger.info('Asking LLM to fix edits...')
+
+		const filesSection = Object.entries(currentFiles)
+			.map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
+			.join('\n\n')
 
 		this.messages.push({
 			role: 'user',
@@ -323,7 +326,7 @@ export class PatchSession {
 				type: 'tool_result',
 				tool_use_id: this.lastToolUseId!,
 				is_error: true,
-				content: `Your previous edits failed. The branch has been reset — your new edits must apply to the original files.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\nAnalyze what went wrong, then call submit_edits with corrected operations.`,
+				content: `Your previous edits were applied but CI failed. Fix only the issue — do not regenerate the entire change.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\n## Current Files (after your previous edits)\n${filesSection}\n\nSubmit only the edits needed to fix this error.`,
 			}],
 		})
 
