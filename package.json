@@ -1,0 +1,28 @@
+{
+	"name": "seedgpt",
+	"version": "1.0.0",
+	"description": "Self-evolving AI development agent",
+	"type": "module",
+	"scripts": {
+		"build": "tsc",
+		"start": "node index.js",
+		"dev": "npm run build && node --env-file=.env dist/index.js",
+		"test": "npm run build && node --experimental-vm-modules node_modules/jest/bin/jest.js --passWithNoTests"
+	},
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"dependencies": {
+		"@anthropic-ai/sdk": "^0.74.0",
+		"@octokit/rest": "^22.0.0",
+		"mongoose": "^8.15.1",
+		"simple-git": "^3.27.0"
+	},
+	"devDependencies": {
+		"@types/jest": "^30.0.0",
+		"@types/node": "^22.15.29",
+		"jest": "^30.0.0",
+		"mongodb-memory-server": "^11.0.1",
+		"typescript": "^5.8.3"
+	}
+}

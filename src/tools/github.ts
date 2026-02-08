@@ -1,0 +1,145 @@
+import { Octokit } from '@octokit/rest'
+import { config } from '../config.js'
+import logger from '../logger.js'
+
+const octokit = new Octokit({ auth: config.githubToken })
+const owner = config.githubOwner
+const repo = config.githubRepo
+
+export interface CheckResult {
+	passed: boolean
+	error?: string
+}
+
+export async function openPR(branch: string, title: string, body: string): Promise<number> {
+	logger.info(`Opening PR: "${title}"`)
+	const { data } = await octokit.pulls.create({
+		owner, repo,
+		title,
+		body,
+		head: branch,
+		base: 'main',
+	})
+	logger.info(`PR #${data.number} opened`)
+	return data.number
+}
+
+export async function awaitPRChecks(sha: string): Promise<CheckResult> {
+	const POLL_INTERVAL = 30_000
+	const TIMEOUT = 20 * 60_000
+	const NO_CHECKS_TIMEOUT = 2 * 60_000
+	const start = Date.now()
+
+	while (Date.now() - start < TIMEOUT) {
+		const { data } = await octokit.checks.listForRef({ owner, repo, ref: sha })
+		const runs = data.check_runs
+
+		if (runs.length === 0) {
+			if (Date.now() - start > NO_CHECKS_TIMEOUT) {
+				logger.warn('No CI checks registered after 2 minutes — treating as passed')
+				return { passed: true }
+			}
+			logger.info('No check runs found yet, waiting...')
+			await sleep(POLL_INTERVAL)
+			continue
+		}
+
+		const allComplete = runs.every(r => r.status === 'completed')
+		if (!allComplete) {
+			logger.info(`Checks still running (${runs.filter(r => r.status === 'completed').length}/${runs.length} complete)`)
+			await sleep(POLL_INTERVAL)
+			continue
+		}
+
+		const failed = runs.filter(r => r.conclusion !== 'success')
+		if (failed.length === 0) {
+			logger.info('All checks passed')
+			return { passed: true }
+		}
+
+		const error = await collectErrors(sha, failed)
+		return { passed: false, error }
+	}
+
+	return { passed: false, error: 'Timed out waiting for CI checks (20 min)' }
+}
+
+async function collectErrors(
+	sha: string,
+	failedRuns: Array<{ id: number, name: string, conclusion: string | null, output: { title: string | null, summary: string | null, text: string | null } }>
+): Promise<string> {
+	const errors: string[] = []
+
+	for (const run of failedRuns) {
+		let detail = `Check "${run.name}" — ${run.conclusion}`
+		if (run.output.summary) detail += `\n  ${run.output.summary}`
+		if (run.output.text) detail += `\n  ${run.output.text.slice(0, 2000)}`
+
+		try {
+			const { data: annotations } = await octokit.checks.listAnnotations({
+				owner, repo, check_run_id: run.id,
+			})
+			for (const ann of annotations) {
+				detail += `\n  ${ann.path}:${ann.start_line} [${ann.annotation_level}] ${ann.message}`
+			}
+		} catch { /* annotations unavailable */ }
+
+		errors.push(detail)
+	}
+
+	try {
+		const { data: runs } = await octokit.actions.listWorkflowRunsForRepo({
+			owner, repo, head_sha: sha, status: 'completed',
+		})
+		for (const run of runs.workflow_runs.filter(r => r.conclusion === 'failure')) {
+			const { data: jobs } = await octokit.actions.listJobsForWorkflowRun({
+				owner, repo, run_id: run.id,
+			})
+			for (const job of jobs.jobs.filter(j => j.conclusion === 'failure')) {
+				const failedSteps = job.steps?.filter(s => s.conclusion === 'failure').map(s => s.name) ?? []
+				errors.push(`Workflow job "${job.name}" failed at steps: ${failedSteps.join(', ')}`)
+			}
+		}
+	} catch { /* workflow logs unavailable */ }
+
+	return errors.join('\n\n')
+}
+
+export async function mergePR(prNumber: number): Promise<void> {
+	logger.info(`Merging PR #${prNumber}`)
+	await octokit.pulls.merge({
+		owner, repo,
+		pull_number: prNumber,
+		merge_method: 'squash',
+	})
+	logger.info(`PR #${prNumber} merged`)
+}
+
+export async function closePR(prNumber: number): Promise<void> {
+	await octokit.pulls.update({
+		owner, repo,
+		pull_number: prNumber,
+		state: 'closed',
+	})
+	logger.info(`PR #${prNumber} closed`)
+}
+
+export async function deleteRemoteBranch(branch: string): Promise<void> {
+	await octokit.git.deleteRef({ owner, repo, ref: `heads/${branch}` })
+	logger.info(`Deleted remote branch: ${branch}`)
+}
+
+export async function findOpenAgentPRs(): Promise<Array<{ number: number, head: { ref: string, sha: string } }>> {
+	const { data } = await octokit.pulls.list({
+		owner, repo,
+		state: 'open',
+		base: 'main',
+	})
+	return data
+		.filter(pr => pr.head.ref.startsWith('seedgpt/'))
+		.map(pr => ({ number: pr.number, head: { ref: pr.head.ref, sha: pr.head.sha } }))
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise(resolve => setTimeout(resolve, ms))
+}

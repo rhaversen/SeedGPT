@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+    name: seedgpt
+    namespace: seedgpt
+spec:
+    backoffLimit: 0
+    ttlSecondsAfterFinished: 604800
+    template:
+        metadata:
+            labels:
+                app: seedgpt
+        spec:
+            restartPolicy: Never
+            automountServiceAccountToken: false
+            containers:
+                -   name: seedgpt
+                    image: "seedgpt/seedgpt:${GITHUB_SHA}"
+                    imagePullPolicy: Always
+                    envFrom:
+                        -   secretRef:
+                                name: seedgpt-secrets
+                    resources:
+                        requests:
+                            cpu: 50m
+                            memory: 128Mi
+                        limits:
+                            cpu: 500m
+                            memory: 512Mi
