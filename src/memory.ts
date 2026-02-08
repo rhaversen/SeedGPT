@@ -8,8 +8,14 @@ const client = new Anthropic({ apiKey: config.anthropicApiKey })
 async function summarize(content: string): Promise<string> {
 	const response = await client.messages.create({
 		model: config.planModel,
-		max_tokens: 256,
-		system: 'Write a single concise sentence summarizing the following. Be specific — include names, numbers, outcomes. No preamble.',
+		max_tokens: 64,
+		system: [
+			'Write a one-sentence summary (under 25 words) of this memory.',
+			'Capture the core what and why so a reader understands the gist without needing the full text,',
+			'but also senses there is deeper detail worth recalling.',
+			'Only reference information explicitly present — never infer, elaborate, or add details not stated.',
+			'No preamble.',
+		].join(' '),
 		messages: [{ role: 'user', content }],
 	})
 	const text = response.content.find(c => c.type === 'text')?.text ?? content.slice(0, 200)
