@@ -63,6 +63,7 @@ export async function run(): Promise<void> {
 			const result = await pipeline.awaitChecks(gitClient)
 			if (result.passed) {
 				await github.mergePR(prNumber)
+				await github.deleteRemoteBranch(branchName).catch(() => {})
 				await memory.store(`Merged PR #${prNumber}: "${plan.title}" — CI passed and change is now on main.`)
 				logger.info(`PR #${prNumber} merged.`)
 				return
