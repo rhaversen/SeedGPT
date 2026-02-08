@@ -11,7 +11,7 @@ WORKDIR /app
 
 RUN useradd -m seedgpt_user
 
-COPY dist/src/ ./
+COPY dist/ ./
 COPY package*.json ./
 
 RUN mkdir -p workspace && \
