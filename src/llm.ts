@@ -9,6 +9,24 @@ export type { EditOperation } from './tools/definitions.js'
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey })
 
+async function callApi(params: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message> {
+	const maxRetries = 5
+	for (let attempt = 0; ; attempt++) {
+		try {
+			return await client.messages.create(params)
+		} catch (error: unknown) {
+			const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 0
+			if (status === 429 && attempt < maxRetries) {
+				const delay = Math.min(120_000, 30_000 * 2 ** attempt)
+				logger.warn(`Rate limited, waiting ${Math.round(delay / 1000)}s before retry (attempt ${attempt + 1}/${maxRetries})...`)
+				await new Promise(r => setTimeout(r, delay))
+				continue
+			}
+			throw error
+		}
+	}
+}
+
 export interface Plan {
 	title: string
 	description: string
@@ -159,7 +177,7 @@ export async function reflect(outcome: string, plannerMessages: Anthropic.Messag
 		outcome,
 	].join('\n\n')
 
-	const response = await client.messages.create({
+	const response = await callApi({
 		model: config.reflectModel,
 		max_tokens: 512,
 		system: SYSTEM_REFLECT,
@@ -189,10 +207,10 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 		content: `${recentMemory}\n\n${codebaseContext}\n\n## Recent Git History\n${gitLog}\n\nReview your notes and recent memories, then submit your plan.`,
 	}]
 
-	const maxToolCalls = 50
-	for (let i = 0; i < maxToolCalls; i++) {
-		logger.info(`Planner turn ${i + 1}/${maxToolCalls}`)
-		const response = await client.messages.create({
+	const maxRounds = 25
+	for (let round = 0; round < maxRounds; round++) {
+		logger.info(`Planner turn ${round + 1}/${maxRounds}`)
+		const response = await callApi({
 			model: config.planModel,
 			max_tokens: 4096,
 			system: SYSTEM_PLAN,
@@ -234,31 +252,34 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 
 		for (const toolBlock of toolBlocks) {
 			if (toolBlock.type !== 'tool_use') continue
-			i++
 			logger.info(`Planner calling ${toolBlock.name}`)
 
 			const result = await handleTool(toolBlock.name, toolBlock.input as Record<string, unknown>, toolBlock.id)
-			result.content = `${result.content}\n\n(You have used ${i} of ${maxToolCalls} turns. You must call submit_plan before reaching the limit.)`
 			toolResults.push(result)
 		}
+
+		toolResults[toolResults.length - 1].content += `\n\n(Turn ${round + 1} of ${maxRounds}. Call submit_plan when ready.)`
 
 		messages.push({ role: 'assistant', content: response.content })
 		messages.push({ role: 'user', content: toolResults })
 	}
 
-	throw new Error(`LLM exceeded maximum tool calls (${maxToolCalls}) without submitting a plan`)
+	throw new Error(`Planner exceeded maximum rounds (${maxRounds}) without submitting a plan`)
 }
 
 export class PatchSession {
-	private readonly messages: Anthropic.MessageParam[] = []
+	private messages: Anthropic.MessageParam[] = []
+	private readonly fullHistory: Anthropic.MessageParam[] = []
 	private readonly edits: EditOperation[] = []
 	private readonly systemPrompt: string
+	private readonly plan: Plan
 
 	get conversation(): Anthropic.MessageParam[] {
-		return this.messages
+		return this.fullHistory
 	}
 
 	constructor(plan: Plan, memoryContext: string, codebaseContext: string) {
+		this.plan = plan
 		this.systemPrompt = `${SYSTEM_PATCH}\n\n${codebaseContext}`
 
 		const sections = [
@@ -273,10 +294,12 @@ export class PatchSession {
 
 		sections.push('Start by reading the files you need based on the implementation instructions and the codebase index in your system prompt. Use read_file to load files or specific lines within files, then use edit_file, create_file, and delete_file to make changes. Batch independent read_file calls together. Call done when the implementation is complete.')
 
-		this.messages.push({
+		const initial: Anthropic.MessageParam = {
 			role: 'user',
 			content: sections.join('\n\n'),
-		})
+		}
+		this.messages.push(initial)
+		this.fullHistory.push(initial)
 	}
 
 	async createPatch(): Promise<EditOperation[]> {
@@ -287,21 +310,28 @@ export class PatchSession {
 	async fixPatch(error: string): Promise<EditOperation[]> {
 		logger.info('Builder fixing implementation...')
 
-		this.messages.push({
+		const fixMessage: Anthropic.MessageParam = {
 			role: 'user',
-			content: `Your previous changes were applied but CI failed. Fix only the issue — do not redo edits that already succeeded. Use read_file to inspect the current state of any files you need to understand.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\nMake the targeted fixes needed, then call done.`,
-		})
+			content: `You were implementing "${this.plan.title}": ${this.plan.description}\n\nThe changes were applied but CI failed. Read the relevant files to understand their current state, then fix only the failing issue — do not redo work that already succeeded.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\nUse read_file to inspect the current state of files mentioned in the error, make the targeted fixes, then call done.`,
+		}
+		this.messages = [fixMessage]
+		this.fullHistory.push(fixMessage)
 
 		this.edits.length = 0
 		return this.runBuilderLoop()
 	}
 
-	private async runBuilderLoop(): Promise<EditOperation[]> {
-		const maxTurns = 80
+	private pushMessage(msg: Anthropic.MessageParam): void {
+		this.messages.push(msg)
+		this.fullHistory.push(msg)
+	}
 
-		for (let turn = 0; turn < maxTurns; turn++) {
-			logger.info(`Builder turn ${turn + 1}/${maxTurns}`)
-			const response = await client.messages.create({
+	private async runBuilderLoop(): Promise<EditOperation[]> {
+		const maxRounds = 40
+
+		for (let round = 0; round < maxRounds; round++) {
+			logger.info(`Builder turn ${round + 1}/${maxRounds}`)
+			const response = await callApi({
 				model: config.patchModel,
 				max_tokens: 16384,
 				system: this.systemPrompt,
@@ -310,7 +340,7 @@ export class PatchSession {
 			})
 			trackUsage('builder', config.patchModel, response.usage)
 
-			this.messages.push({ role: 'assistant', content: response.content })
+			this.pushMessage({ role: 'assistant', content: response.content })
 
 			const toolBlocks = response.content.filter(c => c.type === 'tool_use')
 			if (toolBlocks.length === 0) {
@@ -325,27 +355,26 @@ export class PatchSession {
 
 			for (const block of toolBlocks) {
 				if (block.type !== 'tool_use') continue
-				turn++
 				logger.info(`Builder calling ${block.name}${block.name === 'edit_file' || block.name === 'create_file' || block.name === 'delete_file' ? `: ${(block.input as Record<string, string>).filePath}` : ''}`)
 
 				const result = await this.handleBuilderTool(block)
 				toolResults.push(result)
 
 				if (block.name === 'done') {
-					this.messages.push({ role: 'user', content: toolResults })
+					this.pushMessage({ role: 'user', content: toolResults })
 					logger.info(`Builder done: ${this.edits.length} edit(s) applied`)
 					return this.edits
 				}
 			}
 
-			this.messages.push({ role: 'user', content: toolResults })
+			this.pushMessage({ role: 'user', content: toolResults })
 		}
 
 		if (this.edits.length > 0) {
 			logger.warn(`Builder hit turn limit with ${this.edits.length} edit(s) — returning what we have`)
 			return this.edits
 		}
-		throw new Error(`Builder exceeded maximum turns (${maxTurns}) without completing`)
+		throw new Error(`Builder exceeded maximum rounds (${maxRounds}) without completing`)
 	}
 
 	private async handleBuilderTool(block: Anthropic.ContentBlock & { type: 'tool_use' }): Promise<ToolResult> {
