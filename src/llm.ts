@@ -77,6 +77,8 @@ Work incrementally:
 5. Write tests for all new functionality. Read existing test files first to match the testing patterns, framework, and style already established.
 6. When all changes and tests are complete, call done.
 
+The codebase context below shows the full file tree, dependency graph, and declaration index. Use it to orient yourself before diving into implementation.
+
 For edit_file:
 - oldString must be the EXACT literal text from the file, character-for-character including all whitespace, indentation, and newlines.
 - Include 2-3 lines of surrounding context in oldString to ensure a unique match.

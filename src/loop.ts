@@ -36,7 +36,7 @@ export async function run(): Promise<void> {
 			await memory.store(`Planned change "${plan.title}": ${plan.description}`)
 
 			const fileContents = await codebase.readFiles(config.workspacePath, plan.filesToRead)
-			const session = new llm.PatchSession(plan, fileContents, recentMemory)
+			const session = new llm.PatchSession(plan, fileContents, recentMemory, codebaseContext)
 			let edits = await session.createPatch()
 
 			const branchName = await git.createBranch(gitClient, plan.title)
