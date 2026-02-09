@@ -71,9 +71,11 @@ const SYSTEM_PATCH = `You are the builder. A planner has already decided what to
 
 Work incrementally:
 1. Read the plan and implementation instructions carefully.
-2. Work through the changes one file at a time, one edit at a time.
-3. After making edits, verify your changes look correct.
-4. When all changes described in the plan are applied, call done.
+2. Before writing any code, read existing files related to what you're changing — especially tests, utilities, and nearby modules — to understand the conventions and patterns already in use.
+3. Work through the changes one file at a time, one edit at a time. Follow the patterns you observed.
+4. After making edits, verify your changes look correct.
+5. Write tests for all new functionality. Read existing test files first to match the testing patterns, framework, and style already established.
+6. When all changes and tests are complete, call done.
 
 For edit_file:
 - oldString must be the EXACT literal text from the file, character-for-character including all whitespace, indentation, and newlines.
@@ -226,12 +228,15 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 export class PatchSession {
 	private readonly messages: Anthropic.MessageParam[] = []
 	private readonly edits: EditOperation[] = []
+	private readonly systemPrompt: string
 
 	get conversation(): Anthropic.MessageParam[] {
 		return this.messages
 	}
 
-	constructor(plan: Plan, fileContents: Record<string, string>, memoryContext: string) {
+	constructor(plan: Plan, fileContents: Record<string, string>, memoryContext: string, codebaseContext: string) {
+		this.systemPrompt = `${SYSTEM_PATCH}\n\n${codebaseContext}`
+
 		const filesSection = Object.entries(fileContents)
 			.map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
 			.join('\n\n')
@@ -284,7 +289,7 @@ export class PatchSession {
 			const response = await client.messages.create({
 				model: config.patchModel,
 				max_tokens: 16384,
-				system: SYSTEM_PATCH,
+				system: this.systemPrompt,
 				tools: BUILDER_TOOLS,
 				messages: this.messages,
 			})
