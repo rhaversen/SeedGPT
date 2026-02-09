@@ -252,7 +252,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 
 		for (const toolBlock of toolBlocks) {
 			if (toolBlock.type !== 'tool_use') continue
-			logger.info(`Planner calling ${toolBlock.name}`)
+			logger.info(`Planner calling ${toolBlock.name}${toolLogSuffix(toolBlock)}`)
 
 			const result = await handleTool(toolBlock.name, toolBlock.input as Record<string, unknown>, toolBlock.id)
 			toolResults.push(result)
@@ -265,6 +265,25 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 	}
 
 	throw new Error(`Planner exceeded maximum rounds (${maxRounds}) without submitting a plan`)
+}
+
+function toolLogSuffix(block: { name: string; input: unknown }): string {
+	const input = block.input as Record<string, unknown>
+	if (block.name === 'read_file') {
+		const path = input.filePath as string
+		const start = input.startLine as number | undefined
+		const end = input.endLine as number | undefined
+		if (start && end) return `: ${path} L${start}-${end}`
+		if (start) return `: ${path} L${start}+`
+		return `: ${path}`
+	}
+	if (block.name === 'edit_file' || block.name === 'create_file' || block.name === 'delete_file') {
+		return `: ${input.filePath}`
+	}
+	if (block.name === 'grep_search') {
+		return `: "${(input.query as string)?.slice(0, 60)}"`
+	}
+	return ''
 }
 
 export class PatchSession {
@@ -355,7 +374,7 @@ export class PatchSession {
 
 			for (const block of toolBlocks) {
 				if (block.type !== 'tool_use') continue
-				logger.info(`Builder calling ${block.name}${block.name === 'edit_file' || block.name === 'create_file' || block.name === 'delete_file' ? `: ${(block.input as Record<string, string>).filePath}` : ''}`)
+				logger.info(`Builder calling ${block.name}${toolLogSuffix(block)}`)
 
 				const result = await this.handleBuilderTool(block)
 				toolResults.push(result)
