@@ -96,8 +96,17 @@ async function collectErrors(
 				owner, repo, run_id: run.id,
 			})
 			for (const job of jobs.jobs.filter(j => j.conclusion === 'failure')) {
-				const failedSteps = job.steps?.filter(s => s.conclusion === 'failure').map(s => s.name) ?? []
-				errors.push(`Workflow job "${job.name}" failed at steps: ${failedSteps.join(', ')}`)
+				try {
+					const { data: logData } = await octokit.actions.downloadJobLogsForWorkflowRun({
+						owner, repo, job_id: job.id,
+					})
+					const logText = typeof logData === 'string' ? logData : String(logData)
+					const trimmed = logText.slice(-3000)
+					errors.push(`Workflow job "${job.name}" log (last 3000 chars):\n${trimmed}`)
+				} catch {
+					const failedSteps = job.steps?.filter(s => s.conclusion === 'failure').map(s => s.name) ?? []
+					errors.push(`Workflow job "${job.name}" failed at steps: ${failedSteps.join(', ')}`)
+				}
 			}
 		}
 	} catch { /* workflow logs unavailable */ }
