@@ -258,8 +258,35 @@ const done = {
 	},
 }
 
+const codebaseContext = {
+	name: 'codebase_context' as const,
+	description: 'Get a high-level overview of the entire codebase: file tree, dependency graph, and all declarations (functions, classes, types, etc.) with line numbers. Use this to understand the project structure, find where things are defined, and see how modules relate to each other.',
+	input_schema: {
+		type: 'object' as const,
+		properties: {},
+	},
+}
+
+const gitDiff = {
+	name: 'git_diff' as const,
+	description: 'Show the current uncommitted git diff — all changes made to files since the last commit. Use this to review what has been changed, verify your edits, or understand what the builder has done so far.',
+	input_schema: {
+		type: 'object' as const,
+		properties: {},
+	},
+}
+
+const codebaseDiff = {
+	name: 'codebase_diff' as const,
+	description: 'Show what has changed structurally in the codebase since the start of this session: new/removed files, new/removed declarations, changed dependencies. This compares the current codebase context against a snapshot taken at the beginning. Use this to see the high-level impact of your changes.',
+	input_schema: {
+		type: 'object' as const,
+		properties: {},
+	},
+}
+
 export const PLANNER_TOOLS = [submitPlan, noteToSelf, dismissNote, recallMemory, readFile, grepSearch, fileSearch, listDirectory]
-export const BUILDER_TOOLS = [editFile, createFile, deleteFile, readFile, grepSearch, fileSearch, listDirectory, done]
+export const BUILDER_TOOLS = [editFile, createFile, deleteFile, readFile, grepSearch, fileSearch, listDirectory, codebaseContext, gitDiff, codebaseDiff, done]
 
 export async function handleTool(name: string, input: Record<string, unknown>, id: string): Promise<ToolResult> {
 	if (name === 'read_file') {
@@ -328,6 +355,21 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 			return { type: 'tool_result', tool_use_id: id, content: result }
 		}
 		return { type: 'tool_result', tool_use_id: id, content: 'Provide a query or id to recall a memory.' }
+	}
+
+	if (name === 'codebase_context') {
+		const result = await codebase.getCodebaseContext(config.workspacePath)
+		return { type: 'tool_result', tool_use_id: id, content: result }
+	}
+
+	if (name === 'git_diff') {
+		const result = await git.getDiff()
+		return { type: 'tool_result', tool_use_id: id, content: result }
+	}
+
+	if (name === 'codebase_diff') {
+		const result = await codebase.diffContext(config.workspacePath)
+		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 
 	if (name === 'edit_file') {

@@ -22,7 +22,13 @@ export async function run(): Promise<void> {
 
 		while (!merged) {
 			const recentMemory = await memory.getContext()
-			const codebaseContext = await codebase.getCodebaseContext(config.workspacePath)
+			const [fileTree, declarationIndex, depGraph] = await Promise.all([
+				codebase.getFileTree(config.workspacePath),
+				codebase.getDeclarationIndex(config.workspacePath),
+				codebase.getDependencyGraph(config.workspacePath),
+			])
+			codebase.snapshotContext(fileTree, declarationIndex, depGraph)
+			const codebaseContext = `## File Tree\n\`\`\`\n${fileTree}\n\`\`\`\n\n## Dependency Graph\n${depGraph}\n\n## Declarations\n${declarationIndex}`
 			const gitLog = await git.getRecentLog(gitClient)
 
 			const { plan, messages: plannerMessages } = await llm.plan(recentMemory, codebaseContext, gitLog)

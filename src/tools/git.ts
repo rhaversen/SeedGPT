@@ -94,3 +94,22 @@ export async function getRecentLog(git: SimpleGit, count = 10): Promise<string> 
 	const log = await git.log({ maxCount: count })
 	return log.all.map(c => `${c.hash.slice(0, 7)} ${c.message}`).join('\n')
 }
+
+export async function getDiff(): Promise<string> {
+	const git = simpleGit(config.workspacePath)
+	const diff = await git.diff(['main'])
+	if (!diff.trim()) {
+		const unstaged = await git.diff()
+		if (!unstaged.trim()) return 'No changes.'
+		return truncateDiff(unstaged)
+	}
+	return truncateDiff(diff)
+}
+
+function truncateDiff(diff: string): string {
+	const lines = diff.split('\n')
+	if (lines.length > 500) {
+		return lines.slice(0, 500).join('\n') + `\n\n(truncated — ${lines.length} total lines)`
+	}
+	return diff
+}
