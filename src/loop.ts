@@ -7,7 +7,7 @@ import * as memory from './memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import { config } from './config.js'
 import logger from './logger.js'
-import { logSummary } from './usage.js'
+import { logSummary, saveIterationData } from './usage.js'
 
 export async function run(): Promise<void> {
 	logger.info('SeedGPT starting iteration...')
@@ -74,6 +74,13 @@ export async function run(): Promise<void> {
 						session.conversation,
 					)
 					await memory.store(`Self-reflection: ${reflection}`)
+					await saveIterationData(
+						plan.title,
+						`PR #${prNumber} merged successfully after ${attempt + 1} attempt(s).`,
+						plannerMessages,
+						session.conversation,
+						reflection,
+					)
 					merged = true
 					break
 				}
@@ -94,12 +101,20 @@ export async function run(): Promise<void> {
 				await memory.store(`Gave up on "${plan.title}" — could not produce a valid patch after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
 			}
 
+			const failureOutcome = `Failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`
 			const reflection = await llm.reflect(
-				`Failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`,
+				failureOutcome,
 				plannerMessages,
 				session.conversation,
 			)
 			await memory.store(`Self-reflection: ${reflection}`)
+			await saveIterationData(
+				plan.title,
+				failureOutcome,
+				plannerMessages,
+				session.conversation,
+				reflection,
+			)
 			logger.error(`Failed after ${config.maxRetries + 1} attempts — starting fresh plan.`)
 		}
 	} catch (error) {

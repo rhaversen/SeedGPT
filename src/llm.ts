@@ -108,7 +108,7 @@ Consider:
 
 Be concise. One short paragraph. Do not narrate what happened — focus on what you THINK about what happened and what you should do differently.`
 
-function summarizeMessages(messages: Anthropic.MessageParam[]): string {
+export function summarizeMessages(messages: Anthropic.MessageParam[]): string {
 	return messages.map(m => {
 		const role = m.role === 'assistant' ? 'ASSISTANT' : 'USER'
 		if (typeof m.content === 'string') return `[${role}] ${m.content}`

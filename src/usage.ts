@@ -1,4 +1,8 @@
 import logger from './logger.js'
+import { summarizeMessages } from './llm.js'
+import UsageModel from './models/Usage.js'
+import GeneratedModel from './models/Generated.js'
+import type Anthropic from '@anthropic-ai/sdk'
 
 interface ModelPricing {
 	inputPerMTok: number
@@ -72,6 +76,54 @@ export function logSummary(): void {
 	}
 	for (const [model, s] of [...byModel].sort((a, b) => b[1].cost - a[1].cost)) {
 		logger.info(`  ${model}: ${s.calls} calls | ${s.inputTokens} in + ${s.outputTokens} out | $${s.cost.toFixed(4)}`)
+	}
+}
+
+export async function saveIterationData(
+	planTitle: string,
+	outcome: string,
+	plannerMessages: Anthropic.MessageParam[],
+	builderMessages: Anthropic.MessageParam[],
+	reflection: string,
+): Promise<void> {
+	try {
+		let totalInput = 0
+		let totalOutput = 0
+		let totalCost = 0
+		const callerMap = new Map<string, { caller: string; model: string; calls: number; inputTokens: number; outputTokens: number; cost: number }>()
+		for (const e of entries) {
+			totalInput += e.inputTokens
+			totalOutput += e.outputTokens
+			totalCost += e.cost
+			const key = `${e.caller}:${e.model}`
+			const existing = callerMap.get(key) ?? { caller: e.caller, model: e.model, calls: 0, inputTokens: 0, outputTokens: 0, cost: 0 }
+			existing.calls++
+			existing.inputTokens += e.inputTokens
+			existing.outputTokens += e.outputTokens
+			existing.cost += e.cost
+			callerMap.set(key, existing)
+		}
+
+		await UsageModel.create({
+			planTitle,
+			totalCalls: entries.length,
+			totalInputTokens: totalInput,
+			totalOutputTokens: totalOutput,
+			totalCost,
+			breakdown: [...callerMap.values()],
+		})
+
+		await GeneratedModel.create({
+			planTitle,
+			outcome,
+			plannerTranscript: summarizeMessages(plannerMessages),
+			builderTranscript: summarizeMessages(builderMessages),
+			reflection,
+		})
+
+		logger.info(`Saved usage and generated data for "${planTitle}"`)
+	} catch (err) {
+		logger.error('Failed to save iteration data', { error: err })
 	}
 }
 
