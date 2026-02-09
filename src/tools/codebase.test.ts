@@ -80,7 +80,7 @@ const untyped = 'hello'
 		expect(result).toEqual([
 			'  export const API_URL: string  [L1]',
 			'  let counter: number  [L2]',
-			'  const untyped  [L3]',
+			'  const untyped: string  [L3]',
 		])
 	})
 
@@ -143,6 +143,31 @@ import { foo } from 'bar'
 		const result = extractDeclarations(src, 'test.ts')
 		expect(result[0]).toContain('[L1]')
 		expect(result[0]).not.toContain('L1-')
+	})
+
+	it('infers types from initializers', () => {
+		const src = `const s = 'hello'
+const t = \`template\`
+const n = 42
+const b = true
+const f = false
+const a = [1, 2, 3]
+const obj = { name: 'test', value: 1 }
+const fn = (x: number): string => String(x)
+const inst = new Map()
+`
+		const result = extractDeclarations(src, 'test.ts')
+		expect(result).toEqual([
+			'  const s: string  [L1]',
+			'  const t: string  [L2]',
+			'  const n: number  [L3]',
+			'  const b: boolean  [L4]',
+			'  const f: boolean  [L5]',
+			'  const a: [...]  [L6]',
+			'  const obj: { name, value }  [L7]',
+			'  const fn: (x: number) => string  [L8]',
+			'  const inst: Map  [L9]',
+		])
 	})
 })
 

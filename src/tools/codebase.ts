@@ -74,7 +74,7 @@ function visitNode(sf: ts.SourceFile, node: ts.Node, out: string[], indent: stri
 		const keyword = node.declarationList.flags & ts.NodeFlags.Const ? 'const' : 'let'
 		for (const d of node.declarationList.declarations) {
 			if (!ts.isIdentifier(d.name)) continue
-			const type = d.type ? `: ${d.type.getText(sf)}` : ''
+			const type = d.type ? `: ${d.type.getText(sf)}` : inferType(sf, d.initializer)
 			out.push(`${indent}${exp}${keyword} ${d.name.text}${type}  [${range}]`)
 		}
 	}
@@ -142,6 +142,28 @@ function isExported(node: ts.Node): boolean {
 
 function mod(node: ts.Node, kind: ts.SyntaxKind): boolean {
 	return ts.canHaveModifiers(node) && (ts.getModifiers(node)?.some(m => m.kind === kind) ?? false)
+}
+
+function inferType(sf: ts.SourceFile, init: ts.Expression | undefined): string {
+	if (!init) return ''
+	if (ts.isStringLiteral(init) || ts.isNoSubstitutionTemplateLiteral(init) || ts.isTemplateExpression(init)) return ': string'
+	if (ts.isNumericLiteral(init)) return ': number'
+	if (init.kind === ts.SyntaxKind.TrueKeyword || init.kind === ts.SyntaxKind.FalseKeyword) return ': boolean'
+	if (ts.isArrayLiteralExpression(init)) return ': [...]'
+	if (ts.isNewExpression(init) && init.expression) return `: ${init.expression.getText(sf)}`
+	if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
+		const p = params(sf, init)
+		const r = retType(sf, init)
+		return `: (${p})${r ? ` => ${r.slice(2)}` : ''}`
+	}
+	if (ts.isObjectLiteralExpression(init)) {
+		const keys = init.properties
+			.map(p => ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p) ? p.name?.getText(sf) : null)
+			.filter(Boolean)
+		return keys.length > 0 ? `: { ${keys.join(', ')} }` : ': {}'
+	}
+	if (ts.isAsExpression(init)) return inferType(sf, init.expression)
+	return ''
 }
 
 async function walkTree(basePath: string, prefix: string, lines: string[]): Promise<void> {
