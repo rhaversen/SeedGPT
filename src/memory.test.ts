@@ -9,9 +9,13 @@ jest.unstable_mockModule('./config.js', () => ({
 	},
 }))
 
+jest.unstable_mockModule('./usage.js', () => ({
+	trackUsage: jest.fn(),
+}))
+
 jest.unstable_mockModule('@anthropic-ai/sdk', () => {
-	const mockCreate = jest.fn<() => Promise<{ content: Array<{ type: string, text: string }> }>>()
-		.mockResolvedValue({ content: [{ type: 'text', text: 'mock summary' }] })
+	const mockCreate = jest.fn<() => Promise<{ content: Array<{ type: string, text: string }>; usage: { input_tokens: number; output_tokens: number } }>>()
+		.mockResolvedValue({ content: [{ type: 'text', text: 'mock summary' }], usage: { input_tokens: 10, output_tokens: 5 } })
 	return {
 		default: jest.fn().mockImplementation(() => ({
 			messages: { create: mockCreate },

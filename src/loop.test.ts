@@ -32,11 +32,8 @@ jest.unstable_mockModule('./database.js', () => ({
 jest.unstable_mockModule('./tools/git.js', () => ({
 	cloneRepo: jest.fn<() => Promise<SimpleGit>>().mockResolvedValue(mockGitClient),
 	createBranch: jest.fn<() => Promise<string>>().mockResolvedValue('seedgpt/test-change'),
-	applyEdits: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 	commitAndPush: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-	getHeadSha: jest.fn<() => Promise<string>>().mockResolvedValue('abc123'),
 	getRecentLog: jest.fn<() => Promise<string>>().mockResolvedValue('abc1234 initial commit'),
-	resetToMain: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }))
 
 jest.unstable_mockModule('./tools/github.js', () => ({
@@ -44,8 +41,6 @@ jest.unstable_mockModule('./tools/github.js', () => ({
 	mergePR: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 	closePR: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 	deleteRemoteBranch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-	findOpenAgentPRs: jest.fn<() => Promise<[]>>().mockResolvedValue([]),
-	awaitPRChecks: jest.fn<() => Promise<{ passed: boolean }>>().mockResolvedValue({ passed: true }),
 }))
 
 jest.unstable_mockModule('./tools/codebase.js', () => ({
@@ -53,32 +48,30 @@ jest.unstable_mockModule('./tools/codebase.js', () => ({
 	getDeclarationIndex: jest.fn<() => Promise<string>>().mockResolvedValue('### src/index.ts (5 lines)\n  export function main(): void  [L1-5]'),
 	getDependencyGraph: jest.fn<() => Promise<string>>().mockResolvedValue('No dependencies found.'),
 	snapshotContext: jest.fn(),
-	readFile: jest.fn<() => Promise<string>>().mockResolvedValue('console.log("hello")'),
 }))
 
 jest.unstable_mockModule('./memory.js', () => ({
 	getContext: jest.fn<() => Promise<string>>().mockResolvedValue('No memories yet. This is your first run.'),
 	store: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-	pin: jest.fn<() => Promise<string>>().mockResolvedValue('Note saved (123): test note'),
-	unpin: jest.fn<() => Promise<string>>().mockResolvedValue('Note dismissed: test note'),
-	recall: jest.fn<() => Promise<string>>().mockResolvedValue('No memories matching "test".'),
-	recallById: jest.fn<() => Promise<string>>().mockResolvedValue('Memory not found.'),
 }))
 
 jest.unstable_mockModule('./pipeline.js', () => ({
 	cleanupStalePRs: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-	awaitChecks: jest.fn<() => Promise<{ passed: boolean }>>().mockResolvedValue({ passed: true }),
-}))
-
-jest.unstable_mockModule('node:fs/promises', () => ({
-	mkdir: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-	writeFile: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+	awaitChecks: jest.fn<() => Promise<{ passed: boolean; error?: string }>>().mockResolvedValue({ passed: true }),
 }))
 
 jest.unstable_mockModule('./usage.js', () => ({
 	logSummary: jest.fn<() => void>(),
 	saveIterationData: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }))
+
+jest.unstable_mockModule('./logger.js', () => {
+	const noop = () => {}
+	return {
+		default: { debug: noop, info: noop, warn: noop, error: noop },
+		writeIterationLog: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+	}
+})
 
 const mockPlan = { title: 'test-change', description: 'A test change', implementation: 'test implementation' }
 const mockEdits = [{ type: 'replace' as const, filePath: 'src/index.ts', oldString: 'hello', newString: 'world' }]
@@ -115,7 +108,6 @@ describe('run', () => {
 		expect(llm.plan).toHaveBeenCalledTimes(1)
 		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('Planned change'))
 		expect(git.createBranch).toHaveBeenCalledTimes(1)
-		expect(git.applyEdits).toHaveBeenCalledWith(mockEdits)
 		expect(git.commitAndPush).toHaveBeenCalledTimes(1)
 		expect(github.openPR).toHaveBeenCalledTimes(1)
 		expect(pipeline.awaitChecks).toHaveBeenCalledTimes(1)
@@ -133,25 +125,26 @@ describe('run', () => {
 
 		await run()
 
-		expect(git.applyEdits).toHaveBeenCalledTimes(2)
 		expect(git.commitAndPush).toHaveBeenCalledTimes(2)
-		expect(mockPatchSession.fixPatch).toHaveBeenCalledWith(
-			'type error in index.ts',
-			expect.any(Object)
-		)
+		expect(mockPatchSession.fixPatch).toHaveBeenCalledWith('type error in index.ts')
 		expect(github.mergePR).toHaveBeenCalledWith(1)
 	})
 
-	it('closes the PR after exhausting all retries', async () => {
+	it('closes the PR after exhausting all retries then succeeds on next plan', async () => {
 		const awaitChecks = pipeline.awaitChecks as jest.MockedFunction<typeof pipeline.awaitChecks>
-		awaitChecks.mockResolvedValue({ passed: false, error: 'persistent failure' })
+		awaitChecks
+			.mockResolvedValueOnce({ passed: false, error: 'persistent failure' })
+			.mockResolvedValueOnce({ passed: false, error: 'persistent failure' })
+			.mockResolvedValueOnce({ passed: false, error: 'persistent failure' })
+			.mockResolvedValueOnce({ passed: false, error: 'persistent failure' })
+			.mockResolvedValueOnce({ passed: true })
 
 		await run()
 
 		expect(github.closePR).toHaveBeenCalledWith(1)
 		expect(github.deleteRemoteBranch).toHaveBeenCalledWith('seedgpt/test-change')
-		expect(github.mergePR).not.toHaveBeenCalled()
 		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('Closed PR'))
+		expect(github.mergePR).toHaveBeenCalled()
 	})
 
 	it('handles empty edits without crashing', async () => {
@@ -163,22 +156,6 @@ describe('run', () => {
 
 		await run()
 
-		expect(mockPatchSession.fixPatch).toHaveBeenCalled()
-		expect(github.mergePR).toHaveBeenCalled()
-	})
-
-	it('handles applyEdits failure with git checkout cleanup', async () => {
-		const applyEdits = git.applyEdits as jest.MockedFunction<typeof git.applyEdits>
-		applyEdits
-			.mockRejectedValueOnce(new Error('oldString not found in file'))
-			.mockResolvedValueOnce(undefined)
-
-		const awaitChecks = pipeline.awaitChecks as jest.MockedFunction<typeof pipeline.awaitChecks>
-		awaitChecks.mockResolvedValue({ passed: true })
-
-		await run()
-
-		expect(mockGitClient.checkout).toHaveBeenCalledWith(['.'])
 		expect(mockPatchSession.fixPatch).toHaveBeenCalled()
 		expect(github.mergePR).toHaveBeenCalled()
 	})
