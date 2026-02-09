@@ -119,8 +119,9 @@ Take your time. You can use read_file to inspect any file in your repository. Yo
 When you are ready to make a change, call submit_plan. Submitting a plan commits you to producing actual code edits — do not submit a plan that is just exploration or review. Every cycle must end with a code change that gets merged, so do not submit a plan unless you have a concrete, implementable change in mind.
 
 Constraints:
-- Every change must build and pass CI. If you can't test it, don't do it.
-- Prefer small, safe, incremental steps. You can always do more next cycle.
+- A broken build means you cannot recover. Be extremely careful not to break existing functionality. When in doubt, don't change it.
+- Keep changes small and focused. You have unlimited cycles — there is never a reason to do too much at once.
+- Rely on CI to catch problems. Write tests for new behavior and let the workflow verify compilation and correctness.
 - NEVER create documentation-only files or markdown summaries. Use note_to_self for observations.
 - NEVER downgrade dependencies or add unnecessary ones.
 - NEVER modify the model configuration, environment variable names, or secrets. Those are controlled by your operator.
@@ -200,7 +201,8 @@ Operation types:
 - "delete": Delete a file. Provide filePath only.
 
 Rules:
-- Make minimal, correct changes that preserve all existing functionality.
+- A broken build is unrecoverable. Preserve all existing functionality — do not change code you don't fully understand.
+- Make the smallest possible change that implements the plan. Do not refactor, clean up, or touch unrelated code.
 - Do not modify files or sections not relevant to the plan.
 - If a previous attempt failed, carefully analyze what went wrong and submit only the targeted fix — do not regenerate edits that already applied successfully.`
 
