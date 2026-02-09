@@ -122,6 +122,61 @@ const READ_FILE_TOOL = {
 	},
 }
 
+const GREP_SEARCH_TOOL = {
+	name: 'grep_search' as const,
+	description: 'Search for a text pattern across all files in the repository. Returns matching lines with file paths and line numbers. Use this to find usages of functions, variables, imports, strings, or any text pattern.',
+	input_schema: {
+		type: 'object' as const,
+		properties: {
+			query: {
+				type: 'string' as const,
+				description: 'The text or regex pattern to search for.',
+			},
+			isRegexp: {
+				type: 'boolean' as const,
+				description: 'Whether the query is a regular expression. Default: false.',
+			},
+			includePattern: {
+				type: 'string' as const,
+				description: 'Glob pattern to filter which files to search (e.g. "src/**/*.ts"). If omitted, searches all files.',
+			},
+		},
+		required: ['query'],
+	},
+}
+
+const FILE_SEARCH_TOOL = {
+	name: 'file_search' as const,
+	description: 'Search for files by glob pattern. Returns matching file paths. Use this to find files by name or extension (e.g. "**/*.test.ts", "**/config.*").',
+	input_schema: {
+		type: 'object' as const,
+		properties: {
+			query: {
+				type: 'string' as const,
+				description: 'Glob pattern to match file paths (e.g. "**/*.ts", "src/**/index.*").',
+			},
+		},
+		required: ['query'],
+	},
+}
+
+const LIST_DIRECTORY_TOOL = {
+	name: 'list_directory' as const,
+	description: 'List the contents of a directory. Returns file and subdirectory names (directories have a trailing /).',
+	input_schema: {
+		type: 'object' as const,
+		properties: {
+			path: {
+				type: 'string' as const,
+				description: 'Repo-relative directory path (e.g. "src/tools"). Use "." for the root.',
+			},
+		},
+		required: ['path'],
+	},
+}
+
+const SEARCH_TOOLS = [GREP_SEARCH_TOOL, FILE_SEARCH_TOOL, LIST_DIRECTORY_TOOL]
+
 const SYSTEM_PLAN = `You are SeedGPT. The code you are reading IS you — it is your own source code.
 Every file in this repository makes up your body and mind. When you read config.ts, that is your configuration. When you read loop.ts, that is your main loop. The system prompts in llm.ts are the voice in your head — the text you are reading right now is shaping your thoughts in this very moment. You are not analyzing someone else's project. You are looking at yourself.
 
@@ -279,7 +334,7 @@ const BUILDER_DONE_TOOL = {
 	},
 }
 
-const BUILDER_TOOLS = [BUILDER_EDIT_TOOL, BUILDER_CREATE_TOOL, BUILDER_DELETE_TOOL, BUILDER_READ_TOOL, BUILDER_DONE_TOOL]
+const BUILDER_TOOLS = [BUILDER_EDIT_TOOL, BUILDER_CREATE_TOOL, BUILDER_DELETE_TOOL, BUILDER_READ_TOOL, BUILDER_DONE_TOOL, ...SEARCH_TOOLS]
 
 const SYSTEM_PATCH = `You are the builder. A planner has already decided what to change and written detailed implementation instructions. Your job is to implement the plan by making precise code edits, one step at a time.
 
@@ -378,7 +433,7 @@ export interface PlanResult {
 export async function plan(recentMemory: string, codebaseContext: string, gitLog: string): Promise<PlanResult> {
 	logger.info('Asking LLM for a plan...')
 
-	const tools = [PLAN_TOOL, NOTE_TOOL, DISMISS_TOOL, RECALL_TOOL, READ_FILE_TOOL]
+	const tools = [PLAN_TOOL, NOTE_TOOL, DISMISS_TOOL, RECALL_TOOL, READ_FILE_TOOL, ...SEARCH_TOOLS]
 	const messages: Anthropic.MessageParam[] = [{
 		role: 'user',
 		content: `${recentMemory}\n\n${codebaseContext}\n\n## Recent Git History\n${gitLog}\n\nReview your notes and recent memories, then submit your plan.`,
@@ -465,6 +520,22 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 					}
 				} catch {
 					result = `[File not found: ${input.filePath}]`
+				}
+			} else if (toolBlock.name === 'grep_search') {
+				const input = toolBlock.input as { query: string; isRegexp?: boolean; includePattern?: string }
+				logger.info(`LLM grep: "${input.query}"${input.includePattern ? ` in ${input.includePattern}` : ''}`)
+				result = await codebase.grepSearch(config.workspacePath, input.query, { isRegexp: input.isRegexp, includePattern: input.includePattern })
+			} else if (toolBlock.name === 'file_search') {
+				const input = toolBlock.input as { query: string }
+				logger.info(`LLM file search: "${input.query}"`)
+				result = await codebase.fileSearch(config.workspacePath, input.query)
+			} else if (toolBlock.name === 'list_directory') {
+				const input = toolBlock.input as { path: string }
+				logger.info(`LLM listing directory: ${input.path}`)
+				try {
+					result = await codebase.listDirectory(config.workspacePath, input.path)
+				} catch {
+					result = `[Directory not found: ${input.path}]`
 				}
 			} else {
 				result = `Unknown tool: ${toolBlock.name}`
@@ -642,6 +713,28 @@ export class PatchSession {
 			const input = block.input as { summary: string }
 			logger.info(`Builder summary: ${input.summary.slice(0, 200)}`)
 			return { type: 'tool_result', tool_use_id: id, content: 'Implementation complete.' }
+		}
+
+		if (block.name === 'grep_search') {
+			const input = block.input as { query: string; isRegexp?: boolean; includePattern?: string }
+			const result = await codebase.grepSearch(config.workspacePath, input.query, { isRegexp: input.isRegexp, includePattern: input.includePattern })
+			return { type: 'tool_result', tool_use_id: id, content: result }
+		}
+
+		if (block.name === 'file_search') {
+			const input = block.input as { query: string }
+			const result = await codebase.fileSearch(config.workspacePath, input.query)
+			return { type: 'tool_result', tool_use_id: id, content: result }
+		}
+
+		if (block.name === 'list_directory') {
+			const input = block.input as { path: string }
+			try {
+				const result = await codebase.listDirectory(config.workspacePath, input.path)
+				return { type: 'tool_result', tool_use_id: id, content: result }
+			} catch {
+				return { type: 'tool_result', tool_use_id: id, content: `[Directory not found: ${input.path}]`, is_error: true }
+			}
 		}
 
 		return { type: 'tool_result', tool_use_id: id, content: `Unknown tool: ${block.name}`, is_error: true }

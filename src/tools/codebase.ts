@@ -297,3 +297,67 @@ export async function readFiles(rootPath: string, filePaths: string[]): Promise<
 	}
 	return result
 }
+
+export async function grepSearch(rootPath: string, pattern: string, options?: { isRegexp?: boolean; includePattern?: string }): Promise<string> {
+	const allFiles: string[] = []
+	await walk(rootPath, '', allFiles)
+
+	const regex = options?.isRegexp ? new RegExp(pattern, 'gi') : null
+	const lowerPattern = pattern.toLowerCase()
+	const includeGlob = options?.includePattern
+
+	const matches: string[] = []
+	const maxResults = 100
+
+	for (const relPath of allFiles) {
+		if (relPath.endsWith('/')) continue
+		if (includeGlob && !minimatch(relPath, includeGlob)) continue
+
+		try {
+			const content = await fsReadFile(join(rootPath, relPath), 'utf-8')
+			const lines = content.split('\n')
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i]
+				const isMatch = regex ? regex.test(line) : line.toLowerCase().includes(lowerPattern)
+				if (regex) regex.lastIndex = 0
+				if (isMatch) {
+					matches.push(`${relPath}:${i + 1}: ${line.trimStart()}`)
+					if (matches.length >= maxResults) {
+						matches.push(`(truncated at ${maxResults} results)`)
+						return matches.join('\n')
+					}
+				}
+			}
+		} catch { /* skip binary/unreadable */ }
+	}
+
+	return matches.length > 0 ? matches.join('\n') : 'No matches found.'
+}
+
+export async function fileSearch(rootPath: string, globPattern: string): Promise<string> {
+	const allFiles: string[] = []
+	await walk(rootPath, '', allFiles)
+
+	const matches = allFiles.filter(f => minimatch(f, globPattern))
+	if (matches.length === 0) return 'No files matched.'
+	return matches.join('\n')
+}
+
+export async function listDirectory(rootPath: string, dirPath: string): Promise<string> {
+	const fullPath = join(rootPath, dirPath)
+	const entries = (await readdir(fullPath, { withFileTypes: true }))
+		.filter(e => !IGNORE.has(e.name))
+		.sort((a, b) => a.name.localeCompare(b.name))
+
+	return entries.map(e => e.isDirectory() ? `${e.name}/` : e.name).join('\n')
+}
+
+function minimatch(filePath: string, pattern: string): boolean {
+	const regexStr = pattern
+		.replace(/\./g, '\\.')
+		.replace(/\*\*/g, '<<<GLOBSTAR>>>')
+		.replace(/\*/g, '[^/]*')
+		.replace(/<<<GLOBSTAR>>>/g, '.*')
+		.replace(/\?/g, '.')
+	return new RegExp(`^${regexStr}$`).test(filePath)
+}
