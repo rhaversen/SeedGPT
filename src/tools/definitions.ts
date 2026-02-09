@@ -285,23 +285,8 @@ const codebaseDiff = {
 	},
 }
 
-const findUsages = {
-	name: 'find_usages' as const,
-	description: 'Find all usages of a function, class, variable, type, or any symbol across all source files. Uses word-boundary matching so searching for "config" won\'t match "reconfigure". Results are grouped by file with line numbers.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			symbolName: {
-				type: 'string' as const,
-				description: 'The exact name of the symbol to find usages of (e.g. "handleTool", "PatchSession", "EditOperation").',
-			},
-		},
-		required: ['symbolName'],
-	},
-}
-
-export const PLANNER_TOOLS = [submitPlan, noteToSelf, dismissNote, recallMemory, readFile, grepSearch, fileSearch, listDirectory, findUsages]
-export const BUILDER_TOOLS = [editFile, createFile, deleteFile, readFile, grepSearch, fileSearch, listDirectory, codebaseContext, gitDiff, codebaseDiff, findUsages, done]
+export const PLANNER_TOOLS = [submitPlan, noteToSelf, dismissNote, recallMemory, readFile, grepSearch, fileSearch, listDirectory]
+export const BUILDER_TOOLS = [editFile, createFile, deleteFile, readFile, grepSearch, fileSearch, listDirectory, codebaseContext, gitDiff, codebaseDiff, done]
 
 export async function handleTool(name: string, input: Record<string, unknown>, id: string): Promise<ToolResult> {
 	if (name === 'read_file') {
@@ -330,12 +315,6 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 	if (name === 'file_search') {
 		const { query } = input as { query: string }
 		const result = await codebase.fileSearch(config.workspacePath, query)
-		return { type: 'tool_result', tool_use_id: id, content: result }
-	}
-
-	if (name === 'find_usages') {
-		const { symbolName } = input as { symbolName: string }
-		const result = await codebase.findUsages(config.workspacePath, symbolName)
 		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 
