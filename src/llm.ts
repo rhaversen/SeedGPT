@@ -3,6 +3,7 @@ import { config } from './config.js'
 import logger from './logger.js'
 import * as memory from './memory.js'
 import * as codebase from './tools/codebase.js'
+import * as git from './tools/git.js'
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey })
 
@@ -191,70 +192,124 @@ export interface FileDelete {
 
 export type EditOperation = FileEdit | FileCreate | FileDelete
 
-const EDIT_TOOL = {
-	name: 'submit_edits' as const,
-	description: 'Submit the code edits implementing the plan. Each operation is either a replace (find-and-replace within a file), create (new file), or delete (remove a file).',
+const BUILDER_EDIT_TOOL = {
+	name: 'edit_file' as const,
+	description: 'Replace a specific piece of text in an existing file. The oldString must match EXACTLY — character-for-character including all whitespace and indentation. Include 2-3 lines of surrounding context in oldString to ensure a unique match. Each call replaces ONE occurrence.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {
-			operations: {
-				type: 'array' as const,
-				items: {
-					type: 'object' as const,
-					properties: {
-						type: {
-							type: 'string' as const,
-							enum: ['replace', 'create', 'delete'],
-							description: 'The kind of edit operation',
-						},
-						filePath: {
-							type: 'string' as const,
-							description: 'Repo-relative path (e.g. "src/config.ts")',
-						},
-						oldString: {
-							type: 'string' as const,
-							description: '(replace only) The exact literal text to find in the file. Must match character-for-character including whitespace and indentation. Include 2-3 lines of surrounding context to ensure a unique match.',
-						},
-						newString: {
-							type: 'string' as const,
-							description: '(replace only) The exact text to replace oldString with.',
-						},
-						content: {
-							type: 'string' as const,
-							description: '(create only) The full content of the new file.',
-						},
-					},
-					required: ['type', 'filePath'],
-				},
-				description: 'The list of edit operations to apply.',
+			filePath: {
+				type: 'string' as const,
+				description: 'Repo-relative path (e.g. "src/config.ts")',
+			},
+			oldString: {
+				type: 'string' as const,
+				description: 'The exact literal text to find in the file.',
+			},
+			newString: {
+				type: 'string' as const,
+				description: 'The exact text to replace oldString with.',
 			},
 		},
-		required: ['operations'],
+		required: ['filePath', 'oldString', 'newString'],
 	},
 }
 
-const SYSTEM_PATCH = `You are the builder. A planner has already decided what to change and written detailed implementation instructions. Your job is to translate that plan into precise code edits.
+const BUILDER_CREATE_TOOL = {
+	name: 'create_file' as const,
+	description: 'Create a new file with the given content. The file must not already exist.',
+	input_schema: {
+		type: 'object' as const,
+		properties: {
+			filePath: {
+				type: 'string' as const,
+				description: 'Repo-relative path for the new file',
+			},
+			content: {
+				type: 'string' as const,
+				description: 'The full content of the new file',
+			},
+		},
+		required: ['filePath', 'content'],
+	},
+}
 
-You will receive:
-- The planner's implementation instructions (follow these closely)
-- The planner's reasoning from the planning session (for additional context)
-- The current contents of all relevant files
-- Memory context from previous cycles
+const BUILDER_DELETE_TOOL = {
+	name: 'delete_file' as const,
+	description: 'Delete an existing file.',
+	input_schema: {
+		type: 'object' as const,
+		properties: {
+			filePath: {
+				type: 'string' as const,
+				description: 'Repo-relative path of the file to delete',
+			},
+		},
+		required: ['filePath'],
+	},
+}
 
-Operation types:
-- "replace": Find and replace text in an existing file. Provide filePath, oldString, and newString.
-  - oldString must be the EXACT literal text from the file, character-for-character including all whitespace and indentation.
-  - Include 2-3 lines of surrounding context in oldString to ensure a unique match.
-  - Each replace matches ONE occurrence. Use multiple operations for multiple replacements.
-- "create": Create a new file. Provide filePath and content.
-- "delete": Delete a file. Provide filePath only.
+const BUILDER_READ_TOOL = {
+	name: 'read_file' as const,
+	description: 'Read the current contents of a file. Use this to verify your edits, check the current state of a file before editing, or read a file you need for context.',
+	input_schema: {
+		type: 'object' as const,
+		properties: {
+			filePath: {
+				type: 'string' as const,
+				description: 'Repo-relative file path',
+			},
+		},
+		required: ['filePath'],
+	},
+}
+
+const BUILDER_DONE_TOOL = {
+	name: 'done' as const,
+	description: 'Signal that all edits are complete and the implementation is finished. Only call this when you have made all the changes described in the plan.',
+	input_schema: {
+		type: 'object' as const,
+		properties: {
+			summary: {
+				type: 'string' as const,
+				description: 'Brief summary of what was changed',
+			},
+		},
+		required: ['summary'],
+	},
+}
+
+const BUILDER_TOOLS = [BUILDER_EDIT_TOOL, BUILDER_CREATE_TOOL, BUILDER_DELETE_TOOL, BUILDER_READ_TOOL, BUILDER_DONE_TOOL]
+
+const SYSTEM_PATCH = `You are the builder. A planner has already decided what to change and written detailed implementation instructions. Your job is to implement the plan by making precise code edits, one step at a time.
+
+You have tools to:
+- edit_file: Replace text in an existing file (find-and-replace, must match exactly)
+- create_file: Create a new file
+- delete_file: Delete a file
+- read_file: Read a file to check its current contents or verify your edits
+- done: Signal that the implementation is complete
+
+Work incrementally:
+1. Read the plan and implementation instructions carefully.
+2. Work through the changes one file at a time, one edit at a time.
+3. After making edits to a file, you can read it back to verify the result looks correct.
+4. If you need to see a file that was not provided in the initial context, use read_file.
+5. When all changes described in the plan are applied, call done.
+
+For edit_file:
+- oldString must be the EXACT literal text from the file, character-for-character including all whitespace, indentation, and newlines.
+- Include 2-3 lines of surrounding context in oldString to ensure a unique match.
+- Each edit_file call replaces ONE occurrence. Make multiple calls for multiple replacements.
+- If you are unsure of the exact text, use read_file first to see the current contents.
 
 Rules:
 - Follow the planner's implementation instructions precisely. The planner has already read the codebase and made decisions — do not second-guess the approach.
 - A broken build is unrecoverable. Preserve all existing functionality — do not change code the plan does not ask you to change.
 - Make exactly the changes described in the plan. Do not refactor, clean up, or touch unrelated code.
+- Take your time. Accuracy matters more than speed. Verify your work as you go.
 - If the plan's instructions are ambiguous, choose the most conservative interpretation.
-- If a previous attempt failed, carefully analyze what went wrong and submit only the targeted fix — do not regenerate edits that already applied successfully.`
+- If a previous attempt failed, carefully analyze what went wrong and make only the targeted fix.`
 
 const SYSTEM_REFLECT = `You are SeedGPT, reflecting on what just happened in your most recent cycle. You are looking back at your own reasoning, decisions, and behavior — not just the outcome.
 
@@ -398,6 +453,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 
 export class PatchSession {
 	private readonly messages: Anthropic.MessageParam[] = []
+	private readonly edits: EditOperation[] = []
 
 	constructor(plan: Plan, fileContents: Record<string, string>, memoryContext: string) {
 		const filesSection = Object.entries(fileContents)
@@ -415,7 +471,7 @@ export class PatchSession {
 		}
 
 		sections.push(`## Current Files\n${filesSection}`)
-		sections.push('Implement the plan by calling submit_edits.')
+		sections.push('Implement the plan step by step. Use edit_file, create_file, and delete_file to make changes. Use read_file to verify your work or check file contents. Call done when the implementation is complete.')
 
 		this.messages.push({
 			role: 'user',
@@ -423,15 +479,13 @@ export class PatchSession {
 		})
 	}
 
-	private lastToolUseId: string | null = null
-
 	async createPatch(): Promise<EditOperation[]> {
-		logger.info('Asking LLM to generate edits...')
-		return this.requestEdits()
+		logger.info('Builder starting implementation...')
+		return this.runBuilderLoop()
 	}
 
 	async fixPatch(error: string, currentFiles: Record<string, string>): Promise<EditOperation[]> {
-		logger.info('Asking LLM to fix edits...')
+		logger.info('Builder fixing implementation...')
 
 		const filesSection = Object.entries(currentFiles)
 			.map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
@@ -439,37 +493,120 @@ export class PatchSession {
 
 		this.messages.push({
 			role: 'user',
-			content: [{
-				type: 'tool_result',
-				tool_use_id: this.lastToolUseId!,
-				is_error: true,
-				content: `Your previous edits were applied but CI failed. Fix only the issue — do not regenerate the entire change.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\n## Current Files (after your previous edits)\n${filesSection}\n\nSubmit only the edits needed to fix this error.`,
-			}],
+			content: `Your previous changes were applied but CI failed. Fix only the issue — do not redo edits that already succeeded.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\n## Current Files (after your previous edits)\n${filesSection}\n\nMake the targeted fixes needed, then call done.`,
 		})
 
-		return this.requestEdits()
+		this.edits.length = 0
+		return this.runBuilderLoop()
 	}
 
-	private async requestEdits(): Promise<EditOperation[]> {
-		const response = await client.messages.create({
-			model: config.patchModel,
-			max_tokens: 16384,
-			system: SYSTEM_PATCH,
-			tools: [EDIT_TOOL],
-			tool_choice: { type: 'tool', name: 'submit_edits' },
-			messages: this.messages,
-		})
+	private async runBuilderLoop(): Promise<EditOperation[]> {
+		const maxTurns = 80
 
-		this.messages.push({ role: 'assistant', content: response.content })
+		for (let turn = 0; turn < maxTurns; turn++) {
+			const response = await client.messages.create({
+				model: config.patchModel,
+				max_tokens: 16384,
+				system: SYSTEM_PATCH,
+				tools: BUILDER_TOOLS,
+				messages: this.messages,
+			})
 
-		const toolBlock = response.content.find(c => c.type === 'tool_use')
-		if (!toolBlock || toolBlock.type !== 'tool_use' || toolBlock.name !== 'submit_edits') {
-			throw new Error('LLM did not call submit_edits')
+			this.messages.push({ role: 'assistant', content: response.content })
+
+			const toolBlocks = response.content.filter(c => c.type === 'tool_use')
+			if (toolBlocks.length === 0) {
+				if (this.edits.length > 0) {
+					logger.info(`Builder stopped responding after ${this.edits.length} edit(s) — treating as done`)
+					return this.edits
+				}
+				throw new Error('Builder did not call any tools')
+			}
+
+			const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean }> = []
+
+			for (const block of toolBlocks) {
+				if (block.type !== 'tool_use') continue
+				turn++
+
+				const result = await this.handleBuilderTool(block)
+				toolResults.push(result)
+
+				if (block.name === 'done') {
+					this.messages.push({ role: 'user', content: toolResults })
+					logger.info(`Builder done: ${this.edits.length} edit(s) applied`)
+					return this.edits
+				}
+			}
+
+			this.messages.push({ role: 'user', content: toolResults })
 		}
 
-		this.lastToolUseId = toolBlock.id
-		const input = toolBlock.input as { operations: EditOperation[] }
-		logger.info(`LLM returned ${input.operations.length} edit operation(s)`)
-		return input.operations
+		if (this.edits.length > 0) {
+			logger.warn(`Builder hit turn limit with ${this.edits.length} edit(s) — returning what we have`)
+			return this.edits
+		}
+		throw new Error(`Builder exceeded maximum turns (${maxTurns}) without completing`)
+	}
+
+	private async handleBuilderTool(block: Anthropic.ContentBlock & { type: 'tool_use' }): Promise<{ type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean }> {
+		const id = block.id
+
+		if (block.name === 'edit_file') {
+			const input = block.input as { filePath: string; oldString: string; newString: string }
+			const op: FileEdit = { type: 'replace', filePath: input.filePath, oldString: input.oldString, newString: input.newString }
+			try {
+				await git.applyEdits([op])
+				this.edits.push(op)
+				return { type: 'tool_result', tool_use_id: id, content: `Replaced text in ${input.filePath}` }
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err)
+				return { type: 'tool_result', tool_use_id: id, content: msg, is_error: true }
+			}
+		}
+
+		if (block.name === 'create_file') {
+			const input = block.input as { filePath: string; content: string }
+			const op: FileCreate = { type: 'create', filePath: input.filePath, content: input.content }
+			try {
+				await git.applyEdits([op])
+				this.edits.push(op)
+				return { type: 'tool_result', tool_use_id: id, content: `Created ${input.filePath}` }
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err)
+				return { type: 'tool_result', tool_use_id: id, content: msg, is_error: true }
+			}
+		}
+
+		if (block.name === 'delete_file') {
+			const input = block.input as { filePath: string }
+			const op: FileDelete = { type: 'delete', filePath: input.filePath }
+			try {
+				await git.applyEdits([op])
+				this.edits.push(op)
+				return { type: 'tool_result', tool_use_id: id, content: `Deleted ${input.filePath}` }
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err)
+				return { type: 'tool_result', tool_use_id: id, content: msg, is_error: true }
+			}
+		}
+
+		if (block.name === 'read_file') {
+			const input = block.input as { filePath: string }
+			try {
+				const content = await codebase.readFile(config.workspacePath, input.filePath)
+				return { type: 'tool_result', tool_use_id: id, content }
+			} catch {
+				return { type: 'tool_result', tool_use_id: id, content: `[File not found: ${input.filePath}]`, is_error: true }
+			}
+		}
+
+		if (block.name === 'done') {
+			const input = block.input as { summary: string }
+			logger.info(`Builder summary: ${input.summary.slice(0, 200)}`)
+			return { type: 'tool_result', tool_use_id: id, content: 'Implementation complete.' }
+		}
+
+		return { type: 'tool_result', tool_use_id: id, content: `Unknown tool: ${block.name}`, is_error: true }
 	}
 }
