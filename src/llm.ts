@@ -86,13 +86,21 @@ const RECALL_TOOL = {
 
 const READ_FILE_TOOL = {
 	name: 'read_file' as const,
-	description: 'Read the contents of a file from your repository. Use this to inspect your own source code before deciding what to change.',
+	description: 'Read the contents of a file from your repository. Use this to inspect your own source code. You can read specific line ranges using the line numbers from the codebase index.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {
 			filePath: {
 				type: 'string' as const,
 				description: 'Repo-relative file path (e.g. "src/config.ts")',
+			},
+			startLine: {
+				type: 'number' as const,
+				description: 'First line to read (1-based). Omit to read from the beginning.',
+			},
+			endLine: {
+				type: 'number' as const,
+				description: 'Last line to read (1-based, inclusive). Omit to read to the end.',
 			},
 		},
 		required: ['filePath'],
@@ -206,13 +214,14 @@ Rules:
 - Do not modify files or sections not relevant to the plan.
 - If a previous attempt failed, carefully analyze what went wrong and submit only the targeted fix — do not regenerate edits that already applied successfully.`
 
-export async function plan(recentMemory: string, fileTree: string, gitLog: string): Promise<Plan> {
+export async function plan(recentMemory: string, codebaseIndex: string, gitLog: string): Promise<Plan> {
 	logger.info('Asking LLM for a plan...')
 
 	const tools = [PLAN_TOOL, NOTE_TOOL, DISMISS_TOOL, RECALL_TOOL, READ_FILE_TOOL]
+	const filesReadDuringPlanning = new Set<string>()
 	const messages: Anthropic.MessageParam[] = [{
 		role: 'user',
-		content: `${recentMemory}\n\n## Repository File Tree\n${fileTree}\n\n## Recent Git History\n${gitLog}\n\nReview your notes and recent memories, then submit your plan.`,
+		content: `${recentMemory}\n\n${codebaseIndex}\n\n## Recent Git History\n${gitLog}\n\nReview your notes and recent memories, then submit your plan.`,
 	}]
 
 	const maxToolCalls = 50
@@ -233,7 +242,9 @@ export async function plan(recentMemory: string, fileTree: string, gitLog: strin
 		const submitBlock = toolBlocks.find(b => b.type === 'tool_use' && b.name === 'submit_plan')
 		if (submitBlock && submitBlock.type === 'tool_use') {
 			const input = submitBlock.input as Plan
-			logger.info(`Plan: "${input.title}" — files to read: ${input.filesToRead.length}`)
+			const merged = new Set([...input.filesToRead, ...filesReadDuringPlanning])
+			input.filesToRead = [...merged]
+			logger.info(`Plan: "${input.title}" — files to read: ${input.filesToRead.length} (${filesReadDuringPlanning.size} auto-included from planning reads)`)
 			return input
 		}
 
@@ -264,10 +275,20 @@ export async function plan(recentMemory: string, fileTree: string, gitLog: strin
 					result = 'Provide a query or id to recall a memory.'
 				}
 			} else if (toolBlock.name === 'read_file') {
-				const input = toolBlock.input as { filePath: string }
-				logger.info(`LLM reading file: ${input.filePath}`)
+				const input = toolBlock.input as { filePath: string; startLine?: number; endLine?: number }
+				const rangeLabel = input.startLine ? `:${input.startLine}-${input.endLine ?? 'end'}` : ''
+				logger.info(`LLM reading file: ${input.filePath}${rangeLabel}`)
 				try {
-					result = await codebase.readFile(config.workspacePath, input.filePath)
+					const fullContent = await codebase.readFile(config.workspacePath, input.filePath)
+					filesReadDuringPlanning.add(input.filePath)
+					if (input.startLine) {
+						const lines = fullContent.split('\n')
+						const start = Math.max(0, input.startLine - 1)
+						const end = input.endLine ?? lines.length
+						result = lines.slice(start, end).map((l, i) => `${start + i + 1} | ${l}`).join('\n')
+					} else {
+						result = fullContent
+					}
 				} catch {
 					result = `[File not found: ${input.filePath}]`
 				}

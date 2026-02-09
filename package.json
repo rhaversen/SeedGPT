@@ -16,13 +16,13 @@
 		"@anthropic-ai/sdk": "^0.74.0",
 		"@octokit/rest": "^22.0.0",
 		"mongoose": "^8.15.1",
-		"simple-git": "^3.27.0"
+		"simple-git": "^3.27.0",
+		"typescript": "^5.8.3"
 	},
 	"devDependencies": {
 		"@types/jest": "^30.0.0",
 		"@types/node": "^22.15.29",
 		"jest": "^30.0.0",
-		"mongodb-memory-server": "^11.0.1",
-		"typescript": "^5.8.3"
+		"mongodb-memory-server": "^11.0.1"
 	}
 }

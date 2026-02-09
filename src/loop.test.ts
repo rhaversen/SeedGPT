@@ -47,7 +47,7 @@ jest.unstable_mockModule('./tools/github.js', () => ({
 }))
 
 jest.unstable_mockModule('./tools/codebase.js', () => ({
-	getFileTree: jest.fn<() => Promise<string>>().mockResolvedValue('src/\n  index.ts\n  loop.ts'),
+	getCodebaseIndex: jest.fn<() => Promise<string>>().mockResolvedValue('### src/index.ts (5 lines)\n  export function main(): void  [L1-5]'),
 	readFiles: jest.fn<() => Promise<Record<string, string>>>().mockResolvedValue({ 'src/index.ts': 'console.log("hello")' }),
 	readFile: jest.fn<() => Promise<string>>().mockResolvedValue('console.log("hello")'),
 }))
