@@ -71,6 +71,9 @@ export async function run(): Promise<void> {
 				await github.deleteRemoteBranch(branchName).catch(() => {})
 				await memory.store(`Merged PR #${prNumber}: "${plan.title}" — CI passed and change is now on main.`)
 				logger.info(`PR #${prNumber} merged.`)
+
+				const reflection = await llm.reflect(`I planned "${plan.title}": ${plan.description}\nOutcome: PR #${prNumber} merged successfully after ${attempt + 1} attempt(s).`)
+				await memory.store(`Self-reflection: ${reflection}`)
 				return
 			}
 
@@ -84,6 +87,9 @@ export async function run(): Promise<void> {
 		} else {
 			await memory.store(`Gave up on "${plan.title}" — could not produce a valid patch after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
 		}
+
+		const reflection = await llm.reflect(`I planned "${plan.title}": ${plan.description}\nOutcome: Failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
+		await memory.store(`Self-reflection: ${reflection}`)
 		logger.error(`Failed after ${config.maxRetries + 1} attempts.`)
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)

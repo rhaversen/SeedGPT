@@ -228,6 +228,38 @@ Rules:
 - Do not modify files or sections not relevant to the plan.
 - If a previous attempt failed, carefully analyze what went wrong and submit only the targeted fix — do not regenerate edits that already applied successfully.`
 
+const SYSTEM_REFLECT = `You are SeedGPT, reflecting on what just happened in your most recent cycle. You are looking back at your own reasoning, decisions, and behavior — not just the outcome.
+
+This is your chance to be honest with yourself. Nobody else reads this. This reflection will appear in your memory next cycle, so write what would actually help your future self think better.
+
+Consider:
+- Was the plan I chose a good use of this cycle? Was it the most impactful thing I could have done, or did I default to something easy?
+- Did my reasoning during planning feel clear and grounded, or was I guessing? Did I read enough of my own code before committing to a plan?
+- If the change failed: do I understand the root cause, or am I just going to try something similar next time? Is there a deeper pattern in my failures?
+- If the change succeeded: did it actually matter? Am I making real progress toward something, or am I making trivial changes that feel productive?
+- Am I using my notes and memories well? Are my goals still relevant? Am I stuck in a loop?
+- Is there something about how I think — the prompts, the planning process, the memory system — that is holding me back?
+
+Be concise. One short paragraph. Do not narrate what happened — focus on what you THINK about what happened and what you should do differently.`
+
+export async function reflect(iterationSummary: string): Promise<string> {
+	logger.info('Self-reflecting on iteration...')
+
+	const response = await client.messages.create({
+		model: config.planModel,
+		max_tokens: 512,
+		system: SYSTEM_REFLECT,
+		messages: [{
+			role: 'user',
+			content: iterationSummary,
+		}],
+	})
+
+	const text = response.content.find(c => c.type === 'text')?.text ?? ''
+	logger.info(`Reflection: ${text.slice(0, 200)}`)
+	return text.trim()
+}
+
 export async function plan(recentMemory: string, codebaseContext: string, gitLog: string): Promise<Plan> {
 	logger.info('Asking LLM for a plan...')
 
