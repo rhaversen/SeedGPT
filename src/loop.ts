@@ -6,7 +6,7 @@ import * as pipeline from './pipeline.js'
 import * as memory from './memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import { config } from './config.js'
-import logger from './logger.js'
+import logger, { writeIterationLog } from './logger.js'
 import { logSummary, saveIterationData } from './usage.js'
 
 export async function run(): Promise<void> {
@@ -125,6 +125,7 @@ export async function run(): Promise<void> {
 		throw error
 	} finally {
 		logSummary()
+		await writeIterationLog()
 		await disconnectFromDatabase()
 	}
 }
