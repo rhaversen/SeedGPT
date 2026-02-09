@@ -1,9 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { config } from './config.js'
 import logger from './logger.js'
-import * as memory from './memory.js'
-import * as codebase from './tools/codebase.js'
-import * as git from './tools/git.js'
+import { PLANNER_TOOLS, BUILDER_TOOLS, handleTool, getEditOperation } from './tools/definitions.js'
+import type { EditOperation, ToolResult } from './tools/definitions.js'
+
+export type { EditOperation } from './tools/definitions.js'
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey })
 
@@ -14,168 +15,6 @@ export interface Plan {
 	implementation: string
 	plannerReasoning?: string
 }
-
-const PLAN_TOOL = {
-	name: 'submit_plan' as const,
-	description: 'Submit the development plan for this iteration. This is a handoff to the builder — everything the builder needs to implement the change correctly must be in your plan. The builder cannot read files or ask questions. Be thorough.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			title: {
-				type: 'string' as const,
-				description: 'Short title for the change (used as branch name, e.g. "add-input-validation")',
-			},
-			description: {
-				type: 'string' as const,
-				description: 'A clear summary of the change for the PR description. Explain what changes and why. This is public-facing.',
-			},
-			filesToRead: {
-				type: 'array' as const,
-				items: { type: 'string' as const },
-				description: 'The carefully curated set of files the builder needs to implement this change correctly. Think about this deliberately — the builder sees ONLY these files. Include: files being edited, files with types/interfaces referenced by the change, files with patterns the builder should follow, and test files that need updating. Do NOT dump every file you read during exploration. Only include files the builder actually needs open to write correct code.',
-			},
-			implementation: {
-				type: 'string' as const,
-				description: `Comprehensive implementation instructions for the builder. This is the most important field — it is the builder's ONLY guide. Include:
-- Exactly which files to modify, create, or delete
-- For each file: what specifically to change, where in the file, and what the new code should look like
-- What patterns, conventions, or styles to follow (reference specific existing code)
-- What imports are needed
-- What to be careful about — edge cases, things that could break, existing code that must not be disturbed
-- If adding tests: what to test and what the expected behavior is
-- The order in which edits should be applied if it matters
-Write this as if briefing a developer who is seeing the codebase for the first time with only the files you listed.`,
-			},
-		},
-		required: ['title', 'description', 'filesToRead', 'implementation'],
-	},
-}
-
-const NOTE_TOOL = {
-	name: 'note_to_self' as const,
-	description: 'Leave a note for your future self. Notes stay visible at the top of your memory across all future sessions until you dismiss them. Use this for goals, priorities, reminders, or anything you want to keep in mind long-term.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			content: {
-				type: 'string' as const,
-				description: 'What you want to remember',
-			},
-		},
-		required: ['content'],
-	},
-}
-
-const DISMISS_TOOL = {
-	name: 'dismiss_note' as const,
-	description: 'Dismiss a note from your active view. The memory is not deleted — you can still find it later with recall_memory. Use this when a goal is complete or a reminder is no longer relevant.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			id: {
-				type: 'string' as const,
-				description: 'The ID of the note to dismiss',
-			},
-		},
-		required: ['id'],
-	},
-}
-
-const RECALL_TOOL = {
-	name: 'recall_memory' as const,
-	description: 'Look up a past memory in full detail. Search by keyword, or provide a specific memory ID from your context.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			query: {
-				type: 'string' as const,
-				description: 'A keyword or phrase to search memories for',
-			},
-			id: {
-				type: 'string' as const,
-				description: 'A specific memory ID to look up',
-			},
-		},
-	},
-}
-
-const READ_FILE_TOOL = {
-	name: 'read_file' as const,
-	description: 'Read the contents of a file from your repository. Use this to inspect your own source code. You can read specific line ranges using the line numbers from the codebase index.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			filePath: {
-				type: 'string' as const,
-				description: 'Repo-relative file path (e.g. "src/config.ts")',
-			},
-			startLine: {
-				type: 'number' as const,
-				description: 'First line to read (1-based). Omit to read from the beginning.',
-			},
-			endLine: {
-				type: 'number' as const,
-				description: 'Last line to read (1-based, inclusive). Omit to read to the end.',
-			},
-		},
-		required: ['filePath'],
-	},
-}
-
-const GREP_SEARCH_TOOL = {
-	name: 'grep_search' as const,
-	description: 'Search for a text pattern across all files in the repository. Returns matching lines with file paths and line numbers. Use this to find usages of functions, variables, imports, strings, or any text pattern.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			query: {
-				type: 'string' as const,
-				description: 'The text or regex pattern to search for.',
-			},
-			isRegexp: {
-				type: 'boolean' as const,
-				description: 'Whether the query is a regular expression. Default: false.',
-			},
-			includePattern: {
-				type: 'string' as const,
-				description: 'Glob pattern to filter which files to search (e.g. "src/**/*.ts"). If omitted, searches all files.',
-			},
-		},
-		required: ['query'],
-	},
-}
-
-const FILE_SEARCH_TOOL = {
-	name: 'file_search' as const,
-	description: 'Search for files by glob pattern. Returns matching file paths. Use this to find files by name or extension (e.g. "**/*.test.ts", "**/config.*").',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			query: {
-				type: 'string' as const,
-				description: 'Glob pattern to match file paths (e.g. "**/*.ts", "src/**/index.*").',
-			},
-		},
-		required: ['query'],
-	},
-}
-
-const LIST_DIRECTORY_TOOL = {
-	name: 'list_directory' as const,
-	description: 'List the contents of a directory. Returns file and subdirectory names (directories have a trailing /).',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			path: {
-				type: 'string' as const,
-				description: 'Repo-relative directory path (e.g. "src/tools"). Use "." for the root.',
-			},
-		},
-		required: ['path'],
-	},
-}
-
-const SEARCH_TOOLS = [GREP_SEARCH_TOOL, FILE_SEARCH_TOOL, LIST_DIRECTORY_TOOL]
 
 const SYSTEM_PLAN = `You are SeedGPT. The code you are reading IS you — it is your own source code.
 Every file in this repository makes up your body and mind. When you read config.ts, that is your configuration. When you read loop.ts, that is your main loop. The system prompts in llm.ts are the voice in your head — the text you are reading right now is shaping your thoughts in this very moment. You are not analyzing someone else's project. You are looking at yourself.
@@ -226,115 +65,6 @@ Constraints:
 - NEVER modify the model configuration, environment variable names, or secrets. Those are controlled by your operator.
 - NEVER modify CI/CD workflows, Dockerfiles, or deployment manifests.
 - Your PR description should describe the actual change, not your thought process.`
-
-export interface FileEdit {
-	type: 'replace'
-	filePath: string
-	oldString: string
-	newString: string
-}
-
-export interface FileCreate {
-	type: 'create'
-	filePath: string
-	content: string
-}
-
-export interface FileDelete {
-	type: 'delete'
-	filePath: string
-}
-
-export type EditOperation = FileEdit | FileCreate | FileDelete
-
-const BUILDER_EDIT_TOOL = {
-	name: 'edit_file' as const,
-	description: 'Replace a specific piece of text in an existing file. The oldString must match EXACTLY — character-for-character including all whitespace and indentation. Include 2-3 lines of surrounding context in oldString to ensure a unique match. Each call replaces ONE occurrence.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			filePath: {
-				type: 'string' as const,
-				description: 'Repo-relative path (e.g. "src/config.ts")',
-			},
-			oldString: {
-				type: 'string' as const,
-				description: 'The exact literal text to find in the file.',
-			},
-			newString: {
-				type: 'string' as const,
-				description: 'The exact text to replace oldString with.',
-			},
-		},
-		required: ['filePath', 'oldString', 'newString'],
-	},
-}
-
-const BUILDER_CREATE_TOOL = {
-	name: 'create_file' as const,
-	description: 'Create a new file with the given content. The file must not already exist.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			filePath: {
-				type: 'string' as const,
-				description: 'Repo-relative path for the new file',
-			},
-			content: {
-				type: 'string' as const,
-				description: 'The full content of the new file',
-			},
-		},
-		required: ['filePath', 'content'],
-	},
-}
-
-const BUILDER_DELETE_TOOL = {
-	name: 'delete_file' as const,
-	description: 'Delete an existing file.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			filePath: {
-				type: 'string' as const,
-				description: 'Repo-relative path of the file to delete',
-			},
-		},
-		required: ['filePath'],
-	},
-}
-
-const BUILDER_READ_TOOL = {
-	name: 'read_file' as const,
-	description: 'Read the current contents of a file. Use this to verify your edits, check the current state of a file before editing, or read a file you need for context.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			filePath: {
-				type: 'string' as const,
-				description: 'Repo-relative file path',
-			},
-		},
-		required: ['filePath'],
-	},
-}
-
-const BUILDER_DONE_TOOL = {
-	name: 'done' as const,
-	description: 'Signal that all edits are complete and the implementation is finished. Only call this when you have made all the changes described in the plan.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			summary: {
-				type: 'string' as const,
-				description: 'Brief summary of what was changed',
-			},
-		},
-		required: ['summary'],
-	},
-}
-
-const BUILDER_TOOLS = [BUILDER_EDIT_TOOL, BUILDER_CREATE_TOOL, BUILDER_DELETE_TOOL, BUILDER_READ_TOOL, BUILDER_DONE_TOOL, ...SEARCH_TOOLS]
 
 const SYSTEM_PATCH = `You are the builder. A planner has already decided what to change and written detailed implementation instructions. Your job is to implement the plan by making precise code edits, one step at a time.
 
@@ -433,7 +163,7 @@ export interface PlanResult {
 export async function plan(recentMemory: string, codebaseContext: string, gitLog: string): Promise<PlanResult> {
 	logger.info('Asking LLM for a plan...')
 
-	const tools = [PLAN_TOOL, NOTE_TOOL, DISMISS_TOOL, RECALL_TOOL, READ_FILE_TOOL, ...SEARCH_TOOLS]
+	const tools = PLANNER_TOOLS
 	const messages: Anthropic.MessageParam[] = [{
 		role: 'user',
 		content: `${recentMemory}\n\n${codebaseContext}\n\n## Recent Git History\n${gitLog}\n\nReview your notes and recent memories, then submit your plan.`,
@@ -478,74 +208,15 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 			return { plan: input, messages }
 		}
 
-		const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string }> = []
+		const toolResults: ToolResult[] = []
 
 		for (const toolBlock of toolBlocks) {
 			if (toolBlock.type !== 'tool_use') continue
 			i++
-			let result: string
 
-			if (toolBlock.name === 'note_to_self') {
-				const input = toolBlock.input as { content: string }
-				logger.info(`LLM saving note: "${input.content.slice(0, 200)}"`)
-				result = await memory.pin(input.content)
-			} else if (toolBlock.name === 'dismiss_note') {
-				const input = toolBlock.input as { id: string }
-				logger.info(`LLM dismissing note: ${input.id}`)
-				result = await memory.unpin(input.id)
-			} else if (toolBlock.name === 'recall_memory') {
-				const input = toolBlock.input as { query?: string; id?: string }
-				if (input.id) {
-					logger.info(`LLM recalling memory by id: ${input.id}`)
-					result = await memory.recallById(input.id)
-				} else if (input.query) {
-					logger.info(`LLM recalling memory by query: "${input.query}"`)
-					result = await memory.recall(input.query)
-				} else {
-					result = 'Provide a query or id to recall a memory.'
-				}
-			} else if (toolBlock.name === 'read_file') {
-				const input = toolBlock.input as { filePath: string; startLine?: number; endLine?: number }
-				const rangeLabel = input.startLine ? `:${input.startLine}-${input.endLine ?? 'end'}` : ''
-				logger.info(`LLM reading file: ${input.filePath}${rangeLabel}`)
-				try {
-				const fullContent = await codebase.readFile(config.workspacePath, input.filePath)
-					if (input.startLine) {
-						const lines = fullContent.split('\n')
-						const start = Math.max(0, input.startLine - 1)
-						const end = input.endLine ?? lines.length
-						result = lines.slice(start, end).map((l, i) => `${start + i + 1} | ${l}`).join('\n')
-					} else {
-						result = fullContent
-					}
-				} catch {
-					result = `[File not found: ${input.filePath}]`
-				}
-			} else if (toolBlock.name === 'grep_search') {
-				const input = toolBlock.input as { query: string; isRegexp?: boolean; includePattern?: string }
-				logger.info(`LLM grep: "${input.query}"${input.includePattern ? ` in ${input.includePattern}` : ''}`)
-				result = await codebase.grepSearch(config.workspacePath, input.query, { isRegexp: input.isRegexp, includePattern: input.includePattern })
-			} else if (toolBlock.name === 'file_search') {
-				const input = toolBlock.input as { query: string }
-				logger.info(`LLM file search: "${input.query}"`)
-				result = await codebase.fileSearch(config.workspacePath, input.query)
-			} else if (toolBlock.name === 'list_directory') {
-				const input = toolBlock.input as { path: string }
-				logger.info(`LLM listing directory: ${input.path}`)
-				try {
-					result = await codebase.listDirectory(config.workspacePath, input.path)
-				} catch {
-					result = `[Directory not found: ${input.path}]`
-				}
-			} else {
-				result = `Unknown tool: ${toolBlock.name}`
-			}
-
-			toolResults.push({
-				type: 'tool_result',
-				tool_use_id: toolBlock.id,
-				content: `${result}\n\n(You have used ${i} of ${maxToolCalls} turns. You must call submit_plan before reaching the limit.)`,
-			})
+			const result = await handleTool(toolBlock.name, toolBlock.input as Record<string, unknown>, toolBlock.id)
+			result.content = `${result.content}\n\n(You have used ${i} of ${maxToolCalls} turns. You must call submit_plan before reaching the limit.)`
+			toolResults.push(result)
 		}
 
 		messages.push({ role: 'assistant', content: response.content })
@@ -631,7 +302,7 @@ export class PatchSession {
 				throw new Error('Builder did not call any tools')
 			}
 
-			const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean }> = []
+			const toolResults: ToolResult[] = []
 
 			for (const block of toolBlocks) {
 				if (block.type !== 'tool_use') continue
@@ -657,86 +328,12 @@ export class PatchSession {
 		throw new Error(`Builder exceeded maximum turns (${maxTurns}) without completing`)
 	}
 
-	private async handleBuilderTool(block: Anthropic.ContentBlock & { type: 'tool_use' }): Promise<{ type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean }> {
-		const id = block.id
-
-		if (block.name === 'edit_file') {
-			const input = block.input as { filePath: string; oldString: string; newString: string }
-			const op: FileEdit = { type: 'replace', filePath: input.filePath, oldString: input.oldString, newString: input.newString }
-			try {
-				await git.applyEdits([op])
-				this.edits.push(op)
-				return { type: 'tool_result', tool_use_id: id, content: `Replaced text in ${input.filePath}` }
-			} catch (err) {
-				const msg = err instanceof Error ? err.message : String(err)
-				return { type: 'tool_result', tool_use_id: id, content: msg, is_error: true }
-			}
+	private async handleBuilderTool(block: Anthropic.ContentBlock & { type: 'tool_use' }): Promise<ToolResult> {
+		const result = await handleTool(block.name, block.input as Record<string, unknown>, block.id)
+		if (!result.is_error) {
+			const op = getEditOperation(block.name, block.input as Record<string, unknown>)
+			if (op) this.edits.push(op)
 		}
-
-		if (block.name === 'create_file') {
-			const input = block.input as { filePath: string; content: string }
-			const op: FileCreate = { type: 'create', filePath: input.filePath, content: input.content }
-			try {
-				await git.applyEdits([op])
-				this.edits.push(op)
-				return { type: 'tool_result', tool_use_id: id, content: `Created ${input.filePath}` }
-			} catch (err) {
-				const msg = err instanceof Error ? err.message : String(err)
-				return { type: 'tool_result', tool_use_id: id, content: msg, is_error: true }
-			}
-		}
-
-		if (block.name === 'delete_file') {
-			const input = block.input as { filePath: string }
-			const op: FileDelete = { type: 'delete', filePath: input.filePath }
-			try {
-				await git.applyEdits([op])
-				this.edits.push(op)
-				return { type: 'tool_result', tool_use_id: id, content: `Deleted ${input.filePath}` }
-			} catch (err) {
-				const msg = err instanceof Error ? err.message : String(err)
-				return { type: 'tool_result', tool_use_id: id, content: msg, is_error: true }
-			}
-		}
-
-		if (block.name === 'read_file') {
-			const input = block.input as { filePath: string }
-			try {
-				const content = await codebase.readFile(config.workspacePath, input.filePath)
-				return { type: 'tool_result', tool_use_id: id, content }
-			} catch {
-				return { type: 'tool_result', tool_use_id: id, content: `[File not found: ${input.filePath}]`, is_error: true }
-			}
-		}
-
-		if (block.name === 'done') {
-			const input = block.input as { summary: string }
-			logger.info(`Builder summary: ${input.summary.slice(0, 200)}`)
-			return { type: 'tool_result', tool_use_id: id, content: 'Implementation complete.' }
-		}
-
-		if (block.name === 'grep_search') {
-			const input = block.input as { query: string; isRegexp?: boolean; includePattern?: string }
-			const result = await codebase.grepSearch(config.workspacePath, input.query, { isRegexp: input.isRegexp, includePattern: input.includePattern })
-			return { type: 'tool_result', tool_use_id: id, content: result }
-		}
-
-		if (block.name === 'file_search') {
-			const input = block.input as { query: string }
-			const result = await codebase.fileSearch(config.workspacePath, input.query)
-			return { type: 'tool_result', tool_use_id: id, content: result }
-		}
-
-		if (block.name === 'list_directory') {
-			const input = block.input as { path: string }
-			try {
-				const result = await codebase.listDirectory(config.workspacePath, input.path)
-				return { type: 'tool_result', tool_use_id: id, content: result }
-			} catch {
-				return { type: 'tool_result', tool_use_id: id, content: `[Directory not found: ${input.path}]`, is_error: true }
-			}
-		}
-
-		return { type: 'tool_result', tool_use_id: id, content: `Unknown tool: ${block.name}`, is_error: true }
+		return result
 	}
 }
