@@ -343,6 +343,47 @@ export async function fileSearch(rootPath: string, globPattern: string): Promise
 	return matches.join('\n')
 }
 
+export async function findUsages(rootPath: string, symbolName: string): Promise<string> {
+	const allFiles: string[] = []
+	await walk(rootPath, '', allFiles)
+
+	const regex = new RegExp(`\\b${symbolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g')
+	const results: Map<string, string[]> = new Map()
+	let total = 0
+	const maxResults = 150
+
+	for (const relPath of allFiles) {
+		if (relPath.endsWith('/')) continue
+		if (!TS_EXTENSIONS.has(extname(relPath))) continue
+
+		try {
+			const content = await fsReadFile(join(rootPath, relPath), 'utf-8')
+			const lines = content.split('\n')
+			for (let i = 0; i < lines.length; i++) {
+				if (regex.test(lines[i])) {
+					regex.lastIndex = 0
+					if (!results.has(relPath)) results.set(relPath, [])
+					results.get(relPath)!.push(`  L${i + 1}: ${lines[i].trimStart()}`)
+					total++
+					if (total >= maxResults) {
+						const out = formatUsages(results)
+						return `${out}\n\n(truncated at ${maxResults} results)`
+					}
+				}
+			}
+		} catch { /* skip unreadable */ }
+	}
+
+	if (results.size === 0) return `No usages of "${symbolName}" found.`
+	return formatUsages(results)
+}
+
+function formatUsages(results: Map<string, string[]>): string {
+	return [...results.entries()]
+		.map(([file, lines]) => `${file} (${lines.length})\n${lines.join('\n')}`)
+		.join('\n\n')
+}
+
 export async function listDirectory(rootPath: string, dirPath: string): Promise<string> {
 	const fullPath = join(rootPath, dirPath)
 	const entries = (await readdir(fullPath, { withFileTypes: true }))
