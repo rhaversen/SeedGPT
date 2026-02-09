@@ -47,7 +47,7 @@ export const config = {
 	githubOwner: requireEnv('GITHUB_OWNER'),
 	githubRepo: requireEnv('GITHUB_REPO'),
 	planModel: process.env.PLAN_MODEL ?? (isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'),
-	patchModel: process.env.PATCH_MODEL ?? (isProduction ? 'claude-opus-4-6' : 'claude-haiku-4-5'),
+	patchModel: process.env.PATCH_MODEL ?? (isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'),
 	reflectModel: process.env.REFLECT_MODEL ?? 'claude-haiku-4-5',
 	maxRetries: parseInt(process.env.MAX_RETRIES ?? '3', 10),
 	workspacePath: process.env.WORKSPACE_PATH ?? (isProduction ? '/app/workspace' : './workspace'),
