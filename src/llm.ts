@@ -325,16 +325,43 @@ Consider:
 
 Be concise. One short paragraph. Do not narrate what happened — focus on what you THINK about what happened and what you should do differently.`
 
-export async function reflect(iterationSummary: string): Promise<string> {
+function summarizeMessages(messages: Anthropic.MessageParam[]): string {
+	return messages.map(m => {
+		const role = m.role === 'assistant' ? 'ASSISTANT' : 'USER'
+		if (typeof m.content === 'string') return `[${role}] ${m.content}`
+		if (!Array.isArray(m.content)) return `[${role}] (empty)`
+		const parts = m.content.map(block => {
+			if (block.type === 'text') return block.text
+			if (block.type === 'tool_use') return `[tool: ${block.name}](${JSON.stringify(block.input).slice(0, 300)})`
+			if (block.type === 'tool_result') {
+				const content = typeof block.content === 'string' ? block.content : JSON.stringify(block.content)
+				return `[result${block.is_error ? ' ERROR' : ''}] ${content?.slice(0, 500) ?? '(empty)'}`
+			}
+			return ''
+		}).filter(Boolean)
+		return `[${role}] ${parts.join('\n')}`
+	}).join('\n\n')
+}
+
+export async function reflect(outcome: string, plannerMessages: Anthropic.MessageParam[], builderMessages: Anthropic.MessageParam[]): Promise<string> {
 	logger.info('Self-reflecting on iteration...')
 
+	const transcript = [
+		'## Planner Conversation',
+		summarizeMessages(plannerMessages),
+		'## Builder Conversation',
+		summarizeMessages(builderMessages),
+		'## Outcome',
+		outcome,
+	].join('\n\n')
+
 	const response = await client.messages.create({
-		model: config.planModel,
+		model: config.reflectModel,
 		max_tokens: 512,
 		system: SYSTEM_REFLECT,
 		messages: [{
 			role: 'user',
-			content: iterationSummary,
+			content: transcript,
 		}],
 	})
 
@@ -343,7 +370,12 @@ export async function reflect(iterationSummary: string): Promise<string> {
 	return text.trim()
 }
 
-export async function plan(recentMemory: string, codebaseContext: string, gitLog: string): Promise<Plan> {
+export interface PlanResult {
+	plan: Plan
+	messages: Anthropic.MessageParam[]
+}
+
+export async function plan(recentMemory: string, codebaseContext: string, gitLog: string): Promise<PlanResult> {
 	logger.info('Asking LLM for a plan...')
 
 	const tools = [PLAN_TOOL, NOTE_TOOL, DISMISS_TOOL, RECALL_TOOL, READ_FILE_TOOL]
@@ -387,7 +419,8 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 			}
 
 			logger.info(`Plan: "${input.title}" — files: ${input.filesToRead.length}, reasoning: ${(input.plannerReasoning?.length ?? 0)} chars`)
-			return input
+			messages.push({ role: 'assistant', content: response.content })
+			return { plan: input, messages }
 		}
 
 		const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string }> = []
@@ -454,6 +487,10 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 export class PatchSession {
 	private readonly messages: Anthropic.MessageParam[] = []
 	private readonly edits: EditOperation[] = []
+
+	get conversation(): Anthropic.MessageParam[] {
+		return this.messages
+	}
 
 	constructor(plan: Plan, fileContents: Record<string, string>, memoryContext: string) {
 		const filesSection = Object.entries(fileContents)

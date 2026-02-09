@@ -25,7 +25,7 @@ export async function run(): Promise<void> {
 			const codebaseContext = await codebase.getCodebaseContext(config.workspacePath)
 			const gitLog = await git.getRecentLog(gitClient)
 
-			const plan = await llm.plan(recentMemory, codebaseContext, gitLog)
+			const { plan, messages: plannerMessages } = await llm.plan(recentMemory, codebaseContext, gitLog)
 			await memory.store(`Planned change "${plan.title}": ${plan.description}`)
 
 			const fileContents = await codebase.readFiles(config.workspacePath, plan.filesToRead)
@@ -68,7 +68,11 @@ export async function run(): Promise<void> {
 					await memory.store(`Merged PR #${prNumber}: "${plan.title}" — CI passed and change is now on main.`)
 					logger.info(`PR #${prNumber} merged.`)
 
-					const reflection = await llm.reflect(`I planned "${plan.title}": ${plan.description}\nOutcome: PR #${prNumber} merged successfully after ${attempt + 1} attempt(s).`)
+					const reflection = await llm.reflect(
+						`PR #${prNumber} merged successfully after ${attempt + 1} attempt(s).`,
+						plannerMessages,
+						session.conversation,
+					)
 					await memory.store(`Self-reflection: ${reflection}`)
 					merged = true
 					break
@@ -90,7 +94,11 @@ export async function run(): Promise<void> {
 				await memory.store(`Gave up on "${plan.title}" — could not produce a valid patch after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
 			}
 
-			const reflection = await llm.reflect(`I planned "${plan.title}": ${plan.description}\nOutcome: Failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
+			const reflection = await llm.reflect(
+				`Failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`,
+				plannerMessages,
+				session.conversation,
+			)
 			await memory.store(`Self-reflection: ${reflection}`)
 			logger.error(`Failed after ${config.maxRetries + 1} attempts — starting fresh plan.`)
 		}
