@@ -2,7 +2,7 @@ import { readdir, readFile as fsReadFile } from 'fs/promises'
 import { join, extname, dirname, posix } from 'path'
 import ts from 'typescript'
 
-const IGNORE = new Set(['node_modules', '.git', 'dist', 'logs', '.tmp-patch.diff'])
+const IGNORE = new Set(['node_modules', '.git', 'dist', 'logs', '.tmp-patch.diff', 'package-lock.json'])
 const TS_EXTENSIONS = new Set(['.ts', '.js', '.mjs', '.cjs'])
 
 export async function getFileTree(rootPath: string): Promise<string> {
