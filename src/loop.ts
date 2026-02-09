@@ -7,7 +7,7 @@ import * as memory from './memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import { config } from './config.js'
 import logger from './logger.js'
-import { getSummary } from './usage.js'
+import { logSummary } from './usage.js'
 
 export async function run(): Promise<void> {
 	logger.info('SeedGPT starting iteration...')
@@ -116,7 +116,7 @@ export async function run(): Promise<void> {
 		} catch { /* DB may be down */ }
 		throw error
 	} finally {
-		logger.info(`\n${getSummary()}`)
+		logSummary()
 		await disconnectFromDatabase()
 	}
 }

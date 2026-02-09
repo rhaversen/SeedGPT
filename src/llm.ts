@@ -165,6 +165,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 
 	const maxToolCalls = 50
 	for (let i = 0; i < maxToolCalls; i++) {
+		logger.info(`Planner turn ${i + 1}/${maxToolCalls}`)
 		const response = await client.messages.create({
 			model: config.planModel,
 			max_tokens: 4096,
@@ -172,7 +173,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 			messages,
 			tools,
 		})
-		trackUsage('plan', config.planModel, response.usage)
+		trackUsage('planner', config.planModel, response.usage)
 
 		const toolBlocks = response.content.filter(c => c.type === 'tool_use')
 		if (toolBlocks.length === 0) {
@@ -208,6 +209,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 		for (const toolBlock of toolBlocks) {
 			if (toolBlock.type !== 'tool_use') continue
 			i++
+			logger.info(`Planner calling ${toolBlock.name}`)
 
 			const result = await handleTool(toolBlock.name, toolBlock.input as Record<string, unknown>, toolBlock.id)
 			result.content = `${result.content}\n\n(You have used ${i} of ${maxToolCalls} turns. You must call submit_plan before reaching the limit.)`
@@ -278,6 +280,7 @@ export class PatchSession {
 		const maxTurns = 80
 
 		for (let turn = 0; turn < maxTurns; turn++) {
+			logger.info(`Builder turn ${turn + 1}/${maxTurns}`)
 			const response = await client.messages.create({
 				model: config.patchModel,
 				max_tokens: 16384,
@@ -303,6 +306,7 @@ export class PatchSession {
 			for (const block of toolBlocks) {
 				if (block.type !== 'tool_use') continue
 				turn++
+				logger.info(`Builder calling ${block.name}${block.name === 'edit_file' || block.name === 'create_file' || block.name === 'delete_file' ? `: ${(block.input as Record<string, string>).filePath}` : ''}`)
 
 				const result = await this.handleBuilderTool(block)
 				toolResults.push(result)

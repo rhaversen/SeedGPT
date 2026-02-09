@@ -31,11 +31,13 @@ function computeCost(model: string, inputTokens: number, outputTokens: number): 
 export function trackUsage(caller: string, model: string, usage: { input_tokens: number; output_tokens: number }): void {
 	const cost = computeCost(model, usage.input_tokens, usage.output_tokens)
 	entries.push({ caller, model, inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, cost })
-	logger.info(`[usage] ${caller} | ${model} | in=${usage.input_tokens} out=${usage.output_tokens} | $${cost.toFixed(4)}`)
 }
 
-export function getSummary(): string {
-	if (entries.length === 0) return 'No API calls recorded.'
+export function logSummary(): void {
+	if (entries.length === 0) {
+		logger.info('No API calls recorded.')
+		return
+	}
 
 	const byModel = new Map<string, { inputTokens: number; outputTokens: number; cost: number; calls: number }>()
 	const byCaller = new Map<string, { inputTokens: number; outputTokens: number; cost: number; calls: number }>()
@@ -64,21 +66,13 @@ export function getSummary(): string {
 		byCaller.set(e.caller, c)
 	}
 
-	const lines: string[] = ['## Usage Summary']
-
-	lines.push(`Total: ${entries.length} calls | in=${totalInput} out=${totalOutput} | $${totalCost.toFixed(4)}`)
-
-	lines.push('\nBy caller:')
+	logger.info(`Usage: ${entries.length} API calls | ${totalInput} in + ${totalOutput} out tokens | $${totalCost.toFixed(4)}`)
 	for (const [caller, s] of [...byCaller].sort((a, b) => b[1].cost - a[1].cost)) {
-		lines.push(`  ${caller}: ${s.calls} calls | in=${s.inputTokens} out=${s.outputTokens} | $${s.cost.toFixed(4)}`)
+		logger.info(`  ${caller}: ${s.calls} calls | ${s.inputTokens} in + ${s.outputTokens} out | $${s.cost.toFixed(4)}`)
 	}
-
-	lines.push('\nBy model:')
 	for (const [model, s] of [...byModel].sort((a, b) => b[1].cost - a[1].cost)) {
-		lines.push(`  ${model}: ${s.calls} calls | in=${s.inputTokens} out=${s.outputTokens} | $${s.cost.toFixed(4)}`)
+		logger.info(`  ${model}: ${s.calls} calls | ${s.inputTokens} in + ${s.outputTokens} out | $${s.cost.toFixed(4)}`)
 	}
-
-	return lines.join('\n')
 }
 
 export function resetUsage(): void {
