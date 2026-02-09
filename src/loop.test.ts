@@ -20,6 +20,8 @@ jest.unstable_mockModule('./config.js', () => ({
 
 const mockGitClient = {
 	checkout: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+	clean: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+	pull: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 } as unknown as SimpleGit
 
 jest.unstable_mockModule('./database.js', () => ({
@@ -47,7 +49,10 @@ jest.unstable_mockModule('./tools/github.js', () => ({
 }))
 
 jest.unstable_mockModule('./tools/codebase.js', () => ({
-	getCodebaseContext: jest.fn<() => Promise<string>>().mockResolvedValue('## File Tree\n```\n.\n└── src/\n    └── index.ts\n```\n\n## Dependency Graph\nNo dependencies found.\n\n## Declarations\n### src/index.ts (5 lines)\n  export function main(): void  [L1-5]'),
+	getFileTree: jest.fn<() => Promise<string>>().mockResolvedValue('.\n└── src/\n    └── index.ts'),
+	getDeclarationIndex: jest.fn<() => Promise<string>>().mockResolvedValue('### src/index.ts (5 lines)\n  export function main(): void  [L1-5]'),
+	getDependencyGraph: jest.fn<() => Promise<string>>().mockResolvedValue('No dependencies found.'),
+	snapshotContext: jest.fn(),
 	readFile: jest.fn<() => Promise<string>>().mockResolvedValue('console.log("hello")'),
 }))
 
@@ -65,15 +70,27 @@ jest.unstable_mockModule('./pipeline.js', () => ({
 	awaitChecks: jest.fn<() => Promise<{ passed: boolean }>>().mockResolvedValue({ passed: true }),
 }))
 
+jest.unstable_mockModule('node:fs/promises', () => ({
+	mkdir: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+	writeFile: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+}))
+
+jest.unstable_mockModule('./usage.js', () => ({
+	logSummary: jest.fn<() => void>(),
+	saveIterationData: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+}))
+
 const mockPlan = { title: 'test-change', description: 'A test change', implementation: 'test implementation' }
 const mockEdits = [{ type: 'replace' as const, filePath: 'src/index.ts', oldString: 'hello', newString: 'world' }]
 const mockPatchSession = {
 	createPatch: jest.fn<() => Promise<typeof mockEdits>>().mockResolvedValue(mockEdits),
 	fixPatch: jest.fn<(...args: unknown[]) => Promise<typeof mockEdits>>().mockResolvedValue(mockEdits),
+	conversation: [] as unknown[],
 }
 
 jest.unstable_mockModule('./llm.js', () => ({
-	plan: jest.fn<() => Promise<typeof mockPlan>>().mockResolvedValue(mockPlan),
+	plan: jest.fn<() => Promise<{ plan: typeof mockPlan; messages: [] }>>().mockResolvedValue({ plan: mockPlan, messages: [] }),
+	reflect: jest.fn<() => Promise<string>>().mockResolvedValue('Test reflection.'),
 	PatchSession: jest.fn().mockImplementation(() => mockPatchSession),
 }))
 
