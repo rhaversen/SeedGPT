@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 import { mkdtemp, writeFile, rm, mkdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { extractDeclarations, getCodebaseIndex, getFileTree } from './codebase.js'
+import { extractDeclarations, getCodebaseContext, getDeclarationIndex, getDependencyGraph, getFileTree } from './codebase.js'
 
 describe('extractDeclarations', () => {
 	it('extracts exported and non-exported functions with signatures', () => {
@@ -171,7 +171,7 @@ const inst = new Map()
 	})
 })
 
-describe('getCodebaseIndex', () => {
+describe('getDeclarationIndex', () => {
 	let tempDir: string
 
 	beforeEach(async () => {
@@ -187,25 +187,14 @@ describe('getCodebaseIndex', () => {
 	console.log('hi')
 }
 `)
-		const result = await getCodebaseIndex(tempDir)
-		expect(result).toContain('## File Tree')
-		expect(result).toContain('## Declarations')
+		const result = await getDeclarationIndex(tempDir)
 		expect(result).toContain('### app.ts (4 lines)')
 		expect(result).toContain('export function main(): void  [L1-3]')
 	})
 
-	it('includes file tree with tree characters', async () => {
-		await mkdir(join(tempDir, 'src'))
-		await writeFile(join(tempDir, 'index.ts'), 'export const x = 1\n')
-		await writeFile(join(tempDir, 'src', 'util.ts'), 'export const y = 2\n')
-		const result = await getCodebaseIndex(tempDir)
-		expect(result).toContain('├── ')
-		expect(result).toContain('└── ')
-	})
-
 	it('lists .json files with line count only', async () => {
 		await writeFile(join(tempDir, 'config.json'), '{\n  "key": "value"\n}\n')
-		const result = await getCodebaseIndex(tempDir)
+		const result = await getDeclarationIndex(tempDir)
 		expect(result).toContain('### config.json (4 lines)')
 		expect(result).not.toContain('export')
 	})
@@ -213,7 +202,7 @@ describe('getCodebaseIndex', () => {
 	it('walks subdirectories', async () => {
 		await mkdir(join(tempDir, 'src'))
 		await writeFile(join(tempDir, 'src', 'util.ts'), 'export const VERSION = 1\n')
-		const result = await getCodebaseIndex(tempDir)
+		const result = await getDeclarationIndex(tempDir)
 		expect(result).toContain('### src/util.ts')
 	})
 
@@ -222,17 +211,16 @@ describe('getCodebaseIndex', () => {
 		await writeFile(join(tempDir, 'node_modules', 'lib.ts'), 'export const x = 1\n')
 		await mkdir(join(tempDir, '.git'))
 		await writeFile(join(tempDir, '.git', 'config.ts'), 'export const y = 2\n')
-		const result = await getCodebaseIndex(tempDir)
+		const result = await getDeclarationIndex(tempDir)
 		expect(result).not.toContain('node_modules')
 		expect(result).not.toContain('.git')
 	})
 
 	it('shows header only for files with no declarations', async () => {
 		await writeFile(join(tempDir, 'empty.ts'), "console.log('side effect')\n")
-		const result = await getCodebaseIndex(tempDir)
+		const result = await getDeclarationIndex(tempDir)
 		expect(result).toContain('### empty.ts (2 lines)')
-		const declarationsSection = result.split('## Declarations')[1]
-		expect(declarationsSection.split('\n').filter(l => l.includes('empty.ts')).length).toBe(1)
+		expect(result.split('\n').filter(l => l.includes('empty.ts')).length).toBe(1)
 	})
 })
 
@@ -283,5 +271,81 @@ describe('getFileTree', () => {
 	it('returns just root for empty directory', async () => {
 		const result = await getFileTree(tempDir)
 		expect(result).toBe('.')
+	})
+})
+
+describe('getDependencyGraph', () => {
+	let tempDir: string
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-deps-'))
+	})
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true })
+	})
+
+	it('shows local imports between files', async () => {
+		await writeFile(join(tempDir, 'a.ts'), "import { foo } from './b.js'\n")
+		await writeFile(join(tempDir, 'b.ts'), 'export const foo = 1\n')
+		const result = await getDependencyGraph(tempDir)
+		expect(result).toContain('a.ts → b.ts')
+	})
+
+	it('shows external packages in brackets', async () => {
+		await writeFile(join(tempDir, 'app.ts'), "import express from 'express'\n")
+		const result = await getDependencyGraph(tempDir)
+		expect(result).toContain('app.ts → [express]')
+	})
+
+	it('shows scoped packages correctly', async () => {
+		await writeFile(join(tempDir, 'app.ts'), "import Anthropic from '@anthropic-ai/sdk'\n")
+		const result = await getDependencyGraph(tempDir)
+		expect(result).toContain('app.ts → [@anthropic-ai/sdk]')
+	})
+
+	it('resolves subdirectory imports', async () => {
+		await mkdir(join(tempDir, 'tools'))
+		await writeFile(join(tempDir, 'main.ts'), "import { util } from './tools/helper.js'\n")
+		await writeFile(join(tempDir, 'tools', 'helper.ts'), 'export const util = 1\n')
+		const result = await getDependencyGraph(tempDir)
+		expect(result).toContain('main.ts → tools/helper.ts')
+	})
+
+	it('combines local and external deps on one line', async () => {
+		await writeFile(join(tempDir, 'a.ts'), "import { b } from './b.js'\nimport fs from 'fs'\n")
+		await writeFile(join(tempDir, 'b.ts'), 'export const b = 1\n')
+		const result = await getDependencyGraph(tempDir)
+		expect(result).toContain('a.ts → b.ts, [fs]')
+	})
+
+	it('omits files with no imports', async () => {
+		await writeFile(join(tempDir, 'leaf.ts'), 'export const x = 1\n')
+		const result = await getDependencyGraph(tempDir)
+		expect(result).not.toContain('leaf.ts →')
+	})
+})
+
+describe('getCodebaseContext', () => {
+	let tempDir: string
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-ctx-'))
+	})
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true })
+	})
+
+	it('combines file tree, dependency graph, and declarations', async () => {
+		await writeFile(join(tempDir, 'a.ts'), "import { b } from './b.js'\nexport function main(): void {}\n")
+		await writeFile(join(tempDir, 'b.ts'), 'export const b = 1\n')
+		const result = await getCodebaseContext(tempDir)
+		expect(result).toContain('## File Tree')
+		expect(result).toContain('├── a.ts')
+		expect(result).toContain('## Dependency Graph')
+		expect(result).toContain('a.ts → b.ts')
+		expect(result).toContain('## Declarations')
+		expect(result).toContain('export function main(): void  [L2]')
 	})
 })

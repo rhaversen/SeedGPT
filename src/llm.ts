@@ -214,14 +214,14 @@ Rules:
 - Do not modify files or sections not relevant to the plan.
 - If a previous attempt failed, carefully analyze what went wrong and submit only the targeted fix — do not regenerate edits that already applied successfully.`
 
-export async function plan(recentMemory: string, codebaseIndex: string, gitLog: string): Promise<Plan> {
+export async function plan(recentMemory: string, codebaseContext: string, gitLog: string): Promise<Plan> {
 	logger.info('Asking LLM for a plan...')
 
 	const tools = [PLAN_TOOL, NOTE_TOOL, DISMISS_TOOL, RECALL_TOOL, READ_FILE_TOOL]
 	const filesReadDuringPlanning = new Set<string>()
 	const messages: Anthropic.MessageParam[] = [{
 		role: 'user',
-		content: `${recentMemory}\n\n${codebaseIndex}\n\n## Recent Git History\n${gitLog}\n\nReview your notes and recent memories, then submit your plan.`,
+		content: `${recentMemory}\n\n${codebaseContext}\n\n## Recent Git History\n${gitLog}\n\nReview your notes and recent memories, then submit your plan.`,
 	}]
 
 	const maxToolCalls = 50

@@ -19,10 +19,10 @@ export async function run(): Promise<void> {
 		const gitClient = await git.cloneRepo()
 
 		const recentMemory = await memory.getContext()
-		const codebaseIndex = await codebase.getCodebaseIndex(config.workspacePath)
+		const codebaseContext = await codebase.getCodebaseContext(config.workspacePath)
 		const gitLog = await git.getRecentLog(gitClient)
 
-		const plan = await llm.plan(recentMemory, codebaseIndex, gitLog)
+		const plan = await llm.plan(recentMemory, codebaseContext, gitLog)
 		await memory.store(`Planned change "${plan.title}": ${plan.description}`)
 
 		const fileContents = await codebase.readFiles(config.workspacePath, plan.filesToRead)

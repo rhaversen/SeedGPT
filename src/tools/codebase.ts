@@ -1,5 +1,5 @@
 import { readdir, readFile as fsReadFile } from 'fs/promises'
-import { join, extname } from 'path'
+import { join, extname, dirname, posix } from 'path'
 import ts from 'typescript'
 
 const IGNORE = new Set(['node_modules', '.git', 'dist', 'logs', '.tmp-patch.diff'])
@@ -11,9 +11,7 @@ export async function getFileTree(rootPath: string): Promise<string> {
 	return lines.join('\n')
 }
 
-export async function getCodebaseIndex(rootPath: string): Promise<string> {
-	const tree = await getFileTree(rootPath)
-
+export async function getDeclarationIndex(rootPath: string): Promise<string> {
 	const allFiles: string[] = []
 	await walk(rootPath, '', allFiles)
 
@@ -39,7 +37,89 @@ export async function getCodebaseIndex(rootPath: string): Promise<string> {
 		}
 	}
 
-	return `## File Tree\n\`\`\`\n${tree}\n\`\`\`\n\n## Declarations\n${sections.join('\n\n')}`
+	return sections.join('\n\n')
+}
+
+export async function getDependencyGraph(rootPath: string): Promise<string> {
+	const allFiles: string[] = []
+	await walk(rootPath, '', allFiles)
+
+	const sourceContents = new Map<string, string>()
+	for (const relPath of allFiles) {
+		if (relPath.endsWith('/') || !TS_EXTENSIONS.has(extname(relPath))) continue
+		try {
+			sourceContents.set(relPath, await fsReadFile(join(rootPath, relPath), 'utf-8'))
+		} catch { /* skip */ }
+	}
+
+	return buildDependencyGraph(sourceContents)
+}
+
+export async function getCodebaseContext(rootPath: string): Promise<string> {
+	const [tree, declarations, depGraph] = await Promise.all([
+		getFileTree(rootPath),
+		getDeclarationIndex(rootPath),
+		getDependencyGraph(rootPath),
+	])
+
+	return `## File Tree\n\`\`\`\n${tree}\n\`\`\`\n\n## Dependency Graph\n${depGraph}\n\n## Declarations\n${declarations}`
+}
+
+function buildDependencyGraph(sourceContents: Map<string, string>): string {
+	const allFiles = new Set(sourceContents.keys())
+	const graph = new Map<string, { local: string[]; external: string[] }>()
+
+	for (const [filePath, content] of sourceContents) {
+		const sf = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true)
+		const local: string[] = []
+		const external: string[] = []
+
+		for (const stmt of sf.statements) {
+			let specifier: string | null = null
+			if (ts.isImportDeclaration(stmt) && stmt.moduleSpecifier && ts.isStringLiteral(stmt.moduleSpecifier)) {
+				specifier = stmt.moduleSpecifier.text
+			} else if (ts.isExportDeclaration(stmt) && stmt.moduleSpecifier && ts.isStringLiteral(stmt.moduleSpecifier)) {
+				specifier = stmt.moduleSpecifier.text
+			}
+			if (!specifier) continue
+
+			if (specifier.startsWith('.')) {
+				const resolved = resolveLocalImport(filePath, specifier, allFiles)
+				if (resolved) local.push(resolved)
+			} else {
+				const pkg = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0]
+				if (!external.includes(pkg)) external.push(pkg)
+			}
+		}
+
+		graph.set(filePath, { local, external })
+	}
+
+	const lines: string[] = []
+	for (const [file, deps] of [...graph].sort((a, b) => a[0].localeCompare(b[0]))) {
+		if (deps.local.length === 0 && deps.external.length === 0) continue
+		const parts: string[] = []
+		if (deps.local.length > 0) parts.push(deps.local.join(', '))
+		if (deps.external.length > 0) parts.push(`[${deps.external.join(', ')}]`)
+		lines.push(`${file} → ${parts.join(', ')}`)
+	}
+
+	return lines.length > 0 ? `\`\`\`\n${lines.join('\n')}\n\`\`\`` : 'No dependencies found.'
+}
+
+function resolveLocalImport(fromFile: string, specifier: string, allFiles: Set<string>): string | null {
+	const dir = dirname(fromFile).replace(/\\/g, '/')
+	const raw = posix.normalize(dir === '.' ? specifier.slice(2) : `${dir}/${specifier.slice(2)}`)
+		.replace(/\\/g, '/')
+	const stripped = raw.replace(/\.js$|\.mjs$|\.cjs$/, '')
+
+	for (const ext of ['.ts', '.js', '.mjs', '.cjs']) {
+		if (allFiles.has(stripped + ext)) return stripped + ext
+	}
+	if (allFiles.has(stripped + '/index.ts')) return stripped + '/index.ts'
+	if (allFiles.has(stripped + '/index.js')) return stripped + '/index.js'
+	if (allFiles.has(raw)) return raw
+	return null
 }
 
 export function extractDeclarations(sourceText: string, filePath: string): string[] {
