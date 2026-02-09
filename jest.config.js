@@ -1,6 +1,7 @@
 export default {
 	testEnvironment: 'node',
 	testMatch: ['**/dist/**/*.test.js', '**/dist/**/?(*.)+(spec|test).js'],
+	testPathIgnorePatterns: ['/node_modules/', '/workspace/'],
 	collectCoverageFrom: [
 		'dist/**/*.js',
 		'!dist/**/*.d.ts',
