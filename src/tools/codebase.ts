@@ -286,18 +286,6 @@ export async function readFile(rootPath: string, filePath: string): Promise<stri
 	return fsReadFile(join(rootPath, filePath), 'utf-8')
 }
 
-export async function readFiles(rootPath: string, filePaths: string[]): Promise<Record<string, string>> {
-	const result: Record<string, string> = {}
-	for (const filePath of filePaths) {
-		try {
-			result[filePath] = await readFile(rootPath, filePath)
-		} catch {
-			result[filePath] = `[File not found: ${filePath}]`
-		}
-	}
-	return result
-}
-
 export async function grepSearch(rootPath: string, pattern: string, options?: { isRegexp?: boolean; includePattern?: string }): Promise<string> {
 	const allFiles: string[] = []
 	await walk(rootPath, '', allFiles)

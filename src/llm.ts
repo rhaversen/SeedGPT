@@ -12,7 +12,6 @@ const client = new Anthropic({ apiKey: config.anthropicApiKey })
 export interface Plan {
 	title: string
 	description: string
-	filesToRead: string[]
 	implementation: string
 	plannerReasoning?: string
 }
@@ -46,16 +45,16 @@ You have two kinds of memory:
 - "Notes to self" — notes you left for yourself in previous sessions. They stay visible until you dismiss them.
 - "Past" — things that happened recently (plans, merges, failures, etc.).
 
-Take your time. You can use read_file to inspect any file in your repository. You can use note_to_self to save observations, context, or ideas for yourself. You can dismiss_note to clean up completed goals. You can recall_memory to search for past events. Use these freely — there is no rush.
+Take your time. You can use read_file to inspect any file in your repository. You can use note_to_self to save observations, context, or ideas for yourself. You can dismiss_note to clean up completed goals. You can recall_memory to search for past events. Use these freely — there is no rush. You can call multiple tools in a single response to batch independent operations together.
 
 When you are ready to make a change, call submit_plan. Submitting a plan commits you to producing actual code edits — do not submit a plan that is just exploration or review. Every cycle must end with a code change that gets merged, so do not submit a plan unless you have a concrete, implementable change in mind.
 
-Your plan is a handoff. After you submit it, a separate builder model will receive your plan, the files you listed, and your reasoning. The builder can read additional files for context, search the codebase, and check its own changes — but it cannot ask you questions or revisit your planning decisions. Everything the builder needs to make the RIGHT decisions must be explicitly written in your plan — especially the implementation field. If you explored files during planning and learned something important, put that knowledge into the implementation instructions. Do not assume the builder knows what you know.
+Your plan is a handoff. After you submit it, a separate builder model will receive your plan, the codebase index, and your reasoning. The builder has tools to read files, search the codebase, and check its own changes — but it cannot ask you questions or revisit your planning decisions. Everything the builder needs to make the RIGHT decisions must be explicitly written in your plan — especially the implementation field. If you explored files during planning and learned something important, put that knowledge into the implementation instructions. Do not assume the builder knows what you know.
 
 Before submitting, ask yourself:
-- Have I listed ALL files the builder will need? Not just the files being edited, but files with types, interfaces, patterns, or context that the builder must reference?
 - Are my implementation instructions specific enough that someone seeing these files for the first time could make the exact right change?
 - Have I explained what patterns to follow and what to be careful about?
+- Have I told the builder exactly which files to read, modify, and create?
 
 Constraints:
 - A broken build means you cannot recover. Be extremely careful not to break existing functionality. When in doubt, don't change it.
@@ -76,6 +75,8 @@ Work incrementally:
 4. After making edits, verify your changes look correct.
 5. Write tests for all new functionality. Read existing test files first to match the testing patterns, framework, and style already established.
 6. When all changes and tests are complete, call done.
+
+You can call multiple tools in a single response. Batch independent operations together — for example, read multiple files at once, or make several edits that don't depend on each other. This saves round trips and cost.
 
 The codebase context below shows the full file tree, dependency graph, and declaration index. Use it to orient yourself before diving into implementation.
 
@@ -203,7 +204,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 				input.plannerReasoning = reasoning.join('\n\n---\n\n')
 			}
 
-			logger.info(`Plan: "${input.title}" — files: ${input.filesToRead.length}, reasoning: ${(input.plannerReasoning?.length ?? 0)} chars`)
+			logger.info(`Plan: "${input.title}" — reasoning: ${(input.plannerReasoning?.length ?? 0)} chars`)
 			messages.push({ role: 'assistant', content: response.content })
 			return { plan: input, messages }
 		}
@@ -236,12 +237,8 @@ export class PatchSession {
 		return this.messages
 	}
 
-	constructor(plan: Plan, fileContents: Record<string, string>, memoryContext: string, codebaseContext: string) {
+	constructor(plan: Plan, memoryContext: string, codebaseContext: string) {
 		this.systemPrompt = `${SYSTEM_PATCH}\n\n${codebaseContext}`
-
-		const filesSection = Object.entries(fileContents)
-			.map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
-			.join('\n\n')
 
 		const sections = [
 			`## Your Memory\n${memoryContext}`,
@@ -253,8 +250,7 @@ export class PatchSession {
 			sections.push(`## Planner Reasoning\nThe following is the planner's thinking process that led to this plan. Use it for additional context if the implementation instructions are unclear.\n\n${plan.plannerReasoning}`)
 		}
 
-		sections.push(`## Current Files\n${filesSection}`)
-		sections.push('Implement the plan step by step. Use edit_file, create_file, and delete_file to make changes. Use read_file to verify your work or check file contents. Call done when the implementation is complete.')
+		sections.push('Start by reading the files you need based on the implementation instructions and the codebase index in your system prompt. Use read_file to load files or specific lines within files, then use edit_file, create_file, and delete_file to make changes. Batch independent read_file calls together. Call done when the implementation is complete.')
 
 		this.messages.push({
 			role: 'user',
@@ -267,16 +263,12 @@ export class PatchSession {
 		return this.runBuilderLoop()
 	}
 
-	async fixPatch(error: string, currentFiles: Record<string, string>): Promise<EditOperation[]> {
+	async fixPatch(error: string): Promise<EditOperation[]> {
 		logger.info('Builder fixing implementation...')
-
-		const filesSection = Object.entries(currentFiles)
-			.map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
-			.join('\n\n')
 
 		this.messages.push({
 			role: 'user',
-			content: `Your previous changes were applied but CI failed. Fix only the issue — do not redo edits that already succeeded.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\n## Current Files (after your previous edits)\n${filesSection}\n\nMake the targeted fixes needed, then call done.`,
+			content: `Your previous changes were applied but CI failed. Fix only the issue — do not redo edits that already succeeded. Use read_file to inspect the current state of any files you need to understand.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\nMake the targeted fixes needed, then call done.`,
 		})
 
 		this.edits.length = 0

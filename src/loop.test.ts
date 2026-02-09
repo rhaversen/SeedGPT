@@ -48,7 +48,6 @@ jest.unstable_mockModule('./tools/github.js', () => ({
 
 jest.unstable_mockModule('./tools/codebase.js', () => ({
 	getCodebaseContext: jest.fn<() => Promise<string>>().mockResolvedValue('## File Tree\n```\n.\n└── src/\n    └── index.ts\n```\n\n## Dependency Graph\nNo dependencies found.\n\n## Declarations\n### src/index.ts (5 lines)\n  export function main(): void  [L1-5]'),
-	readFiles: jest.fn<() => Promise<Record<string, string>>>().mockResolvedValue({ 'src/index.ts': 'console.log("hello")' }),
 	readFile: jest.fn<() => Promise<string>>().mockResolvedValue('console.log("hello")'),
 }))
 
@@ -66,7 +65,7 @@ jest.unstable_mockModule('./pipeline.js', () => ({
 	awaitChecks: jest.fn<() => Promise<{ passed: boolean }>>().mockResolvedValue({ passed: true }),
 }))
 
-const mockPlan = { title: 'test-change', description: 'A test change', filesToRead: ['src/index.ts'] }
+const mockPlan = { title: 'test-change', description: 'A test change', implementation: 'test implementation' }
 const mockEdits = [{ type: 'replace' as const, filePath: 'src/index.ts', oldString: 'hello', newString: 'world' }]
 const mockPatchSession = {
 	createPatch: jest.fn<() => Promise<typeof mockEdits>>().mockResolvedValue(mockEdits),

@@ -35,8 +35,7 @@ export async function run(): Promise<void> {
 			const { plan, messages: plannerMessages } = await llm.plan(recentMemory, codebaseContext, gitLog)
 			await memory.store(`Planned change "${plan.title}": ${plan.description}`)
 
-			const fileContents = await codebase.readFiles(config.workspacePath, plan.filesToRead)
-			const session = new llm.PatchSession(plan, fileContents, recentMemory, codebaseContext)
+			const session = new llm.PatchSession(plan, recentMemory, codebaseContext)
 			let edits = await session.createPatch()
 
 			const branchName = await git.createBranch(gitClient, plan.title)
@@ -47,13 +46,7 @@ export async function run(): Promise<void> {
 				if (attempt > 0) {
 					logger.warn(`Attempt ${attempt + 1}/${config.maxRetries + 1}: ${lastError?.slice(0, 200)}`)
 					await memory.store(`Attempt ${attempt} failed for "${plan.title}"${prNumber ? ` (PR #${prNumber})` : ''}: ${lastError?.slice(0, 500)}`)
-
-					const touchedFiles = edits
-						.filter(e => e.type !== 'delete')
-						.map(e => e.filePath)
-					const allFiles = [...new Set([...plan.filesToRead, ...touchedFiles])]
-					const currentFiles = await codebase.readFiles(config.workspacePath, allFiles)
-					edits = await session.fixPatch(lastError!, currentFiles)
+					edits = await session.fixPatch(lastError!)
 				}
 
 				if (edits.length === 0) {

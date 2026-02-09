@@ -28,7 +28,7 @@ export type ToolResult = { type: 'tool_result'; tool_use_id: string; content: st
 
 const submitPlan = {
 	name: 'submit_plan' as const,
-	description: 'Submit the development plan for this iteration. This is a handoff to the builder — everything the builder needs to implement the change correctly must be in your plan. The builder cannot read files or ask questions. Be thorough.',
+	description: 'Submit the development plan for this iteration. This is a handoff to the builder — everything the builder needs to implement the change correctly must be in your plan. Be thorough.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {
@@ -40,11 +40,7 @@ const submitPlan = {
 				type: 'string' as const,
 				description: 'A clear summary of the change for the PR description. Explain what changes and why. This is public-facing.',
 			},
-			filesToRead: {
-				type: 'array' as const,
-				items: { type: 'string' as const },
-				description: 'The carefully curated set of files the builder needs to implement this change correctly. Think about this deliberately — the builder sees ONLY these files. Include: files being edited, files with types/interfaces referenced by the change, files with patterns the builder should follow, and test files that need updating. Do NOT dump every file you read during exploration. Only include files the builder actually needs open to write correct code.',
-			},
+
 			implementation: {
 				type: 'string' as const,
 				description: `Comprehensive implementation instructions for the builder. This is the most important field — it is the builder's ONLY guide. Include:
@@ -58,7 +54,7 @@ const submitPlan = {
 Write this as if briefing a developer who is seeing the codebase for the first time with only the files you listed.`,
 			},
 		},
-		required: ['title', 'description', 'filesToRead', 'implementation'],
+		required: ['title', 'description', 'implementation'],
 	},
 }
 
