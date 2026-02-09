@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import MemoryModel from './models/Memory.js'
 import { config } from './config.js'
 import logger from './logger.js'
+import { trackUsage } from './usage.js'
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey })
 
@@ -18,6 +19,7 @@ async function summarize(content: string): Promise<string> {
 		].join(' '),
 		messages: [{ role: 'user', content }],
 	})
+	trackUsage('memory.summarize', config.planModel, response.usage)
 	const text = response.content.find(c => c.type === 'text')?.text ?? content.slice(0, 200)
 	return text.trim()
 }

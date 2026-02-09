@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { config } from './config.js'
 import logger from './logger.js'
+import { trackUsage } from './usage.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS, handleTool, getEditOperation } from './tools/definitions.js'
 import type { EditOperation, ToolResult } from './tools/definitions.js'
 
@@ -141,6 +142,7 @@ export async function reflect(outcome: string, plannerMessages: Anthropic.Messag
 			content: transcript,
 		}],
 	})
+	trackUsage('reflect', config.reflectModel, response.usage)
 
 	const text = response.content.find(c => c.type === 'text')?.text ?? ''
 	logger.info(`Reflection: ${text.slice(0, 200)}`)
@@ -170,6 +172,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 			messages,
 			tools,
 		})
+		trackUsage('plan', config.planModel, response.usage)
 
 		const toolBlocks = response.content.filter(c => c.type === 'tool_use')
 		if (toolBlocks.length === 0) {
@@ -282,6 +285,7 @@ export class PatchSession {
 				tools: BUILDER_TOOLS,
 				messages: this.messages,
 			})
+			trackUsage('builder', config.patchModel, response.usage)
 
 			this.messages.push({ role: 'assistant', content: response.content })
 
