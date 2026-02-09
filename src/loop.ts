@@ -45,7 +45,7 @@ export async function run(): Promise<void> {
 				edits = await session.fixPatch(lastError!, currentFiles)
 			}
 
-				if (edits.length === 0) {
+			if (edits.length === 0) {
 				lastError = 'No edit operations were returned. The patch must contain at least one change.'
 				continue
 			}
