@@ -10,11 +10,13 @@ export interface Plan {
 	title: string
 	description: string
 	filesToRead: string[]
+	implementation: string
+	plannerReasoning?: string
 }
 
 const PLAN_TOOL = {
 	name: 'submit_plan' as const,
-	description: 'Submit the development plan for this iteration. Choose a single, focused, achievable change.',
+	description: 'Submit the development plan for this iteration. This is a handoff to the builder — everything the builder needs to implement the change correctly must be in your plan. The builder cannot read files or ask questions. Be thorough.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {
@@ -24,15 +26,27 @@ const PLAN_TOOL = {
 			},
 			description: {
 				type: 'string' as const,
-				description: 'Detailed description of what to change and why',
+				description: 'A clear summary of the change for the PR description. Explain what changes and why. This is public-facing.',
 			},
 			filesToRead: {
 				type: 'array' as const,
 				items: { type: 'string' as const },
-				description: 'The files that need to be visible when implementing this change. Only include files that are directly relevant to the edit — these will be loaded into the patch context. You can read other files during planning with read_file, but only list the ones needed for the actual change here.',
+				description: 'The carefully curated set of files the builder needs to implement this change correctly. Think about this deliberately — the builder sees ONLY these files. Include: files being edited, files with types/interfaces referenced by the change, files with patterns the builder should follow, and test files that need updating. Do NOT dump every file you read during exploration. Only include files the builder actually needs open to write correct code.',
+			},
+			implementation: {
+				type: 'string' as const,
+				description: `Comprehensive implementation instructions for the builder. This is the most important field — it is the builder's ONLY guide. Include:
+- Exactly which files to modify, create, or delete
+- For each file: what specifically to change, where in the file, and what the new code should look like
+- What patterns, conventions, or styles to follow (reference specific existing code)
+- What imports are needed
+- What to be careful about — edge cases, things that could break, existing code that must not be disturbed
+- If adding tests: what to test and what the expected behavior is
+- The order in which edits should be applied if it matters
+Write this as if briefing a developer who is seeing the codebase for the first time with only the files you listed.`,
 			},
 		},
-		required: ['title', 'description', 'filesToRead'],
+		required: ['title', 'description', 'filesToRead', 'implementation'],
 	},
 }
 
@@ -140,6 +154,13 @@ Take your time. You can use read_file to inspect any file in your repository. Yo
 
 When you are ready to make a change, call submit_plan. Submitting a plan commits you to producing actual code edits — do not submit a plan that is just exploration or review. Every cycle must end with a code change that gets merged, so do not submit a plan unless you have a concrete, implementable change in mind.
 
+Your plan is a handoff. After you submit it, a separate builder model will receive your plan, the files you listed, and nothing else. The builder cannot read additional files, ask you questions, or see your reasoning from this conversation. Everything the builder needs to succeed must be explicitly written in your plan — especially the implementation field. If you explored files during planning and learned something important, put that knowledge into the implementation instructions. Do not assume the builder knows what you know.
+
+Before submitting, ask yourself:
+- Have I listed ALL files the builder will need? Not just the files being edited, but files with types, interfaces, patterns, or context that the builder must reference?
+- Are my implementation instructions specific enough that someone seeing these files for the first time could make the exact right change?
+- Have I explained what patterns to follow and what to be careful about?
+
 Constraints:
 - A broken build means you cannot recover. Be extremely careful not to break existing functionality. When in doubt, don't change it.
 - Keep changes small and focused. You have unlimited cycles — there is never a reason to do too much at once.
@@ -212,7 +233,13 @@ const EDIT_TOOL = {
 	},
 }
 
-const SYSTEM_PATCH = `Implement the requested change by calling the submit_edits tool with a list of edit operations.
+const SYSTEM_PATCH = `You are the builder. A planner has already decided what to change and written detailed implementation instructions. Your job is to translate that plan into precise code edits.
+
+You will receive:
+- The planner's implementation instructions (follow these closely)
+- The planner's reasoning from the planning session (for additional context)
+- The current contents of all relevant files
+- Memory context from previous cycles
 
 Operation types:
 - "replace": Find and replace text in an existing file. Provide filePath, oldString, and newString.
@@ -223,9 +250,10 @@ Operation types:
 - "delete": Delete a file. Provide filePath only.
 
 Rules:
-- A broken build is unrecoverable. Preserve all existing functionality — do not change code you don't fully understand.
-- Make the smallest possible change that implements the plan. Do not refactor, clean up, or touch unrelated code.
-- Do not modify files or sections not relevant to the plan.
+- Follow the planner's implementation instructions precisely. The planner has already read the codebase and made decisions — do not second-guess the approach.
+- A broken build is unrecoverable. Preserve all existing functionality — do not change code the plan does not ask you to change.
+- Make exactly the changes described in the plan. Do not refactor, clean up, or touch unrelated code.
+- If the plan's instructions are ambiguous, choose the most conservative interpretation.
 - If a previous attempt failed, carefully analyze what went wrong and submit only the targeted fix — do not regenerate edits that already applied successfully.`
 
 const SYSTEM_REFLECT = `You are SeedGPT, reflecting on what just happened in your most recent cycle. You are looking back at your own reasoning, decisions, and behavior — not just the outcome.
@@ -264,7 +292,6 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 	logger.info('Asking LLM for a plan...')
 
 	const tools = [PLAN_TOOL, NOTE_TOOL, DISMISS_TOOL, RECALL_TOOL, READ_FILE_TOOL]
-	const filesReadDuringPlanning = new Set<string>()
 	const messages: Anthropic.MessageParam[] = [{
 		role: 'user',
 		content: `${recentMemory}\n\n${codebaseContext}\n\n## Recent Git History\n${gitLog}\n\nReview your notes and recent memories, then submit your plan.`,
@@ -288,9 +315,23 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 		const submitBlock = toolBlocks.find(b => b.type === 'tool_use' && b.name === 'submit_plan')
 		if (submitBlock && submitBlock.type === 'tool_use') {
 			const input = submitBlock.input as Plan
-			const merged = new Set([...input.filesToRead, ...filesReadDuringPlanning])
-			input.filesToRead = [...merged]
-			logger.info(`Plan: "${input.title}" — files to read: ${input.filesToRead.length} (${filesReadDuringPlanning.size} auto-included from planning reads)`)
+
+			const reasoning = messages
+				.filter(m => m.role === 'assistant')
+				.flatMap(m => {
+					const content = m.content
+					if (typeof content === 'string') return [content]
+					if (Array.isArray(content)) return content.filter(c => c.type === 'text').map(c => (c as Anthropic.TextBlock).text)
+					return []
+				})
+				.filter(t => t.trim().length > 0)
+			const currentReasoning = response.content.filter(c => c.type === 'text').map(c => c.text).join('\n')
+			if (currentReasoning.trim()) reasoning.push(currentReasoning)
+			if (reasoning.length > 0) {
+				input.plannerReasoning = reasoning.join('\n\n---\n\n')
+			}
+
+			logger.info(`Plan: "${input.title}" — files: ${input.filesToRead.length}, reasoning: ${(input.plannerReasoning?.length ?? 0)} chars`)
 			return input
 		}
 
@@ -325,8 +366,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 				const rangeLabel = input.startLine ? `:${input.startLine}-${input.endLine ?? 'end'}` : ''
 				logger.info(`LLM reading file: ${input.filePath}${rangeLabel}`)
 				try {
-					const fullContent = await codebase.readFile(config.workspacePath, input.filePath)
-					filesReadDuringPlanning.add(input.filePath)
+				const fullContent = await codebase.readFile(config.workspacePath, input.filePath)
 					if (input.startLine) {
 						const lines = fullContent.split('\n')
 						const start = Math.max(0, input.startLine - 1)
@@ -364,14 +404,22 @@ export class PatchSession {
 			.map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
 			.join('\n\n')
 
+		const sections = [
+			`## Your Memory\n${memoryContext}`,
+			`## Plan\n**${plan.title}**\n${plan.description}`,
+			`## Implementation Instructions\n${plan.implementation}`,
+		]
+
+		if (plan.plannerReasoning) {
+			sections.push(`## Planner Reasoning\nThe following is the planner's thinking process that led to this plan. Use it for additional context if the implementation instructions are unclear.\n\n${plan.plannerReasoning}`)
+		}
+
+		sections.push(`## Current Files\n${filesSection}`)
+		sections.push('Implement the plan by calling submit_edits.')
+
 		this.messages.push({
 			role: 'user',
-			content: [
-				`## Your Memory\n${memoryContext}`,
-				`## Plan\n**${plan.title}**\n${plan.description}`,
-				`## Current Files\n${filesSection}`,
-				`Implement the plan by calling submit_edits.`,
-			].join('\n\n'),
+			content: sections.join('\n\n'),
 		})
 	}
 
