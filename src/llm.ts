@@ -484,7 +484,7 @@ export class PatchSession {
 			const response = await callApi({
 				model: config.patchModel,
 				max_tokens: 16384,
-				system: [...this.system, { type: 'text' as const, text: `\n\n${codebaseContext}` }],
+				system: [...this.system, { type: 'text' as const, text: `\n\n${codebaseContext}`, cache_control: { type: 'ephemeral' } }],
 				tools: BUILDER_TOOLS,
 				messages: this.messages,
 			})
