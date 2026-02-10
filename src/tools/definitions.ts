@@ -43,15 +43,14 @@ const submitPlan = {
 
 			implementation: {
 				type: 'string' as const,
-				description: `Comprehensive implementation instructions for the builder. This is the most important field — it is the builder's ONLY guide. Include:
-- Exactly which files to modify, create, or delete
-- For each file: what specifically to change, where in the file, and what the new code should look like
-- What patterns, conventions, or styles to follow (reference specific existing code)
-- What imports are needed
+				description: `Implementation instructions for the builder. The builder is a capable engineer with full access to the codebase — guide it, don't hand-hold it. Include:
+- Which files to modify, create, or delete
+- For each file: the intent of the change, where in the file, and what behavior the new code should have
+- What patterns, conventions, or styles to follow (reference specific existing files or functions)
 - What to be careful about — edge cases, things that could break, existing code that must not be disturbed
 - If adding tests: what to test and what the expected behavior is
-- The order in which edits should be applied if it matters
-Write this as if briefing a developer who is seeing the codebase for the first time with only the files you listed.`,
+
+Do NOT include literal code snippets or near-complete implementations. Describe WHAT the code should do and WHERE it goes — the builder decides HOW to write it. The builder is a stronger model than you and writes better code when given clear intent rather than code to copy. Think of this as an architectural brief, not a paste-ready diff.`,
 			},
 		},
 		required: ['title', 'description', 'implementation'],
