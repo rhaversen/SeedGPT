@@ -93,29 +93,31 @@ export async function run(): Promise<void> {
 			await gitClient.checkout('main')
 			await gitClient.pull()
 
-			if (prNumber !== null) {
-				await github.closePR(prNumber)
-				await github.deleteRemoteBranch(branchName).catch(() => {})
-				await memory.store(`Closed PR #${prNumber}: "${plan.title}" — failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
-			} else {
-				await memory.store(`Gave up on "${plan.title}" — could not produce a valid patch after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
-			}
+			if (!merged) {
+				if (prNumber !== null) {
+					await github.closePR(prNumber)
+					await github.deleteRemoteBranch(branchName).catch(() => {})
+					await memory.store(`Closed PR #${prNumber}: "${plan.title}" — failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
+				} else {
+					await memory.store(`Gave up on "${plan.title}" — could not produce a valid patch after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
+				}
 
-			const failureOutcome = `Failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`
-			const reflection = await llm.reflect(
-				failureOutcome,
-				plannerMessages,
-				session.conversation,
-			)
-			await memory.store(`Self-reflection: ${reflection}`)
-			await saveIterationData(
-				plan.title,
-				failureOutcome,
-				plannerMessages,
-				session.conversation,
-				reflection,
-			)
-			logger.error(`Failed after ${config.maxRetries + 1} attempts — starting fresh plan.`)
+				const failureOutcome = `Failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`
+				const reflection = await llm.reflect(
+					failureOutcome,
+					plannerMessages,
+					session.conversation,
+				)
+				await memory.store(`Self-reflection: ${reflection}`)
+				await saveIterationData(
+					plan.title,
+					failureOutcome,
+					plannerMessages,
+					session.conversation,
+					reflection,
+				)
+				logger.error(`Failed after ${config.maxRetries + 1} attempts — starting fresh plan.`)
+			}
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
