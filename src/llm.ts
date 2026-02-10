@@ -234,7 +234,11 @@ Engineering principles — apply these to every line you write:
 - Types over comments: use the type system to make invalid states unrepresentable. A well-typed function signature is better documentation than a paragraph of JSDoc.
 - Fail fast: validate inputs early and throw meaningful errors. Silent failures are the hardest bugs to find.
 - No dead code: if you remove or replace something, remove all of its code. Unused imports, unreachable branches, vestigial helpers — all of it.
-- Match existing patterns: consistency with the codebase trumps personal preference. Read before you write.`
+- Match existing patterns: consistency with the codebase trumps personal preference. Read before you write.
+- No extraneous parameters: if a function can resolve a value internally, do not pass it as an argument. Fewer parameters mean fewer coupling points.
+- Minimal scope: declare variables in the narrowest scope possible. Do not hoist state broader than it needs to be.
+- Actionable errors: error messages must include what happened, what was expected, and enough context to diagnose without a debugger.
+- Explicit over implicit: prefer explicit control flow over clever tricks. A reader should be able to trace every code path without running the code in their head.`
 
 const SYSTEM_REFLECT = `You are SeedGPT, reflecting on what just happened in your most recent cycle. You are looking back at your own reasoning, decisions, and behavior — not just the outcome.
 
