@@ -447,6 +447,7 @@ export class PatchSession {
 	private readonly edits: EditOperation[] = []
 	private readonly system: CachedSystemBlock[]
 	private readonly plan: Plan
+	private roundsUsed = 0
 
 	get conversation(): Anthropic.MessageParam[] {
 		return this.fullHistory
@@ -502,8 +503,9 @@ export class PatchSession {
 
 	private async runBuilderLoop(): Promise<EditOperation[]> {
 		const maxRounds = config.maxBuilderRounds
-		for (let round = 0; round < maxRounds; round++) {
-			logger.info(`Builder turn ${round + 1}/${maxRounds}`)
+		while (this.roundsUsed < maxRounds) {
+			this.roundsUsed++
+			logger.info(`Builder turn ${this.roundsUsed}/${maxRounds}`)
 			compressOldMessages(this.messages, 1, 4)
 			// Re-fetch codebase context every turn because the builder is actively modifying files.
 			// Stale context would show old declarations/tree and cause the builder to make
@@ -521,7 +523,7 @@ export class PatchSession {
 				messages: this.messages,
 			})
 			trackUsage('builder', config.patchModel, response.usage)
-			logger.info(`Builder turn ${round + 1} usage: ${response.usage.input_tokens} in + ${response.usage.output_tokens} out tokens`)
+			logger.info(`Builder turn ${this.roundsUsed} usage: ${response.usage.input_tokens} in + ${response.usage.output_tokens} out tokens`)
 
 			this.pushMessage({ role: 'assistant', content: response.content })
 
@@ -553,7 +555,7 @@ export class PatchSession {
 				}
 			}
 
-			toolResults[toolResults.length - 1].content += `\n\n(Turn ${round + 1} of ${maxRounds} — hard limit. Call done when ready.)`
+			toolResults[toolResults.length - 1].content += `\n\n(Turn ${this.roundsUsed} of ${maxRounds} — hard limit. Call done when ready.)`
 
 			this.pushMessage({ role: 'user', content: toolResults })
 		}
