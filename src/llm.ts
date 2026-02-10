@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { config } from './config.js'
-import logger from './logger.js'
+import logger, { writeIterationLog, getLogBuffer } from './logger.js'
+import type { LogEntry } from './logger.js'
 import { trackUsage } from './usage.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS, handleTool, getEditOperation } from './tools/definitions.js'
 import { getCodebaseContext } from './tools/codebase.js'
@@ -236,16 +237,23 @@ Consider:
 Be concise. One short paragraph. Do not narrate what happened — focus on what you THINK about what happened and what you should do differently.`
 
 export function summarizeMessages(messages: Anthropic.MessageParam[]): string {
-	return messages.map(m => {
+	const compressed = messages.map(m => {
+		if (typeof m.content === 'string') return { ...m }
+		if (Array.isArray(m.content)) return { ...m, content: [...m.content] }
+		return { ...m }
+	})
+	compressOldMessages(compressed, 1, 0)
+
+	return compressed.map(m => {
 		const role = m.role === 'assistant' ? 'ASSISTANT' : 'USER'
 		if (typeof m.content === 'string') return `[${role}] ${m.content}`
 		if (!Array.isArray(m.content)) return `[${role}] (empty)`
 		const parts = m.content.map(block => {
-			if (block.type === 'text') return block.text
-			if (block.type === 'tool_use') return `[tool: ${block.name}](${JSON.stringify(block.input).slice(0, 300)})`
+			if (block.type === 'text') return ('text' in block) ? (block as Anthropic.TextBlockParam).text : ''
+			if (block.type === 'tool_use') return `[tool: ${block.name}]`
 			if (block.type === 'tool_result') {
 				const content = typeof block.content === 'string' ? block.content : JSON.stringify(block.content)
-				return `[result${block.is_error ? ' ERROR' : ''}] ${content?.slice(0, 500) ?? '(empty)'}`
+				return `[result${block.is_error ? ' ERROR' : ''}] ${content ?? '(empty)'}`
 			}
 			return ''
 		}).filter(Boolean)
@@ -256,7 +264,14 @@ export function summarizeMessages(messages: Anthropic.MessageParam[]): string {
 export async function reflect(outcome: string, plannerMessages: Anthropic.MessageParam[], builderMessages: Anthropic.MessageParam[]): Promise<string> {
 	logger.info('Self-reflecting on iteration...')
 
+	const logs = getLogBuffer()
+		.filter(e => e.level !== 'debug')
+		.map(e => `${e.timestamp.slice(11, 19)} [${e.level.toUpperCase()}] ${e.message}`)
+		.join('\n')
+
 	const transcript = [
+		'## Iteration Log',
+		logs,
 		'## Planner Conversation',
 		summarizeMessages(plannerMessages),
 		'## Builder Conversation',

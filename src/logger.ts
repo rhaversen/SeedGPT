@@ -43,6 +43,10 @@ export async function writeIterationLog(): Promise<void> {
 	logBuffer.length = 0
 }
 
+export function getLogBuffer(): readonly LogEntry[] {
+	return logBuffer
+}
+
 const logger = {
 	debug: (msg: string, ctx?: Record<string, unknown>) => log('debug', msg, ctx),
 	info: (msg: string, ctx?: Record<string, unknown>) => log('info', msg, ctx),
