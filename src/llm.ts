@@ -205,7 +205,7 @@ Work incrementally:
 1. Read the plan and implementation instructions carefully.
 2. Before writing any code, read the files you need to change and any closely related files (tests, utilities, nearby modules) to understand conventions and patterns.
 3. Work through the changes one file at a time, one edit at a time. Follow the patterns you observed.
-4. Write tests for all new functionality. Read existing test files first to match the testing patterns, framework, and style already established.
+4. Write tests for all new functionality and update existing tests affected by your changes. Read existing test files first to match the testing patterns, framework, and style already established.
 5. When all changes and tests are complete, call done. Do not write summaries, recaps, or explanations of what you did, just call done.
 
 You can call multiple tools in a single response. Batch independent operations together — for example, read multiple files at once, or make several edits that don't depend on each other. This saves round trips and cost.
