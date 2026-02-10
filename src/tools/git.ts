@@ -97,12 +97,9 @@ export async function getRecentLog(git: SimpleGit, count = 10): Promise<string> 
 
 export async function getDiff(): Promise<string> {
 	const git = simpleGit(config.workspacePath)
-	const diff = await git.diff(['main'])
-	if (!diff.trim()) {
-		const unstaged = await git.diff()
-		if (!unstaged.trim()) return 'No changes.'
-		return truncateDiff(unstaged)
-	}
+	await git.raw(['add', '-N', '.'])
+	const diff = await git.diff(['--stat', '-p', 'main'])
+	if (!diff.trim()) return 'No changes compared to main.'
 	return truncateDiff(diff)
 }
 
