@@ -287,19 +287,27 @@ export const BUILDER_TOOLS = [editFile, createFile, deleteFile, readFile, grepSe
 export async function handleTool(name: string, input: Record<string, unknown>, id: string): Promise<ToolResult> {
 	if (name === 'read_file') {
 		const { filePath, startLine, endLine } = input as { filePath: string; startLine?: number; endLine?: number }
+		const MAX_LINES = 300
 		try {
 			const fullContent = await codebase.readFile(config.workspacePath, filePath)
-			const totalLines = fullContent.split('\n').length
+			const lines = fullContent.split('\n')
+			const totalLines = lines.length
 			if (startLine) {
-				const lines = fullContent.split('\n')
 				const start = Math.max(0, startLine - 1)
-				const end = endLine ?? lines.length
+				const end = Math.min(endLine ?? lines.length, start + MAX_LINES)
 				const content = lines.slice(start, end).map((l, i) => `${start + i + 1} | ${l}`).join('\n')
+				const suffix = (endLine && endLine > end) ? `\n\n[Showing ${end - start} of ${endLine - start} requested lines. Use narrower ranges.]` : ''
 				logger.info(`  → ${end - start} of ${totalLines} lines`)
-				return { type: 'tool_result', tool_use_id: id, content }
+				return { type: 'tool_result', tool_use_id: id, content: content + suffix }
 			}
+			if (totalLines > MAX_LINES) {
+				const content = lines.slice(0, MAX_LINES).map((l, i) => `${i + 1} | ${l}`).join('\n')
+				logger.info(`  → ${MAX_LINES} of ${totalLines} lines (truncated)`)
+				return { type: 'tool_result', tool_use_id: id, content: content + `\n\n[Showing first ${MAX_LINES} of ${totalLines} lines. Use startLine/endLine to read specific sections.]` }
+			}
+			const content = lines.map((l, i) => `${i + 1} | ${l}`).join('\n')
 			logger.info(`  → ${totalLines} lines`)
-			return { type: 'tool_result', tool_use_id: id, content: fullContent }
+			return { type: 'tool_result', tool_use_id: id, content }
 		} catch {
 			return { type: 'tool_result', tool_use_id: id, content: `[File not found: ${filePath}]`, is_error: true }
 		}
