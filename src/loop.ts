@@ -35,7 +35,7 @@ export async function run(): Promise<void> {
 			const { plan, messages: plannerMessages } = await llm.plan(recentMemory, codebaseContext, gitLog)
 			await memory.store(`Planned change "${plan.title}": ${plan.description}`)
 
-			const session = new llm.PatchSession(plan, recentMemory, codebaseContext)
+			const session = new llm.PatchSession(plan, recentMemory)
 			let edits = await session.createPatch()
 
 			const branchName = await git.createBranch(gitClient, plan.title)

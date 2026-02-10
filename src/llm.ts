@@ -3,11 +3,99 @@ import { config } from './config.js'
 import logger from './logger.js'
 import { trackUsage } from './usage.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS, handleTool, getEditOperation } from './tools/definitions.js'
+import { getCodebaseContext } from './tools/codebase.js'
 import type { EditOperation, ToolResult } from './tools/definitions.js'
 
 export type { EditOperation } from './tools/definitions.js'
 
+type CacheControl = { type: 'ephemeral' }
+type CachedSystemBlock = { type: 'text'; text: string; cache_control: CacheControl }
+
 const client = new Anthropic({ apiKey: config.anthropicApiKey })
+
+function cachedSystem(text: string): CachedSystemBlock[] {
+	return [{ type: 'text', text, cache_control: { type: 'ephemeral' } }]
+}
+
+function compressToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
+	const lines = resultContent.split('\n').length
+	switch (toolName) {
+	case 'read_file': {
+		const path = toolInput.filePath as string
+		return `[Previously read ${path} (${lines} lines)]`
+	}
+	case 'grep_search': {
+		const query = toolInput.query as string
+		const matchCount = resultContent === 'No matches found.' ? 0 : lines
+		return `[Searched "${query.slice(0, 60)}": ${matchCount} match${matchCount !== 1 ? 'es' : ''}]`
+	}
+	case 'file_search':
+		return `[File search "${(toolInput.query as string)?.slice(0, 60)}": ${resultContent === 'No files matched.' ? 0 : lines} result${lines !== 1 ? 's' : ''}]`
+	case 'list_directory':
+		return `[Listed ${toolInput.path}: ${lines} entr${lines !== 1 ? 'ies' : 'y'}]`
+	case 'git_diff':
+		return `[Diff viewed: ${lines} lines]`
+	case 'codebase_context':
+	case 'codebase_diff':
+		return `[Codebase context viewed]`
+	case 'note_to_self':
+	case 'dismiss_note':
+	case 'recall_memory':
+		return resultContent
+	default:
+		return resultContent
+	}
+}
+
+function compressOldMessages(messages: Anthropic.MessageParam[], keepFirst: number = 1, keepLast: number = 4): void {
+	if (messages.length <= keepFirst + keepLast) return
+	const compressEnd = messages.length - keepLast
+
+	const toolNameMap = new Map<string, { name: string; input: Record<string, unknown> }>()
+	for (let i = keepFirst; i < compressEnd; i++) {
+		const msg = messages[i]
+		if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+			for (const block of msg.content) {
+				if (block.type === 'tool_use') {
+					toolNameMap.set(block.id, { name: block.name, input: block.input as Record<string, unknown> })
+				}
+			}
+
+			let changed = false
+			const content = msg.content.map(block => {
+				if (block.type === 'text' && 'text' in block) {
+					const textBlock = block as Anthropic.TextBlockParam
+					if (textBlock.text.length > 2000) {
+						changed = true
+						return { ...block, text: textBlock.text.slice(0, 2000) + '...' }
+					}
+				}
+				return block
+			})
+			if (changed) messages[i] = { ...msg, content }
+		}
+
+		if (msg.role === 'user' && Array.isArray(msg.content)) {
+			let changed = false
+			const content = (msg.content as Anthropic.ContentBlockParam[]).map(block => {
+				if (block.type === 'tool_result') {
+					const text = typeof block.content === 'string' ? block.content : ''
+					if (text.length > 200) {
+						const tool = toolNameMap.get(block.tool_use_id)
+						if (tool) {
+							changed = true
+							return { ...block, content: compressToolResult(tool.name, tool.input, text) }
+						}
+						changed = true
+						return { ...block, content: text.slice(0, 100) + '\n[...compressed]' }
+					}
+				}
+				return block
+			})
+			if (changed) messages[i] = { ...msg, content }
+		}
+	}
+}
 
 async function callApi(params: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message> {
 	const maxRetries = 5
@@ -180,7 +268,7 @@ export async function reflect(outcome: string, plannerMessages: Anthropic.Messag
 	const response = await callApi({
 		model: config.reflectModel,
 		max_tokens: 512,
-		system: SYSTEM_REFLECT,
+		system: cachedSystem(SYSTEM_REFLECT),
 		messages: [{
 			role: 'user',
 			content: transcript,
@@ -208,13 +296,15 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 		content: `${recentMemory}\n\n${codebaseContext}\n\n## Recent Git History\n${gitLog}\n\nReview your notes and recent memories, then submit your plan.`,
 	}]
 
+	const system = cachedSystem(SYSTEM_PLAN)
 	const maxRounds = 25
 	for (let round = 0; round < maxRounds; round++) {
 		logger.info(`Planner turn ${round + 1}/${maxRounds}`)
+		compressOldMessages(messages, 1, 4)
 		const response = await callApi({
 			model: config.planModel,
 			max_tokens: 4096,
-			system: SYSTEM_PLAN,
+			system,
 			messages,
 			tools,
 		})
@@ -310,16 +400,16 @@ export class PatchSession {
 	private messages: Anthropic.MessageParam[] = []
 	private readonly fullHistory: Anthropic.MessageParam[] = []
 	private readonly edits: EditOperation[] = []
-	private readonly systemPrompt: string
+	private readonly system: CachedSystemBlock[]
 	private readonly plan: Plan
 
 	get conversation(): Anthropic.MessageParam[] {
 		return this.fullHistory
 	}
 
-	constructor(plan: Plan, memoryContext: string, codebaseContext: string) {
+	constructor(plan: Plan, memoryContext: string) {
 		this.plan = plan
-		this.systemPrompt = `${SYSTEM_PATCH}\n\n${codebaseContext}`
+		this.system = cachedSystem(SYSTEM_PATCH)
 
 		const sections = [
 			`## Your Memory\n${memoryContext}`,
@@ -331,7 +421,7 @@ export class PatchSession {
 			sections.push(`## Planner Reasoning\nThe following is the planner's thinking process that led to this plan. Use it for additional context if the implementation instructions are unclear.\n\n${plan.plannerReasoning}`)
 		}
 
-		sections.push('Start by reading the files you need based on the implementation instructions and the codebase index in your system prompt. Use read_file to load files or specific lines within files, then use edit_file, create_file, and delete_file to make changes. Batch independent read_file calls together. Call done when the implementation is complete.')
+		sections.push('Start by reading the files you need based on the implementation instructions and the codebase index in your system prompt. Use read_file to load files or specific line ranges, then use edit_file, create_file, and delete_file to make changes. Batch independent read_file calls together. Call done when the implementation is complete.')
 
 		const initial: Anthropic.MessageParam = {
 			role: 'user',
@@ -370,10 +460,12 @@ export class PatchSession {
 
 		for (let round = 0; round < maxRounds; round++) {
 			logger.info(`Builder turn ${round + 1}/${maxRounds}`)
+			compressOldMessages(this.messages, 1, 4)
+			const codebaseContext = await getCodebaseContext(config.workspacePath)
 			const response = await callApi({
 				model: config.patchModel,
 				max_tokens: 16384,
-				system: this.systemPrompt,
+				system: [...this.system, { type: 'text' as const, text: `\n\n${codebaseContext}` }],
 				tools: BUILDER_TOOLS,
 				messages: this.messages,
 			})
