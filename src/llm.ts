@@ -433,21 +433,18 @@ export class PatchSession {
 		this.plan = plan
 		this.system = cachedSystem(SYSTEM_PATCH)
 
-		const sections = [
-			`## Your Memory\n${memoryContext}`,
-			`## Plan\n**${plan.title}**\n${plan.description}`,
-			`## Implementation Instructions\n${plan.implementation}`,
-		]
-
-		if (plan.plannerReasoning) {
-			sections.push(`## Planner Reasoning\nThe following is the planner's thinking process that led to this plan. Use it for additional context if the implementation instructions are unclear.\n\n${plan.plannerReasoning}`)
-		}
-
-		sections.push('Start by reading the files you need based on the implementation instructions and the codebase index in your system prompt. Use read_file to load files or specific line ranges, then use edit_file, create_file, and delete_file to make changes. Batch independent read_file calls together. Call done when the implementation is complete.')
-
 		const initial: Anthropic.MessageParam = {
 			role: 'user',
-			content: sections.join('\n\n'),
+			content: [{
+				type: 'text' as const,
+				text: [
+					`--- YOUR MEMORY ---\n${memoryContext}`,
+					`--- PLAN ---\n**${plan.title}**\n${plan.description}`,
+					`--- IMPLEMENTATION INSTRUCTIONS ---\n${plan.implementation}`,
+					`--- BEGIN ---\nStart by reading the files you need based on the implementation instructions and the codebase index in your system prompt. Use read_file to load files or specific line ranges, then use edit_file, create_file, and delete_file to make changes. Batch independent read_file calls together. Call done when the implementation is complete.`,
+				].join('\n\n'),
+				cache_control: { type: 'ephemeral' },
+			}],
 		}
 		this.messages.push(initial)
 		this.fullHistory.push(initial)
