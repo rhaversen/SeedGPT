@@ -64,6 +64,68 @@ export async function awaitPRChecks(sha: string): Promise<CheckResult> {
 	return { passed: false, error: 'Timed out waiting for CI checks (20 min)' }
 }
 
+function stripLogLine(line: string): string {
+	return line
+		.replace(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?/, '')
+		.replace(/\x1b\[[0-9;]*m/g, '')
+}
+
+function extractFailedStepOutput(logText: string, failedStepNames: string[]): string {
+	const raw = logText.split('\n')
+	const lines = raw.map(stripLogLine)
+
+	const stepSections: { name: string; start: number; end: number }[] = []
+	let current: { name: string; start: number } | null = null
+
+	for (let i = 0; i < lines.length; i++) {
+		const match = lines[i].match(/^##\[group](.+)/)
+		if (match) {
+			if (current) stepSections.push({ ...current, end: i })
+			current = { name: match[1], start: i }
+		}
+	}
+	if (current) stepSections.push({ ...current, end: lines.length })
+
+	const matchesStep = (sectionName: string, stepName: string): boolean => {
+		return sectionName.includes(stepName) || sectionName === `Run ${stepName}`
+	}
+
+	const failedSections = failedStepNames.length > 0
+		? stepSections.filter(s => failedStepNames.some(name => matchesStep(s.name, name)))
+		: stepSections.filter(s => lines.slice(s.start, s.end).some(l => l.startsWith('##[error]')))
+
+	if (failedSections.length > 0) {
+		const output = failedSections.map(section => {
+			const content = lines.slice(section.start, section.end)
+				.filter(l => !l.startsWith('##[group]') && !l.startsWith('##[endgroup]') && l.trim() !== '')
+				.map(l => l.replace(/^##\[error]/, 'ERROR: '))
+				.join('\n')
+			return `Step "${section.name}":\n${content}`
+		}).join('\n\n')
+		return output.slice(-8000)
+	}
+
+	const errorIndices = lines.reduce<number[]>((acc, l, i) => {
+		if (l.startsWith('##[error]')) acc.push(i)
+		return acc
+	}, [])
+
+	if (errorIndices.length > 0) {
+		return errorIndices.map(i => {
+			const start = Math.max(0, i - 40)
+			return lines.slice(start, i + 1)
+				.filter(l => !l.startsWith('##[group]') && !l.startsWith('##[endgroup]'))
+				.map(l => l.replace(/^##\[error]/, 'ERROR: '))
+				.join('\n')
+		}).join('\n\n---\n\n').slice(-8000)
+	}
+
+	return lines
+		.filter(l => l.trim() !== '' && !l.startsWith('##['))
+		.join('\n')
+		.slice(-6000)
+}
+
 async function collectErrors(
 	sha: string,
 	failedRuns: Array<{ id: number, name: string, conclusion: string | null, output: { title: string | null, summary: string | null, text: string | null } }>
@@ -96,16 +158,17 @@ async function collectErrors(
 				owner, repo, run_id: run.id,
 			})
 			for (const job of jobs.jobs.filter(j => j.conclusion === 'failure')) {
+				const failedStepNames = job.steps?.filter(s => s.conclusion === 'failure').map(s => s.name) ?? []
+
 				try {
 					const { data: logData } = await octokit.actions.downloadJobLogsForWorkflowRun({
 						owner, repo, job_id: job.id,
 					})
 					const logText = typeof logData === 'string' ? logData : String(logData)
-					const trimmed = logText.slice(-3000)
-					errors.push(`Workflow job "${job.name}" log (last 3000 chars):\n${trimmed}`)
+					const extracted = extractFailedStepOutput(logText, failedStepNames)
+					errors.push(`Workflow job "${job.name}":\n${extracted}`)
 				} catch {
-					const failedSteps = job.steps?.filter(s => s.conclusion === 'failure').map(s => s.name) ?? []
-					errors.push(`Workflow job "${job.name}" failed at steps: ${failedSteps.join(', ')}`)
+					errors.push(`Workflow job "${job.name}" failed at steps: ${failedStepNames.join(', ')}`)
 				}
 			}
 		}
