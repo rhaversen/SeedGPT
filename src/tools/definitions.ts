@@ -289,13 +289,16 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 		const { filePath, startLine, endLine } = input as { filePath: string; startLine?: number; endLine?: number }
 		try {
 			const fullContent = await codebase.readFile(config.workspacePath, filePath)
+			const totalLines = fullContent.split('\n').length
 			if (startLine) {
 				const lines = fullContent.split('\n')
 				const start = Math.max(0, startLine - 1)
 				const end = endLine ?? lines.length
 				const content = lines.slice(start, end).map((l, i) => `${start + i + 1} | ${l}`).join('\n')
+				logger.info(`  → ${end - start} of ${totalLines} lines`)
 				return { type: 'tool_result', tool_use_id: id, content }
 			}
+			logger.info(`  → ${totalLines} lines`)
 			return { type: 'tool_result', tool_use_id: id, content: fullContent }
 		} catch {
 			return { type: 'tool_result', tool_use_id: id, content: `[File not found: ${filePath}]`, is_error: true }
@@ -305,12 +308,16 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 	if (name === 'grep_search') {
 		const { query, isRegexp, includePattern } = input as { query: string; isRegexp?: boolean; includePattern?: string }
 		const result = await codebase.grepSearch(config.workspacePath, query, { isRegexp, includePattern })
+		const matchCount = result === 'No matches found.' ? 0 : result.split('\n').filter(l => !l.startsWith('(truncated')).length
+		logger.info(`  → ${matchCount} match${matchCount !== 1 ? 'es' : ''}`)
 		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 
 	if (name === 'file_search') {
 		const { query } = input as { query: string }
 		const result = await codebase.fileSearch(config.workspacePath, query)
+		const matchCount = result === 'No files matched.' ? 0 : result.split('\n').length
+		logger.info(`  → ${matchCount} file${matchCount !== 1 ? 's' : ''}`)
 		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 
@@ -318,6 +325,8 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 		const { path } = input as { path: string }
 		try {
 			const result = await codebase.listDirectory(config.workspacePath, path)
+			const entryCount = result.split('\n').filter(Boolean).length
+			logger.info(`  → ${entryCount} entr${entryCount !== 1 ? 'ies' : 'y'}`)
 			return { type: 'tool_result', tool_use_id: id, content: result }
 		} catch {
 			return { type: 'tool_result', tool_use_id: id, content: `[Directory not found: ${path}]`, is_error: true }
@@ -360,6 +369,8 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 
 	if (name === 'git_diff') {
 		const result = await git.getDiff()
+		const diffLines = result.split('\n').length
+		logger.info(`  → ${diffLines} line${diffLines !== 1 ? 's' : ''} of diff`)
 		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 
@@ -373,6 +384,16 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 		const op: FileEdit = { type: 'replace', filePath, oldString, newString }
 		try {
 			await git.applyEdits([op])
+			const fullContent = await codebase.readFile(config.workspacePath, filePath)
+			const lines = fullContent.split('\n')
+			const matchIdx = fullContent.indexOf(newString)
+			if (matchIdx !== -1) {
+				const lineNum = fullContent.slice(0, matchIdx).split('\n').length
+				const changedLines = newString.split('\n').length
+				logger.info(`  → Applied at L${lineNum}-${lineNum + changedLines - 1} (${lines.length} total)`)
+			} else {
+				logger.info(`  → Applied (${lines.length} total lines)`)
+			}
 			return { type: 'tool_result', tool_use_id: id, content: `Replaced text in ${filePath}` }
 		} catch (err) {
 			return { type: 'tool_result', tool_use_id: id, content: err instanceof Error ? err.message : String(err), is_error: true }
@@ -384,6 +405,8 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 		const op: FileCreate = { type: 'create', filePath, content }
 		try {
 			await git.applyEdits([op])
+			const lineCount = content.split('\n').length
+			logger.info(`  → Created with ${lineCount} line${lineCount !== 1 ? 's' : ''}`)
 			return { type: 'tool_result', tool_use_id: id, content: `Created ${filePath}` }
 		} catch (err) {
 			return { type: 'tool_result', tool_use_id: id, content: err instanceof Error ? err.message : String(err), is_error: true }

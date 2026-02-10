@@ -279,11 +279,29 @@ function toolLogSuffix(block: { name: string; input: unknown }): string {
 		if (start) return `: ${path} L${start}+`
 		return `: ${path}`
 	}
-	if (block.name === 'edit_file' || block.name === 'create_file' || block.name === 'delete_file') {
+	if (block.name === 'edit_file') {
+		const lines = (input.oldString as string)?.split('\n').length ?? 0
+		return `: ${input.filePath} (replacing ${lines} line${lines !== 1 ? 's' : ''})`
+	}
+	if (block.name === 'create_file') {
+		const lines = (input.content as string)?.split('\n').length ?? 0
+		return `: ${input.filePath} (${lines} line${lines !== 1 ? 's' : ''})`
+	}
+	if (block.name === 'delete_file') {
 		return `: ${input.filePath}`
 	}
 	if (block.name === 'grep_search') {
+		const suffix = input.includePattern ? ` in ${input.includePattern}` : ''
+		return `: "${(input.query as string)?.slice(0, 60)}"${suffix}`
+	}
+	if (block.name === 'file_search') {
 		return `: "${(input.query as string)?.slice(0, 60)}"`
+	}
+	if (block.name === 'list_directory') {
+		return `: ${input.path}`
+	}
+	if (block.name === 'done') {
+		return `: ${(input.summary as string)?.slice(0, 100)}`
 	}
 	return ''
 }
