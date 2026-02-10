@@ -41,6 +41,7 @@ export async function run(): Promise<void> {
 			const branchName = await git.createBranch(gitClient, plan.title)
 			let prNumber: number | null = null
 			let lastError: string | null = null
+			let outcome: string | null = null
 
 			for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
 				if (attempt > 0) {
@@ -67,20 +68,7 @@ export async function run(): Promise<void> {
 					await github.deleteRemoteBranch(branchName).catch(() => {})
 					await memory.store(`Merged PR #${prNumber}: "${plan.title}" — CI passed and change is now on main.`)
 					logger.info(`PR #${prNumber} merged.`)
-
-					const reflection = await llm.reflect(
-						`PR #${prNumber} merged successfully after ${attempt + 1} attempt(s).`,
-						plannerMessages,
-						session.conversation,
-					)
-					await memory.store(`Self-reflection: ${reflection}`)
-					await saveIterationData(
-						plan.title,
-						`PR #${prNumber} merged successfully after ${attempt + 1} attempt(s).`,
-						plannerMessages,
-						session.conversation,
-						reflection,
-					)
+					outcome = `PR #${prNumber} merged successfully after ${attempt + 1} attempt(s).`
 					merged = true
 					break
 				}
@@ -101,23 +89,15 @@ export async function run(): Promise<void> {
 				} else {
 					await memory.store(`Gave up on "${plan.title}" — could not produce a valid patch after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`)
 				}
-
-				const failureOutcome = `Failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`
-				const reflection = await llm.reflect(
-					failureOutcome,
-					plannerMessages,
-					session.conversation,
-				)
-				await memory.store(`Self-reflection: ${reflection}`)
-				await saveIterationData(
-					plan.title,
-					failureOutcome,
-					plannerMessages,
-					session.conversation,
-					reflection,
-				)
+				outcome = `Failed after ${config.maxRetries + 1} attempts. Last error: ${lastError?.slice(0, 500)}`
 				logger.error(`Failed after ${config.maxRetries + 1} attempts — starting fresh plan.`)
 			}
+
+			logSummary()
+			const reflection = await llm.reflect(outcome!, plannerMessages, session.conversation)
+			await memory.store(`Self-reflection: ${reflection}`)
+			await saveIterationData(plan.title, outcome!, plannerMessages, session.conversation, reflection)
+			if (merged) await writeIterationLog()
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
@@ -126,8 +106,6 @@ export async function run(): Promise<void> {
 		} catch { /* DB may be down */ }
 		throw error
 	} finally {
-		logSummary()
-		await writeIterationLog()
 		await disconnectFromDatabase()
 	}
 }
