@@ -107,7 +107,7 @@ const recallMemory = {
 
 const readFile = {
 	name: 'read_file' as const,
-	description: 'Read the contents of a file from the repository. Prefer using startLine/endLine to read only the section you need — the codebase index shows line numbers for every declaration. Full-file reads are capped at 300 lines.',
+	description: 'Read the contents of a file from the repository. Use the codebase index to decide what you need: read the whole file when you need full context, or use startLine/endLine for a specific section. Choose the range that covers what you need in a single read — avoid reading the same file in many small fragments across multiple turns. Full-file reads are capped at 300 lines.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {
