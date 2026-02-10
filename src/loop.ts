@@ -15,12 +15,16 @@ export async function run(): Promise<void> {
 	await connectToDatabase()
 
 	try {
+		// Close any orphaned PRs from previous crashed iterations before starting
 		await pipeline.cleanupStalePRs()
 
 		const gitClient = await git.cloneRepo()
 
 		let merged = false
 
+		// The agent keeps generating new plans until one successfully merges.
+		// This is intentional — a failed plan doesn't stop the agent; it reflects,
+		// learns from the failure, and tries a different approach.
 		while (!merged) {
 			const recentMemory = await memory.getContext()
 			const [fileTree, declarationIndex, depGraph] = await Promise.all([
@@ -39,6 +43,9 @@ export async function run(): Promise<void> {
 			let edits = await session.createPatch()
 
 			const branchName = await git.createBranch(gitClient, plan.title)
+			// The PR is created on the first successful commit, then subsequent fix attempts
+			// push to the same branch/PR rather than creating new ones. This keeps the iteration
+			// history in a single PR thread.
 			let prNumber: number | null = null
 			let lastError: string | null = null
 			let outcome: string | null = null
@@ -76,6 +83,8 @@ export async function run(): Promise<void> {
 				lastError = result.error ?? 'CI checks failed with unknown error'
 			}
 
+			// Always reset workspace to clean main, regardless of success or failure.
+			// This ensures the next plan starts from a known-good state.
 			await gitClient.checkout(['.'])
 			await gitClient.clean('f', ['-d'])
 			await gitClient.checkout('main')
@@ -93,6 +102,7 @@ export async function run(): Promise<void> {
 				logger.error(`Failed after ${config.maxRetries + 1} attempts — starting fresh plan.`)
 			}
 
+			// logSummary must run before reflect so the reflection can see usage stats in the log buffer
 			logSummary()
 			const reflection = await llm.reflect(outcome!, plannerMessages, session.conversation)
 			await memory.store(`Self-reflection: ${reflection}`)
@@ -102,7 +112,7 @@ export async function run(): Promise<void> {
 		const message = error instanceof Error ? error.message : String(error)
 		try {
 			await memory.store(`Iteration crashed with error: ${message}`)
-		} catch { /* DB may be down */ }
+		} catch { /* Swallowed because the crash itself may have been caused by a DB failure */ }
 		throw error
 	} finally {
 		await writeIterationLog()

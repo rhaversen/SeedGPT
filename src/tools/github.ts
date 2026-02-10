@@ -25,9 +25,9 @@ export async function openPR(branch: string, title: string, body: string): Promi
 }
 
 export async function awaitPRChecks(sha: string): Promise<CheckResult> {
-	const POLL_INTERVAL = 30_000
-	const TIMEOUT = 20 * 60_000
-	const NO_CHECKS_TIMEOUT = 2 * 60_000
+	const POLL_INTERVAL = 30_000    // Balance between API rate limits and responsiveness
+	const TIMEOUT = 20 * 60_000     // Generous timeout for CI with compilation + tests + deploy
+	const NO_CHECKS_TIMEOUT = 2 * 60_000 // If no checks appear after 2 min, repo likely has no CI
 	const start = Date.now()
 
 	while (Date.now() - start < TIMEOUT) {
@@ -119,7 +119,7 @@ export async function mergePR(prNumber: number): Promise<void> {
 	await octokit.pulls.merge({
 		owner, repo,
 		pull_number: prNumber,
-		merge_method: 'squash',
+		merge_method: 'squash', // Squash keeps main history clean — each iteration = one commit
 	})
 	logger.info(`PR #${prNumber} merged`)
 }
@@ -138,6 +138,8 @@ export async function deleteRemoteBranch(branch: string): Promise<void> {
 	logger.info(`Deleted remote branch: ${branch}`)
 }
 
+// Only finds PRs created by this agent (prefixed with seedgpt/) to avoid
+// accidentally closing human-created PRs during stale cleanup.
 export async function findOpenAgentPRs(): Promise<Array<{ number: number, head: { ref: string, sha: string } }>> {
 	const { data } = await octokit.pulls.list({
 		owner, repo,

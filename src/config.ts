@@ -18,6 +18,7 @@ const ALWAYS_REQUIRED = [
 	'GITHUB_REPO',
 ] as const
 
+// DB vars are only required in production — dev/test uses an in-memory MongoDB replica set
 const PRODUCTION_REQUIRED = [
 	'DB_USER',
 	'DB_PASSWORD',
@@ -46,6 +47,9 @@ export const config = {
 	githubToken: requireEnv('GITHUB_TOKEN'),
 	githubOwner: requireEnv('GITHUB_OWNER'),
 	githubRepo: requireEnv('GITHUB_REPO'),
+	// Dev uses haiku for all stages to save cost. Prod uses sonnet for planning and building
+	// where reasoning quality matters. Reflection always uses haiku since it's a lightweight
+	// summary task — saving cost without sacrificing iteration quality.
 	planModel: process.env.PLAN_MODEL ?? (isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'),
 	patchModel: process.env.PATCH_MODEL ?? (isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'),
 	reflectModel: process.env.REFLECT_MODEL ?? 'claude-haiku-4-5',

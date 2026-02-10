@@ -5,6 +5,8 @@ import { config } from '../config.js'
 import logger from '../logger.js'
 import type { EditOperation } from '../llm.js'
 
+// Embeds the token directly in the clone URL to avoid needing git credential helpers
+// in the container. x-access-token is GitHub's convention for token-based HTTPS auth.
 export async function cloneRepo(): Promise<SimpleGit> {
 	const url = `https://x-access-token:${config.githubToken}@github.com/${config.githubOwner}/${config.githubRepo}.git`
 	logger.info(`Cloning ${config.githubOwner}/${config.githubRepo}`)
@@ -34,6 +36,9 @@ export async function applyEdits(operations: EditOperation[]): Promise<void> {
 		try {
 			if (op.type === 'replace') {
 				const content = await readFile(fullPath, 'utf-8')
+				// Validates exact single-match to prevent ambiguous edits. The LLM sometimes
+				// provides too little context in oldString, which could match multiple locations
+				// and silently corrupt the wrong part of a file.
 				const index = content.indexOf(op.oldString)
 				if (index === -1) {
 					errors.push(`replace "${op.filePath}": oldString not found in file`)
@@ -97,6 +102,8 @@ export async function getRecentLog(git: SimpleGit, count = 10): Promise<string> 
 
 export async function getDiff(): Promise<string> {
 	const git = simpleGit(config.workspacePath)
+	// `add -N` (intent-to-add) stages untracked files without content so they appear in the diff.
+	// Without this, newly created files would be invisible to `git diff`.
 	await git.raw(['add', '-N', '.'])
 	const diff = await git.diff(['--stat', '-p', 'main'])
 	if (!diff.trim()) return 'No changes compared to main.'

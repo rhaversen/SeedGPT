@@ -25,9 +25,9 @@ const memorySchema = new Schema<IMemory>({
 	timestamps: true,
 })
 
-memorySchema.index({ pinned: 1, createdAt: -1 })
-memorySchema.index({ createdAt: -1 })
-memorySchema.index({ content: 'text', summary: 'text' })
+memorySchema.index({ pinned: 1, createdAt: -1 }) // getContext: fetch pinned notes sorted by date
+memorySchema.index({ createdAt: -1 })              // getContext: fetch recent unpinned memories
+memorySchema.index({ content: 'text', summary: 'text' }) // recall: full-text search across memories
 
 const MemoryModel: Model<IMemory> = mongoose.model<IMemory>('Memory', memorySchema)
 

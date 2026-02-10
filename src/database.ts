@@ -24,6 +24,8 @@ export async function connectToDatabase(): Promise<void> {
 		throw new Error(`Failed to connect to MongoDB after ${maxRetryAttempts} attempts`)
 	}
 
+	// Uses a replica set (not standalone) because Mongoose change streams and transactions
+	// require replica sets. Dynamic import avoids bundling mongodb-memory-server in production.
 	logger.info('Starting in-memory MongoDB replica set...')
 	const { MongoMemoryReplSet } = await import('mongodb-memory-server')
 	replSet = new MongoMemoryReplSet()

@@ -47,10 +47,16 @@ export async function unpin(id: string): Promise<string> {
 	return `Note dismissed: ${memory.summary}`
 }
 
+// Rough chars/4 approximation instead of actual tokenization — avoids a tokenizer
+// dependency for a budget that's already an approximate soft limit.
 function estimateTokens(text: string): number {
 	return Math.ceil(text.length / 4)
 }
 
+// Builds a memory context string within a token budget. Pinned notes (goals, reminders)
+// are always included first since they represent active priorities. Remaining budget is
+// filled with past memories newest-first. Only summaries are included — full content
+// can be retrieved on-demand via recall/recallById.
 export async function getContext(): Promise<string> {
 	const budget = config.memoryTokenBudget
 	let tokensUsed = 0
@@ -104,6 +110,9 @@ export async function getContext(): Promise<string> {
 	return sections.join('\n\n')
 }
 
+// Two-pass search: first tries MongoDB's $text index for relevance-ranked results,
+// then falls back to regex matching. The text index tokenizes differently than simple
+// substring search so some queries (partial words, symbols) only match via regex.
 export async function recall(query: string): Promise<string> {
 	let memories = await MemoryModel
 		.find({ $text: { $search: query } }, { score: { $meta: 'textScore' } })

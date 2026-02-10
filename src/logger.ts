@@ -12,6 +12,9 @@ export interface LogEntry {
 const LEVEL_ORDER: Record<Level, number> = { debug: 0, info: 1, warn: 2, error: 3 }
 const MIN_LEVEL: Level = (process.env.LOG_LEVEL as Level) ?? 'info'
 
+// All log entries are buffered in-memory across the entire iteration, then flushed
+// to MongoDB at the end. This serves double duty: the reflection step reads the buffer
+// to understand what happened, and writeIterationLog persists it for debugging.
 const logBuffer: LogEntry[] = []
 
 function log(level: Level, message: string, context?: Record<string, unknown>): void {

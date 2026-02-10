@@ -14,6 +14,8 @@ type CachedSystemBlock = { type: 'text'; text: string; cache_control: CacheContr
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey })
 
+// Anthropic's prompt caching: marks system prompts as cacheable so multi-turn conversations
+// reuse the cached system prompt instead of re-processing it each turn, reducing input token costs.
 function cachedSystem(text: string): CachedSystemBlock[] {
 	return [{ type: 'text', text, cache_control: { type: 'ephemeral' } }]
 }
@@ -48,6 +50,10 @@ function compressToolResult(toolName: string, toolInput: Record<string, unknown>
 	}
 }
 
+// Compresses messages in the middle of the conversation to stay within context limits.
+// keepFirst=1 preserves the initial context message (memory + codebase), keepLast=4 preserves
+// recent turns for continuity. Everything in between gets tool results replaced with compact
+// summaries and long text blocks truncated. Mutates the array in-place.
 function compressOldMessages(messages: Anthropic.MessageParam[], keepFirst: number = 1, keepLast: number = 4): void {
 	if (messages.length <= keepFirst + keepLast) return
 	const compressEnd = messages.length - keepLast
@@ -98,6 +104,9 @@ function compressOldMessages(messages: Anthropic.MessageParam[], keepFirst: numb
 	}
 }
 
+// Retry wrapper with exponential backoff only for rate limits (429). Other errors propagate
+// immediately since they indicate request-level problems that retrying won't fix.
+// Backoff starts at 30s and caps at 2 minutes to avoid excessively long waits.
 async function callApi(params: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message> {
 	const maxRetries = 5
 	for (let attempt = 0; ; attempt++) {
@@ -242,6 +251,9 @@ Consider:
 
 Be concise. One short paragraph. Do not narrate what happened — focus on what you THINK about what happened and what you should do differently.`
 
+// Produces a human-readable transcript of a conversation for reflection/logging.
+// Clones messages first, then applies maximum compression (keepLast=0) since this
+// is for storage and review, not for continuing the conversation.
 export function summarizeMessages(messages: Anthropic.MessageParam[]): string {
 	const compressed = messages.map(m => {
 		if (typeof m.content === 'string') return { ...m }
@@ -341,6 +353,9 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 		if (submitBlock && submitBlock.type === 'tool_use') {
 			const input = submitBlock.input as Plan
 
+			// Collect all the planner's text outputs across turns as "reasoning". This is NOT sent
+			// to the builder — it's stored for logging and reflection so we can audit what the
+			// planner was thinking when it made its decision.
 			const reasoning = messages
 				.filter(m => m.role === 'assistant')
 				.flatMap(m => {
@@ -371,6 +386,9 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 			toolResults.push(result)
 		}
 
+		// Inject a turn budget reminder into the last tool result so the planner is aware
+		// of its remaining rounds. Without this, the planner may spend all turns exploring
+		// without ever committing to a plan.
 		toolResults[toolResults.length - 1].content += `\n\n(Turn ${round + 1} of ${maxRounds} — hard limit. Call submit_plan when ready.)`
 
 		messages.push({ role: 'assistant', content: response.content })
@@ -461,6 +479,9 @@ export class PatchSession {
 			role: 'user',
 			content: `You were implementing "${this.plan.title}": ${this.plan.description}\n\nThe changes were applied but CI failed. Read the relevant files to understand their current state, then fix only the failing issue — do not redo work that already succeeded.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\nUse read_file to inspect the current state of files mentioned in the error, make the targeted fixes, then call done.`,
 		}
+		// Reset the working messages to just the fix prompt — old conversation context would
+		// confuse the builder about file state since edits have already been applied.
+		// fullHistory is kept intact for logging/reflection purposes.
 		this.messages = [fixMessage]
 		this.fullHistory.push(fixMessage)
 
@@ -479,6 +500,9 @@ export class PatchSession {
 		for (let round = 0; round < maxRounds; round++) {
 			logger.info(`Builder turn ${round + 1}/${maxRounds}`)
 			compressOldMessages(this.messages, 1, 4)
+			// Re-fetch codebase context every turn because the builder is actively modifying files.
+			// Stale context would show old declarations/tree and cause the builder to make
+			// edits against outdated file contents.
 			const codebaseContext = await getCodebaseContext(config.workspacePath)
 			const response = await callApi({
 				model: config.patchModel,
@@ -493,6 +517,9 @@ export class PatchSession {
 			this.pushMessage({ role: 'assistant', content: response.content })
 
 			const toolBlocks = response.content.filter(c => c.type === 'tool_use')
+			// If the model returns no tool calls but has already made edits, treat it as
+			// implicitly done — the model sometimes "forgets" to call the done tool after
+			// finishing. If no edits exist either, it's a genuine failure.
 			if (toolBlocks.length === 0) {
 				if (this.edits.length > 0) {
 					logger.info(`Builder stopped responding after ${this.edits.length} edit(s) — treating as done`)

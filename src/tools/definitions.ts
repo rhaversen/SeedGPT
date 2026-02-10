@@ -280,6 +280,9 @@ const codebaseDiff = {
 	},
 }
 
+// Planner gets read-only tools + memory + submit_plan. Builder gets mutation tools + done.
+// This enforces the architectural separation: the planner decides WHAT to change,
+// the builder decides HOW to implement it. Neither can do the other's job.
 export const PLANNER_TOOLS = [submitPlan, noteToSelf, dismissNote, recallMemory, readFile, grepSearch, fileSearch, listDirectory]
 export const BUILDER_TOOLS = [editFile, createFile, deleteFile, readFile, grepSearch, fileSearch, listDirectory, gitDiff, codebaseDiff, done]
 
@@ -386,6 +389,8 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 
+	// Edit tools apply changes to the filesystem immediately so the builder's subsequent
+	// read_file calls see the updated state, enabling it to verify its own changes.
 	if (name === 'edit_file') {
 		const { filePath, oldString, newString } = input as { filePath: string; oldString: string; newString: string }
 		const op: FileEdit = { type: 'replace', filePath, oldString, newString }

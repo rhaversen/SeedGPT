@@ -15,6 +15,7 @@ const PRICING: Record<string, ModelPricing> = {
 	'claude-haiku-4-5':  { inputPerMTok: 1, outputPerMTok: 5  },
 }
 
+// Defaults to the most expensive tier (opus pricing) so unknown models never underestimate cost
 const DEFAULT_PRICING: ModelPricing = { inputPerMTok: 5, outputPerMTok: 25 }
 
 interface UsageEntry {

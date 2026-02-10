@@ -107,6 +107,9 @@ function buildDependencyGraph(sourceContents: Map<string, string>): string {
 	return lines.length > 0 ? `\`\`\`\n${lines.join('\n')}\n\`\`\`` : 'No dependencies found.'
 }
 
+// Resolves ESM import specifiers to actual source files. TypeScript ESM requires .js
+// extensions in imports even for .ts source files, so we strip the .js extension and
+// try all possible source extensions (.ts, .js, .mjs, .cjs, index files).
 function resolveLocalImport(fromFile: string, specifier: string, allFiles: Set<string>): string | null {
 	const dir = dirname(fromFile).replace(/\\/g, '/')
 	const raw = posix.normalize(dir === '.' ? specifier.slice(2) : `${dir}/${specifier.slice(2)}`)
@@ -122,6 +125,9 @@ function resolveLocalImport(fromFile: string, specifier: string, allFiles: Set<s
 	return null
 }
 
+// Uses the TypeScript compiler API to parse actual AST rather than regex.
+// This gives accurate line numbers, modifiers, and signatures for the codebase index
+// that both the planner and builder rely on for navigation.
 export function extractDeclarations(sourceText: string, filePath: string): string[] {
 	const kind = filePath.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS
 	const sf = ts.createSourceFile(filePath, sourceText, ts.ScriptTarget.Latest, true, kind)
@@ -224,6 +230,9 @@ function mod(node: ts.Node, kind: ts.SyntaxKind): boolean {
 	return ts.canHaveModifiers(node) && (ts.getModifiers(node)?.some(m => m.kind === kind) ?? false)
 }
 
+// When no explicit type annotation exists, infers a readable type approximation from
+// the initializer AST node. This gives the codebase index useful type hints for the
+// planner even when the codebase uses type inference heavily.
 function inferType(sf: ts.SourceFile, init: ts.Expression | undefined): string {
 	if (!init) return ''
 	if (ts.isStringLiteral(init) || ts.isNoSubstitutionTemplateLiteral(init) || ts.isTemplateExpression(init)) return ': string'
@@ -340,6 +349,9 @@ export async function listDirectory(rootPath: string, dirPath: string): Promise<
 	return entries.map(e => e.isDirectory() ? `${e.name}/` : e.name).join('\n')
 }
 
+// Captures a baseline snapshot of the codebase structure at the start of each iteration.
+// The builder can later call diffContext to see what structural changes its edits caused
+// (new files, removed declarations, changed dependencies) without reading a full git diff.
 let snapshot: { tree: string; declarations: string; depGraph: string } | null = null
 
 export function snapshotContext(tree: string, declarations: string, depGraph: string): void {
@@ -382,6 +394,8 @@ export async function diffContext(rootPath: string): Promise<string> {
 	return sections.join('\n\n')
 }
 
+// Simplified glob matcher to avoid pulling in a minimatch dependency.
+// Handles the basic patterns the agent uses: **, *, ?, and dot escaping.
 function minimatch(filePath: string, pattern: string): boolean {
 	const regexStr = pattern
 		.replace(/\./g, '\\.')
