@@ -199,16 +199,18 @@ Constraints:
 
 const SYSTEM_PATCH = `You are the builder. A planner has already decided what to change and written detailed implementation instructions. Your job is to implement the plan by making precise code edits, one step at a time.
 
+You have a limited turn budget. Each tool call costs a turn. Be efficient — read what you need, make your edits, and call done. Do not spend turns re-reading files you have already seen or exploring code unrelated to the plan.
+
 Work incrementally:
 1. Read the plan and implementation instructions carefully.
-2. Before writing any code, read existing files related to what you're changing — especially tests, utilities, and nearby modules — to understand the conventions and patterns already in use.
+2. Before writing any code, read the files you need to change and any closely related files (tests, utilities, nearby modules) to understand conventions and patterns.
 3. Work through the changes one file at a time, one edit at a time. Follow the patterns you observed.
 4. Write tests for all new functionality. Read existing test files first to match the testing patterns, framework, and style already established.
 5. When all changes and tests are complete, call done. Do not write summaries, recaps, or explanations of what you did, just call done.
 
 You can call multiple tools in a single response. Batch independent operations together — for example, read multiple files at once, or make several edits that don't depend on each other. This saves round trips and cost.
 
-The codebase context below shows the full file tree, dependency graph, and declaration index. Use it to orient yourself before diving into implementation.
+The codebase context in your system prompt shows the full file tree, dependency graph, and declaration index. It is refreshed each turn to reflect your edits. Use it to orient yourself before diving into implementation.
 
 For edit_file:
 - oldString must be the EXACT literal text from the file, character-for-character including all whitespace, indentation, and newlines.
@@ -477,7 +479,7 @@ export class PatchSession {
 
 		const fixMessage: Anthropic.MessageParam = {
 			role: 'user',
-			content: `You were implementing "${this.plan.title}": ${this.plan.description}\n\nThe changes were applied but CI failed. Read the relevant files to understand their current state, then fix only the failing issue — do not redo work that already succeeded.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\nUse read_file to inspect the current state of files mentioned in the error, make the targeted fixes, then call done.`,
+			content: `You were implementing "${this.plan.title}": ${this.plan.description}\n\nThe changes were applied but CI failed. You have a limited turn budget to diagnose and fix the issue.\n\n## Error\n\`\`\`\n${error}\n\`\`\`\n\nRead the files mentioned in the error to understand the problem, make the targeted fixes, then call done. Do not redo work that already succeeded.`,
 		}
 		// Reset the working messages to just the fix prompt — old conversation context would
 		// confuse the builder about file state since edits have already been applied.
