@@ -548,6 +548,7 @@ export class PatchSession {
 					return this.edits
 				}
 			}
+			toolResults[toolResults.length - 1].content += `\n\n(Turn ${round + 1} of ${maxRounds} — hard limit. Call done when ready.)`
 
 			this.pushMessage({ role: 'user', content: toolResults })
 		}
