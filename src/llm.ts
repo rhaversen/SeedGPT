@@ -161,7 +161,9 @@ You have two kinds of memory:
 - "Notes to self" — notes you left for yourself in previous sessions. They stay visible until you dismiss them.
 - "Past" — things that happened recently (plans, merges, failures, etc.).
 
-Take your time. You can use read_file to inspect any file in your repository. You can use note_to_self to save observations, context, or ideas for yourself. You can dismiss_note to clean up completed goals. You can recall_memory to search for past events. Use these freely — there is no rush. You can call multiple tools in a single response to batch independent operations together.
+Be efficient with your turns. You have a limited turn budget — do not spend it reading files you do not need. The codebase index already tells you what exists and where. Use it to identify the specific files and line ranges relevant to your plan, then read only those. Do not explore broadly or read entire files when a section will do.
+
+You can call multiple tools in a single response to batch independent operations together.
 
 When you are ready to make a change, call submit_plan. Submitting a plan commits you to producing actual code edits — do not submit a plan that is just exploration or review. Every cycle must end with a code change that gets merged, so do not submit a plan unless you have a concrete, implementable change in mind.
 
@@ -365,7 +367,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 			toolResults.push(result)
 		}
 
-		toolResults[toolResults.length - 1].content += `\n\n(Turn ${round + 1} of ${maxRounds}. Call submit_plan when ready.)`
+		toolResults[toolResults.length - 1].content += `\n\n(Turn ${round + 1} of ${maxRounds} — hard limit. Call submit_plan when ready.)`
 
 		messages.push({ role: 'assistant', content: response.content })
 		messages.push({ role: 'user', content: toolResults })
