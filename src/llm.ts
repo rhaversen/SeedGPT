@@ -453,6 +453,10 @@ export class PatchSession {
 		return this.fullHistory
 	}
 
+	get exhausted(): boolean {
+		return this.roundsUsed >= config.maxBuilderRounds
+	}
+
 	constructor(plan: Plan, memoryContext: string) {
 		this.plan = plan
 		this.system = cachedSystem(SYSTEM_PATCH)

@@ -1,10 +1,9 @@
-import { SimpleGit } from 'simple-git'
 import * as git from './tools/git.js'
 import * as github from './tools/github.js'
 import logger from './logger.js'
 
-export async function awaitChecks(gitClient: SimpleGit): Promise<github.CheckResult> {
-	const sha = await git.getHeadSha(gitClient)
+export async function awaitChecks(): Promise<github.CheckResult> {
+	const sha = await git.getHeadSha()
 	return github.awaitPRChecks(sha)
 }
 

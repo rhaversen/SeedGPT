@@ -5,22 +5,27 @@ import { config } from '../config.js'
 import logger from '../logger.js'
 import type { EditOperation } from '../llm.js'
 
-// Embeds the token directly in the clone URL to avoid needing git credential helpers
-// in the container. x-access-token is GitHub's convention for token-based HTTPS auth.
-export async function cloneRepo(): Promise<SimpleGit> {
+let client: SimpleGit
+
+function getClient(): SimpleGit {
+	if (!client) throw new Error('Git client not initialized — call cloneRepo() first')
+	return client
+}
+
+export async function cloneRepo(): Promise<void> {
 	const url = `https://x-access-token:${config.githubToken}@github.com/${config.githubOwner}/${config.githubRepo}.git`
 	logger.info(`Cloning ${config.githubOwner}/${config.githubRepo}`)
 
 	const git = simpleGit()
 	await git.clone(url, config.workspacePath)
 
-	const workspace = simpleGit(config.workspacePath)
-	await workspace.addConfig('user.email', 'agent.seedgpt@gmail.com')
-	await workspace.addConfig('user.name', 'SeedGPT')
-	return workspace
+	client = simpleGit(config.workspacePath)
+	await client.addConfig('user.email', 'agent.seedgpt@gmail.com')
+	await client.addConfig('user.name', 'SeedGPT')
 }
 
-export async function createBranch(git: SimpleGit, name: string): Promise<string> {
+export async function createBranch(name: string): Promise<string> {
+	const git = getClient()
 	const branchName = 'seedgpt/' + name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-/]/g, '').slice(0, 60)
 	logger.info(`Creating branch: ${branchName}`)
 	await git.checkoutLocalBranch(branchName)
@@ -72,7 +77,8 @@ export async function applyEdits(operations: EditOperation[]): Promise<void> {
 	logger.info(`Applied ${operations.length} edit(s) successfully`)
 }
 
-export async function commitAndPush(git: SimpleGit, message: string, force = false): Promise<void> {
+export async function commitAndPush(message: string, force = false): Promise<void> {
+	const git = getClient()
 	await git.add('.')
 	await git.commit(message)
 	const branch = (await git.branch()).current
@@ -86,18 +92,27 @@ export async function commitAndPush(git: SimpleGit, message: string, force = fal
 	logger.info(`Committed and pushed to ${branch}${force ? ' (force)' : ''}`)
 }
 
-export async function resetToMain(git: SimpleGit): Promise<void> {
+export async function resetToMain(): Promise<void> {
+	const git = getClient()
 	await git.raw(['reset', '--hard', 'origin/main'])
 	logger.info('Reset branch to origin/main')
 }
 
-export async function getHeadSha(git: SimpleGit): Promise<string> {
-	return (await git.revparse(['HEAD'])).trim()
+export async function getHeadSha(): Promise<string> {
+	return (await getClient().revparse(['HEAD'])).trim()
 }
 
-export async function getRecentLog(git: SimpleGit, count = 10): Promise<string> {
-	const log = await git.log({ maxCount: count })
+export async function getRecentLog(count = 10): Promise<string> {
+	const log = await getClient().log({ maxCount: count })
 	return log.all.map(c => `${c.hash.slice(0, 7)} ${c.message}`).join('\n')
+}
+
+export async function resetWorkspace(): Promise<void> {
+	const git = getClient()
+	await git.checkout(['.'])
+	await git.clean('f', ['-d'])
+	await git.checkout('main')
+	await git.pull()
 }
 
 export async function getDiff(): Promise<string> {

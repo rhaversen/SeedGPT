@@ -1,9 +1,20 @@
 import { readdir, readFile as fsReadFile } from 'fs/promises'
 import { join, extname, dirname, posix } from 'path'
 import ts from 'typescript'
+import { config } from '../config'
 
 const IGNORE = new Set(['node_modules', '.git', 'dist', 'logs', '.tmp-patch.diff', 'package-lock.json'])
 const TS_EXTENSIONS = new Set(['.ts', '.js', '.mjs', '.cjs'])
+
+export async function buildCodebaseContext(): Promise<string> {
+	const [fileTree, declarationIndex, depGraph] = await Promise.all([
+		getFileTree(config.workspacePath),
+		getDeclarationIndex(config.workspacePath),
+		getDependencyGraph(config.workspacePath),
+	])
+	snapshotContext(fileTree, declarationIndex, depGraph)
+	return `## File Tree\n\`\`\`\n${fileTree}\n\`\`\`\n\n## Dependency Graph\n${depGraph}\n\n## Declarations\n${declarationIndex}`
+}
 
 export async function getFileTree(rootPath: string): Promise<string> {
 	const lines: string[] = ['.']
