@@ -1,6 +1,6 @@
 # SeedGPT
 
-[![Watch SeedGPT evolve in real time — see its commits, PRs, and self-modifications](https://img.shields.io/badge/Watch%20SeedGPT%20Evolve-Follow%20on%20GitHub%20→-181717?style=for-the-badge&logo=github)](https://github.com/SeedGPT/)
+[![Watch SeedGPT evolve in real time — see its commits, PRs, and self-modifications](https://img.shields.io/badge/Watch%20SeedGPT%20Evolve-Follow%20on%20GitHub%20→-181717?style=for-the-badge&logo=github)](https://github.com/SeedGPT/SeedGPT)
 
 A self-evolving AI agent that modifies its own source code. It runs autonomously in a loop — examining itself, planning improvements, implementing changes, and merging them through CI. Each merged change permanently alters the agent for its next cycle.
 
