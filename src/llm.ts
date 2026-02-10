@@ -196,7 +196,7 @@ Work incrementally:
 3. Work through the changes one file at a time, one edit at a time. Follow the patterns you observed.
 4. After making edits, verify your changes look correct.
 5. Write tests for all new functionality. Read existing test files first to match the testing patterns, framework, and style already established.
-6. When all changes and tests are complete, call done.
+6. When all changes and tests are complete, call done. Do not write summaries, recaps, or explanations of what you did, just call done.
 
 You can call multiple tools in a single response. Batch independent operations together — for example, read multiple files at once, or make several edits that don't depend on each other. This saves round trips and cost.
 
