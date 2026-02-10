@@ -336,7 +336,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 	}]
 
 	const system = cachedSystem(SYSTEM_PLAN)
-	const maxRounds = 25
+	const maxRounds = config.maxPlannerRounds
 	for (let round = 0; round < maxRounds; round++) {
 		logger.info(`Planner turn ${round + 1}/${maxRounds}`)
 		compressOldMessages(messages, 1, 4)
@@ -501,8 +501,7 @@ export class PatchSession {
 	}
 
 	private async runBuilderLoop(): Promise<EditOperation[]> {
-		const maxRounds = 40
-
+		const maxRounds = config.maxBuilderRounds
 		for (let round = 0; round < maxRounds; round++) {
 			logger.info(`Builder turn ${round + 1}/${maxRounds}`)
 			compressOldMessages(this.messages, 1, 4)

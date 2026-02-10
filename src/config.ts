@@ -43,7 +43,8 @@ export const config = {
 	planModel,
 	patchModel,
 	reflectModel,
-	maxRetries: 3,
+	maxPlannerRounds: 25,
+	maxBuilderRounds: 40,
 	workspacePath: isProduction ? '/app/workspace' : './workspace',
 	memoryTokenBudget: 10_000,
 	db: {
