@@ -509,10 +509,14 @@ export class PatchSession {
 			// Stale context would show old declarations/tree and cause the builder to make
 			// edits against outdated file contents.
 			const codebaseContext = await getCodebaseContext(config.workspacePath)
+
 			const response = await callApi({
 				model: config.patchModel,
 				max_tokens: 16384,
-				system: [...this.system, { type: 'text' as const, text: `\n\n${codebaseContext}`, cache_control: { type: 'ephemeral' } }],
+				system: [
+					...this.system,
+					{ type: 'text' as const, text: `\n\n${codebaseContext}` },
+				],
 				tools: BUILDER_TOOLS,
 				messages: this.messages,
 			})
@@ -548,6 +552,7 @@ export class PatchSession {
 					return this.edits
 				}
 			}
+
 			toolResults[toolResults.length - 1].content += `\n\n(Turn ${round + 1} of ${maxRounds} — hard limit. Call done when ready.)`
 
 			this.pushMessage({ role: 'user', content: toolResults })
