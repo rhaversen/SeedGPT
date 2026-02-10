@@ -187,6 +187,7 @@ export async function reflect(outcome: string, plannerMessages: Anthropic.Messag
 		}],
 	})
 	trackUsage('reflect', config.reflectModel, response.usage)
+	logger.info(`Reflect usage: ${response.usage.input_tokens} in + ${response.usage.output_tokens} out tokens`)
 
 	const text = response.content.find(c => c.type === 'text')?.text ?? ''
 	logger.info(`Reflection: ${text.slice(0, 200)}`)
@@ -218,6 +219,7 @@ export async function plan(recentMemory: string, codebaseContext: string, gitLog
 			tools,
 		})
 		trackUsage('planner', config.planModel, response.usage)
+		logger.info(`Planner turn ${round + 1} usage: ${response.usage.input_tokens} in + ${response.usage.output_tokens} out tokens`)
 
 		const toolBlocks = response.content.filter(c => c.type === 'tool_use')
 		if (toolBlocks.length === 0) {
@@ -358,6 +360,7 @@ export class PatchSession {
 				messages: this.messages,
 			})
 			trackUsage('builder', config.patchModel, response.usage)
+			logger.info(`Builder turn ${round + 1} usage: ${response.usage.input_tokens} in + ${response.usage.output_tokens} out tokens`)
 
 			this.pushMessage({ role: 'assistant', content: response.content })
 
