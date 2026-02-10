@@ -97,7 +97,6 @@ export async function run(): Promise<void> {
 			const reflection = await llm.reflect(outcome!, plannerMessages, session.conversation)
 			await memory.store(`Self-reflection: ${reflection}`)
 			await saveIterationData(plan.title, outcome!, plannerMessages, session.conversation, reflection)
-			if (merged) await writeIterationLog()
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
@@ -106,6 +105,7 @@ export async function run(): Promise<void> {
 		} catch { /* DB may be down */ }
 		throw error
 	} finally {
+		await writeIterationLog()
 		await disconnectFromDatabase()
 	}
 }
