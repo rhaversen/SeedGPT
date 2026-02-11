@@ -83,8 +83,7 @@ export function logSummary(): void {
 export async function saveIterationData(
 	planTitle: string,
 	outcome: string,
-	plannerMessages: Anthropic.MessageParam[],
-	builderMessages: Anthropic.MessageParam[],
+	messages: Anthropic.MessageParam[],
 	reflection: string,
 ): Promise<void> {
 	try {
@@ -117,8 +116,7 @@ export async function saveIterationData(
 		await GeneratedModel.create({
 			planTitle,
 			outcome,
-			plannerTranscript: summarizeMessages(plannerMessages),
-			builderTranscript: summarizeMessages(builderMessages),
+			transcript: summarizeMessages(messages),
 			reflection,
 		})
 

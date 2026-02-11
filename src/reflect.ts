@@ -1,9 +1,37 @@
 import Anthropic from '@anthropic-ai/sdk'
 import logger, { getLogBuffer } from './logger.js'
 import { callApi } from './api.js'
-import { summarizeMessages } from './compression.js'
+import { compressToolResult } from './compression.js'
 
-export async function reflect(outcome: string, plannerMessages: Anthropic.MessageParam[], builderMessages: Anthropic.MessageParam[]): Promise<string> {
+function buildTranscript(messages: Anthropic.MessageParam[]): string {
+	const toolNames = new Map<string, { name: string; input: Record<string, unknown> }>()
+	const parts: string[] = []
+
+	for (const msg of messages) {
+		if (!Array.isArray(msg.content)) {
+			if (msg.role === 'assistant' && typeof msg.content === 'string') parts.push(msg.content)
+			continue
+		}
+
+		for (const block of msg.content) {
+			if (block.type === 'text' && 'text' in block) {
+				if (msg.role === 'assistant') parts.push((block as Anthropic.TextBlockParam).text)
+			} else if (block.type === 'tool_use') {
+				toolNames.set(block.id, { name: block.name, input: block.input as Record<string, unknown> })
+				parts.push(`[tool: ${block.name}]`)
+			} else if (block.type === 'tool_result') {
+				const text = typeof block.content === 'string' ? block.content : ''
+				const tool = toolNames.get(block.tool_use_id)
+				const compressed = tool ? compressToolResult(tool.name, tool.input, text) : text.slice(0, 100)
+				parts.push(`[result${block.is_error ? ' ERROR' : ''}] ${compressed}`)
+			}
+		}
+	}
+
+	return parts.join('\n')
+}
+
+export async function reflect(outcome: string, messages: Anthropic.MessageParam[]): Promise<string> {
 	logger.info('Self-reflecting on iteration...')
 
 	const logs = getLogBuffer()
@@ -14,10 +42,8 @@ export async function reflect(outcome: string, plannerMessages: Anthropic.Messag
 	const transcript = [
 		'## Iteration Log',
 		logs,
-		'## Planner Conversation',
-		summarizeMessages(plannerMessages),
-		'## Builder Conversation',
-		summarizeMessages(builderMessages),
+		'## Conversation',
+		buildTranscript(messages),
 		'## Outcome',
 		outcome,
 	].join('\n\n')

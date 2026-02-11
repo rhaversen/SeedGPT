@@ -3,8 +3,7 @@ import mongoose, { type Document, type Model, Schema } from 'mongoose'
 export interface IGenerated extends Document {
 	planTitle: string
 	outcome: string
-	plannerTranscript: string
-	builderTranscript: string
+	transcript: string
 	reflection: string
 	createdAt: Date
 }
@@ -12,8 +11,7 @@ export interface IGenerated extends Document {
 const generatedSchema = new Schema<IGenerated>({
 	planTitle: { type: String, required: true },
 	outcome: { type: String, required: true },
-	plannerTranscript: { type: String, required: true },
-	builderTranscript: { type: String, required: true },
+	transcript: { type: String, required: true },
 	reflection: { type: String, required: true },
 }, {
 	timestamps: { createdAt: true, updatedAt: false },

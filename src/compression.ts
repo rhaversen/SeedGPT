@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-function compressToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
+export function compressToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
 	const lines = resultContent.split('\n').length
 	switch (toolName) {
 	case 'read_file': {

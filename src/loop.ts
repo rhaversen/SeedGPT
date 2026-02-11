@@ -112,10 +112,10 @@ async function iterate(): Promise<boolean> {
 	}
 
 	logSummary()
-	const builderMessages = session.conversation
-	const reflection = await reflect(outcome, plannerMessages, builderMessages)
+	const allMessages = [...plannerMessages, ...session.conversation]
+	const reflection = await reflect(outcome, allMessages)
 	await store(`Self-reflection: ${reflection}`)
-	await saveIterationData(iterationPlan.title, outcome, plannerMessages, builderMessages, reflection)
+	await saveIterationData(iterationPlan.title, outcome, allMessages, reflection)
 
 	return merged
 }
