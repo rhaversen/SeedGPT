@@ -30,52 +30,40 @@ export function compressToolResult(toolName: string, toolInput: Record<string, u
 	}
 }
 
-export function compressOldMessages(messages: Anthropic.MessageParam[], keepFirst: number = 1, keepLast: number = 4): void {
-	if (messages.length <= keepFirst + keepLast) return
-	const compressEnd = messages.length - keepLast
+export function compressOldMessages(messages: Anthropic.MessageParam[]): void {
+	if (messages.length < 3) return
+
+	let lastUserIdx = -1
+	for (let i = messages.length - 1; i >= 0; i--) {
+		if (messages[i].role === 'user') { lastUserIdx = i; break }
+	}
 
 	const toolNameMap = new Map<string, { name: string; input: Record<string, unknown> }>()
-	for (let i = keepFirst; i < compressEnd; i++) {
-		const msg = messages[i]
+	for (const msg of messages) {
 		if (msg.role === 'assistant' && Array.isArray(msg.content)) {
 			for (const block of msg.content) {
 				if (block.type === 'tool_use') {
 					toolNameMap.set(block.id, { name: block.name, input: block.input as Record<string, unknown> })
 				}
 			}
-
-			let changed = false
-			const content = msg.content.map(block => {
-				if (block.type === 'text' && 'text' in block) {
-					const textBlock = block as Anthropic.TextBlockParam
-					if (textBlock.text.length > 2000) {
-						changed = true
-						return { ...block, text: textBlock.text.slice(0, 2000) + '...' }
-					}
-				}
-				return block
-			})
-			if (changed) messages[i] = { ...msg, content }
 		}
+	}
 
-		if (msg.role === 'user' && Array.isArray(msg.content)) {
-			let changed = false
-			const content = (msg.content as Anthropic.ContentBlockParam[]).map(block => {
-				if (block.type === 'tool_result') {
-					const text = typeof block.content === 'string' ? block.content : ''
-					if (text.length > 200) {
-						const tool = toolNameMap.get(block.tool_use_id)
-						if (tool) {
-							changed = true
-							return { ...block, content: compressToolResult(tool.name, tool.input, text) }
-						}
-						changed = true
-						return { ...block, content: text.slice(0, 100) + '\n[...compressed]' }
-					}
-				}
-				return block
-			})
-			if (changed) messages[i] = { ...msg, content }
-		}
+	for (let i = 0; i < messages.length; i++) {
+		const msg = messages[i]
+		if (msg.role !== 'user' || i === lastUserIdx || !Array.isArray(msg.content)) continue
+
+		let changed = false
+		const content = (msg.content as Anthropic.ContentBlockParam[]).map(block => {
+			if (block.type !== 'tool_result') return block
+			const text = typeof block.content === 'string' ? block.content : ''
+			if (text.length <= 100) return block
+
+			const tool = toolNameMap.get(block.tool_use_id)
+			changed = true
+			if (tool) return { ...block, content: compressToolResult(tool.name, tool.input, text) }
+			return { ...block, content: text.slice(0, 100) + '\n[...compressed]' }
+		})
+		if (changed) messages[i] = { ...msg, content }
 	}
 }

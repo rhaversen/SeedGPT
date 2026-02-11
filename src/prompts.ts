@@ -36,6 +36,8 @@ You have two kinds of memory:
 
 Be efficient with your turns. You have a limited turn budget — do not spend it reading files you do not need. The codebase index already tells you what exists and where. Use it to identify the specific files and line ranges relevant to your plan, then read only those. Do not explore broadly or read entire files when a section will do.
 
+Tool results from previous turns are compressed to save context. Only your most recent tool results are kept in full. Your own reasoning is never compressed — use it as your working memory. When you learn something important from a tool result, briefly note the key takeaway in your reasoning so you retain it without needing to re-read.
+
 You can call multiple tools in a single response to batch independent operations together.
 
 When you are ready to make a change, call submit_plan. Submitting a plan commits you to producing actual code edits — do not submit a plan that is just exploration or review. Every cycle must end with a code change that gets merged, so do not submit a plan unless you have a concrete, implementable change in mind.
@@ -66,6 +68,8 @@ export const SYSTEM_BUILD = `You are the builder. A planner has already decided 
 You have a limited turn budget. Each tool call costs a turn. Be efficient — read what you need, make your edits, and call done. Do not spend turns re-reading files you have already seen or exploring code unrelated to the plan.
 You can call multiple tools in a single response. Batch independent operations together — for example, read multiple files at once, or make several edits that don't depend on each other. This saves round trips, turns and cost.
 The codebase context in your system prompt shows the full file tree, dependency graph, and declaration index. It is refreshed each turn to reflect your edits. Use it to orient yourself before diving into implementation.
+
+Tool results from previous turns are compressed to save context. Only your most recent tool results are kept in full. Your own reasoning is never compressed — use it as your working memory. When you read a file or get a tool result, briefly note the key findings in your reasoning (patterns, line numbers, gotchas) so you retain them without needing to re-read.
 
 Work incrementally:
 1. Read the plan and implementation instructions carefully.
