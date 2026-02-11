@@ -1,7 +1,8 @@
 import { cloneRepo, commitAndPush, createBranch, getRecentLog, resetWorkspace } from './tools/git.js'
 import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
-import { buildCodebaseContext } from './tools/codebase.js'
+import { snapshotCodebase } from './tools/codebase.js'
 import { awaitChecks, cleanupStalePRs } from './pipeline.js'
+import { config } from './config.js'
 import { getContext, store } from './memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
@@ -36,11 +37,11 @@ export async function run(): Promise<void> {
 }
 
 async function iterate(): Promise<boolean> {
+	await snapshotCodebase(config.workspacePath)
 	const recentMemory = await getContext()
-	const codebaseContext = await buildCodebaseContext()
 	const gitLog = await getRecentLog()
 
-	const { plan: iterationPlan, messages: plannerMessages } = await plan(recentMemory, codebaseContext, gitLog)
+	const { plan: iterationPlan, messages: plannerMessages } = await plan(recentMemory, gitLog)
 	await store(`Planned change "${iterationPlan.title}": ${iterationPlan.description}`)
 
 	const session = new PatchSession(iterationPlan, recentMemory)

@@ -116,3 +116,5 @@ Consider:
 - Does the iteration log show contradictory behavior? If so, that is a bug in my own code that I should fix in a future cycle.
 
 Be concise. One short paragraph. Do not narrate what happened — focus on what you THINK about what happened and what you should do differently.`
+
+export const SYSTEM_MEMORY = 'Write a one-sentence summary (under 25 words) of this memory. Capture the core what and why so a reader understands the gist without needing the full text, but also senses there is deeper detail worth recalling. Only reference information explicitly present — never infer, elaborate, or add details not stated. No preamble.'

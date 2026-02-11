@@ -44,6 +44,7 @@ export const config = {
 		planner: { model: planModel, maxTokens: 4096 },
 		builder: { model: patchModel, maxTokens: 16384 },
 		reflect: { model: reflectModel, maxTokens: 512 },
+		memory: { model: planModel, maxTokens: 64 },
 	},
 	maxPlannerRounds: 25,
 	maxBuilderRounds: 40,

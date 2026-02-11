@@ -1,19 +1,17 @@
 import { readdir, readFile as fsReadFile } from 'fs/promises'
 import { join, extname, dirname, posix } from 'path'
 import ts from 'typescript'
-import { config } from '../config'
 
 const IGNORE = new Set(['node_modules', '.git', 'dist', 'logs', '.tmp-patch.diff', 'package-lock.json'])
 const TS_EXTENSIONS = new Set(['.ts', '.js', '.mjs', '.cjs'])
 
-export async function buildCodebaseContext(): Promise<string> {
-	const [fileTree, declarationIndex, depGraph] = await Promise.all([
-		getFileTree(config.workspacePath),
-		getDeclarationIndex(config.workspacePath),
-		getDependencyGraph(config.workspacePath),
+export async function getCodebaseContext(rootPath: string): Promise<string> {
+	const [tree, declarations, depGraph] = await Promise.all([
+		getFileTree(rootPath),
+		getDeclarationIndex(rootPath),
+		getDependencyGraph(rootPath),
 	])
-	snapshotContext(fileTree, declarationIndex, depGraph)
-	return `## File Tree\n\`\`\`\n${fileTree}\n\`\`\`\n\n## Dependency Graph\n${depGraph}\n\n## Declarations\n${declarationIndex}`
+	return `## File Tree\n\`\`\`\n${tree}\n\`\`\`\n\n## Dependency Graph\n${depGraph}\n\n## Declarations\n${declarations}`
 }
 
 export async function getFileTree(rootPath: string): Promise<string> {
@@ -64,16 +62,6 @@ export async function getDependencyGraph(rootPath: string): Promise<string> {
 	}
 
 	return buildDependencyGraph(sourceContents)
-}
-
-export async function getCodebaseContext(rootPath: string): Promise<string> {
-	const [tree, declarations, depGraph] = await Promise.all([
-		getFileTree(rootPath),
-		getDeclarationIndex(rootPath),
-		getDependencyGraph(rootPath),
-	])
-
-	return `## File Tree\n\`\`\`\n${tree}\n\`\`\`\n\n## Dependency Graph\n${depGraph}\n\n## Declarations\n${declarations}`
 }
 
 function buildDependencyGraph(sourceContents: Map<string, string>): string {
@@ -365,7 +353,12 @@ export async function listDirectory(rootPath: string, dirPath: string): Promise<
 // (new files, removed declarations, changed dependencies) without reading a full git diff.
 let snapshot: { tree: string; declarations: string; depGraph: string } | null = null
 
-export function snapshotContext(tree: string, declarations: string, depGraph: string): void {
+export async function snapshotCodebase(rootPath: string): Promise<void> {
+	const [tree, declarations, depGraph] = await Promise.all([
+		getFileTree(rootPath),
+		getDeclarationIndex(rootPath),
+		getDependencyGraph(rootPath),
+	])
 	snapshot = { tree, declarations, depGraph }
 }
 

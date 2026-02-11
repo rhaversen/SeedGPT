@@ -2,7 +2,6 @@ import Anthropic from '@anthropic-ai/sdk'
 import { config } from './config.js'
 import logger from './logger.js'
 import { handleTool, getEditOperation } from './tools/definitions.js'
-import { getCodebaseContext } from './tools/codebase.js'
 import type { EditOperation, ToolResult } from './tools/definitions.js'
 import { callApi } from './api.js'
 import { toolLogSuffix } from './logger.js'
@@ -74,9 +73,8 @@ export class PatchSession {
 		while (this.roundsUsed < maxRounds) {
 			this.roundsUsed++
 			logger.info(`Builder turn ${this.roundsUsed}/${maxRounds}`)
-			const codebaseContext = await getCodebaseContext(config.workspacePath)
 
-			const response = await callApi('builder', this.messages, `\n\n${codebaseContext}`)
+			const response = await callApi('builder', this.messages)
 			logger.info(`Builder turn ${this.roundsUsed} usage: ${response.usage.input_tokens} in + ${response.usage.output_tokens} out tokens`)
 
 			this.pushMessage({ role: 'assistant', content: response.content })

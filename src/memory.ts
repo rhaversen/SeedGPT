@@ -1,25 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk'
 import MemoryModel from './models/Memory.js'
 import { config } from './config.js'
 import logger from './logger.js'
-import { trackUsage } from './usage.js'
-
-const client = new Anthropic({ apiKey: config.anthropicApiKey })
+import { callApi } from './api.js'
 
 async function summarize(content: string): Promise<string> {
-	const response = await client.messages.create({
-		model: config.phases.planner.model,
-		max_tokens: 64,
-		system: [
-			'Write a one-sentence summary (under 25 words) of this memory.',
-			'Capture the core what and why so a reader understands the gist without needing the full text,',
-			'but also senses there is deeper detail worth recalling.',
-			'Only reference information explicitly present — never infer, elaborate, or add details not stated.',
-			'No preamble.',
-		].join(' '),
-		messages: [{ role: 'user', content }],
-	})
-	trackUsage('memory.summarize', config.phases.planner.model, response.usage)
+	const response = await callApi('memory', [{ role: 'user', content }])
 	const text = response.content.find(c => c.type === 'text')?.text ?? content.slice(0, 200)
 	return text.trim()
 }

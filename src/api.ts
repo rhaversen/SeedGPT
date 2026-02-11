@@ -4,17 +4,12 @@ import logger from './logger.js'
 import { compressOldMessages } from './compression.js'
 import { trackUsage } from './usage.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS } from './tools/definitions.js'
-import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT } from './prompts.js'
+import { getCodebaseContext } from './tools/codebase.js'
+import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT, SYSTEM_MEMORY } from './prompts.js'
 
-export type Phase = 'planner' | 'builder' | 'reflect'
-
-type CachedSystemBlock = { type: 'text'; text: string; cache_control: { type: 'ephemeral' } }
+export type Phase = 'planner' | 'builder' | 'reflect' | 'memory'
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey })
-
-function cachedSystem(text: string): CachedSystemBlock[] {
-	return [{ type: 'text', text, cache_control: { type: 'ephemeral' } }]
-}
 
 const PHASE_EXTRAS: Record<Phase, {
 	system: string
@@ -23,16 +18,26 @@ const PHASE_EXTRAS: Record<Phase, {
 	planner: { system: SYSTEM_PLAN, tools: PLANNER_TOOLS },
 	builder: { system: SYSTEM_BUILD, tools: BUILDER_TOOLS },
 	reflect: { system: SYSTEM_REFLECT },
+	memory: { system: SYSTEM_MEMORY },
 }
 
-export async function callApi(phase: Phase, messages: Anthropic.MessageParam[], extraSystem?: string): Promise<Anthropic.Message> {
-	compressOldMessages(messages)
+export async function callApi(phase: Phase, messages: Anthropic.MessageParam[]): Promise<Anthropic.Message> {
+	if (phase !== 'memory') compressOldMessages(messages)
+
 	const { model, maxTokens } = config.phases[phase]
 	const extras = PHASE_EXTRAS[phase]
-	const system: CachedSystemBlock[] = [
-		...cachedSystem(extras.system),
-		...(extraSystem ? [{ type: 'text' as const, text: extraSystem, cache_control: { type: 'ephemeral' as const } }] : []),
-	]
+	const system: Anthropic.TextBlockParam[] = []
+	system.push({ type: 'text', text: extras.system, cache_control: { type: 'ephemeral' as const } })
+
+	if (phase === 'builder' || phase === 'planner') {
+		const codebaseContext = await getCodebaseContext(config.workspacePath)
+		if (phase === 'planner') {
+			system.push({ type: 'text', text: `\n\n${codebaseContext}`, cache_control: { type: 'ephemeral' as const } })
+		} else {
+			// No cache for the builder context, because it will keep changing
+			system.push({ type: 'text', text: `\n\n${codebaseContext}` })
+		}
+	}
 
 	const params: Anthropic.MessageCreateParamsNonStreaming = {
 		model,
