@@ -89,7 +89,37 @@ function stripLogLine(line: string): string {
 		.replace(/\x1b\[[0-9;]*m/g, '')
 }
 
-function extractFailedStepOutput(logText: string, failedStepNames: string[]): string {
+function prioritizeFailures(lines: string[]): string {
+	const failBlocks: string[] = []
+	const summaryLines: string[] = []
+	let inFail = false
+
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i]
+		if (/^\s*FAIL\s/.test(line)) {
+			inFail = true
+			failBlocks.push(line)
+		} else if (inFail) {
+			if (/^\s*PASS\s/.test(line) || /^Test Suites:/.test(line)) {
+				inFail = false
+			} else {
+				failBlocks.push(line)
+			}
+		}
+		if (/^Test Suites:|^Tests:|^Snapshots:|^Time:|^Ran all/.test(line) || /^ERROR:/.test(line)) {
+			summaryLines.push(line)
+		}
+	}
+
+	if (failBlocks.length > 0) {
+		const parts = [...failBlocks, '', ...summaryLines]
+		return parts.join('\n').slice(-8000)
+	}
+
+	return lines.join('\n').slice(-8000)
+}
+
+export function extractFailedStepOutput(logText: string, failedStepNames: string[]): string {
 	const raw = logText.split('\n')
 	const lines = raw.map(stripLogLine)
 
@@ -118,8 +148,7 @@ function extractFailedStepOutput(logText: string, failedStepNames: string[]): st
 			const content = lines.slice(section.start, section.end)
 				.filter(l => !l.startsWith('##[group]') && !l.startsWith('##[endgroup]') && l.trim() !== '')
 				.map(l => l.replace(/^##\[error]/, 'ERROR: '))
-				.join('\n')
-			return `Step "${section.name}":\n${content}`
+			return `Step "${section.name}":\n${prioritizeFailures(content)}`
 		}).join('\n\n')
 		return output.slice(-8000)
 	}

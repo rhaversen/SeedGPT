@@ -15,7 +15,7 @@ jest.unstable_mockModule('../logger.js', () => {
 	}
 })
 
-const { extractCoverageFromLogs } = await import('./github.js')
+const { extractCoverageFromLogs, extractFailedStepOutput } = await import('./github.js')
 
 const COVERAGE_JSON = JSON.stringify({
 	total: {
@@ -143,5 +143,80 @@ describe('extractCoverageFromLogs', () => {
 		const lowCoverageIdx = result.indexOf('dist/api.js')
 		const memoryIdx = result.indexOf('dist/memory.js')
 		expect(lowCoverageIdx).toBeLessThan(memoryIdx)
+	})
+})
+
+describe('extractFailedStepOutput', () => {
+	it('prioritizes FAIL blocks over PASS output', () => {
+		const log = [
+			'2026-01-01T00:00:00Z ##[group]Run npm test',
+			'2026-01-01T00:00:01Z  FAIL  dist/loop.test.js',
+			'2026-01-01T00:00:01Z   ● Test suite failed to run',
+			'2026-01-01T00:00:01Z     SyntaxError: Missing export storePastMemory',
+			'2026-01-01T00:00:01Z       at Runtime (node_modules/jest-runtime/build/index.js:684:5)',
+			'2026-01-01T00:00:02Z  PASS  dist/logger.test.js',
+			...Array(100).fill('2026-01-01T00:00:02Z     console.log output from passing test'),
+			'2026-01-01T00:00:03Z  PASS  dist/memory.test.js',
+			...Array(100).fill('2026-01-01T00:00:03Z     more console output from another passing test'),
+			'2026-01-01T00:00:04Z Test Suites: 1 failed, 2 passed, 3 total',
+			'2026-01-01T00:00:04Z Tests:       10 passed, 10 total',
+			'2026-01-01T00:00:04Z ##[error]Process completed with exit code 1.',
+			'2026-01-01T00:00:05Z ##[endgroup]',
+		].join('\n')
+
+		const result = extractFailedStepOutput(log, ['npm test'])
+
+		expect(result).toContain('FAIL')
+		expect(result).toContain('SyntaxError: Missing export storePastMemory')
+		expect(result).toContain('Test Suites: 1 failed')
+		expect(result).not.toContain('console.log output from passing test')
+	})
+
+	it('falls back to tail when no FAIL blocks exist', () => {
+		const log = [
+			'2026-01-01T00:00:00Z ##[group]Run npm run build',
+			'2026-01-01T00:00:01Z src/index.ts(5,1): error TS2304: Cannot find name "foo".',
+			'2026-01-01T00:00:01Z ##[error]Process completed with exit code 2.',
+			'2026-01-01T00:00:02Z ##[endgroup]',
+		].join('\n')
+
+		const result = extractFailedStepOutput(log, ['npm run build'])
+
+		expect(result).toContain('error TS2304')
+		expect(result).toContain('Cannot find name "foo"')
+	})
+
+	it('includes error lines in summary', () => {
+		const log = [
+			'2026-01-01T00:00:00Z ##[group]Run npm test',
+			'2026-01-01T00:00:01Z  FAIL  dist/api.test.js',
+			'2026-01-01T00:00:01Z   ● API > should call endpoint',
+			'2026-01-01T00:00:01Z     Expected: 200, Received: 500',
+			'2026-01-01T00:00:02Z  PASS  dist/util.test.js',
+			'2026-01-01T00:00:03Z Test Suites: 1 failed, 1 passed, 2 total',
+			'2026-01-01T00:00:03Z ERROR: Process completed with exit code 1.',
+			'2026-01-01T00:00:04Z ##[endgroup]',
+		].join('\n')
+
+		const result = extractFailedStepOutput(log, ['npm test'])
+
+		expect(result).toContain('Expected: 200, Received: 500')
+		expect(result).toContain('ERROR: Process completed with exit code 1.')
+	})
+
+	it('extracts by error markers when no step name matches', () => {
+		const log = [
+			'2026-01-01T00:00:00Z ##[group]Some Step',
+			'2026-01-01T00:00:01Z Build successful',
+			'2026-01-01T00:00:02Z ##[endgroup]',
+			'2026-01-01T00:00:03Z ##[group]Another Step',
+			'2026-01-01T00:00:04Z Something went wrong',
+			'2026-01-01T00:00:04Z ##[error]Fatal error occurred',
+			'2026-01-01T00:00:05Z ##[endgroup]',
+		].join('\n')
+
+		const result = extractFailedStepOutput(log, ['nonexistent-step'])
+
+		expect(result).toContain('Fatal error occurred')
 	})
 })
