@@ -183,7 +183,7 @@ const listDirectory = {
 
 const editFile = {
 	name: 'edit_file' as const,
-	description: 'Replace a specific piece of text in an existing file. The oldString must match EXACTLY — character-for-character including all whitespace and indentation. Include 2-3 lines of surrounding context in oldString to ensure a unique match. Each call replaces ONE occurrence.',
+	description: 'Replace a specific piece of text in an existing file. The oldString must match EXACTLY — character-for-character including all whitespace and indentation. Include 2-3 lines of surrounding context in oldString to ensure a unique match. Each call replaces ONE occurrence. If you are unsure of the exact text, use read_file first to see the current contents.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {
