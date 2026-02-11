@@ -112,14 +112,14 @@ describe('run', () => {
 		expect(git.cloneRepo).toHaveBeenCalledTimes(1)
 		expect(memory.getContext).toHaveBeenCalledTimes(1)
 		expect(planModule.plan).toHaveBeenCalledTimes(1)
-		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('Planned change'))
+		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Planned change'))
 		expect(git.createBranch).toHaveBeenCalledTimes(1)
 		expect(git.commitAndPush).toHaveBeenCalledTimes(1)
 		expect(github.openPR).toHaveBeenCalledTimes(1)
 		expect(pipeline.awaitChecks).toHaveBeenCalledTimes(1)
 		expect(github.mergePR).toHaveBeenCalledWith(1)
 		expect(github.deleteRemoteBranch).toHaveBeenCalledWith('seedgpt/test-change')
-		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('Merged PR'))
+		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Merged PR'))
 		expect(pipeline.getCoverage).toHaveBeenCalledTimes(1)
 		expect(database.disconnectFromDatabase).toHaveBeenCalledTimes(1)
 	})
@@ -130,14 +130,14 @@ describe('run', () => {
 
 		await run()
 
-		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('Post-merge coverage report'))
-		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('80% statements'))
+		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Post-merge coverage report'))
+		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('80% statements'))
 	})
 
 	it('skips coverage memory when no coverage data available', async () => {
 		await run()
 
-		const storeCalls = (memory.store as jest.Mock).mock.calls.map(c => c[0] as string)
+		const storeCalls = (memory.storePastMemory as jest.Mock).mock.calls.map(c => c[0] as string)
 		expect(storeCalls.some(c => c.includes('coverage report'))).toBe(false)
 	})
 
@@ -167,7 +167,7 @@ describe('run', () => {
 		expect(mockPatchSession.fixPatch).not.toHaveBeenCalled()
 		expect(github.closePR).toHaveBeenCalledWith(1)
 		expect(github.deleteRemoteBranch).toHaveBeenCalledWith('seedgpt/test-change')
-		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('Closed PR'))
+		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Closed PR'))
 		expect(github.mergePR).toHaveBeenCalled()
 	})
 
@@ -179,7 +179,7 @@ describe('run', () => {
 
 		await run()
 
-		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('Gave up'))
+		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Gave up'))
 		expect(github.mergePR).toHaveBeenCalled()
 	})
 

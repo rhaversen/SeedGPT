@@ -3,7 +3,7 @@ import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
 import { snapshotCodebase } from './tools/codebase.js'
 import { awaitChecks, cleanupStalePRs, getCoverage } from './pipeline.js'
 import { config } from './config.js'
-import { getContext, store } from './memory.js'
+import { getContext, storePastMemory } from './memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
 import { logSummary, saveUsageData } from './usage.js'
@@ -27,7 +27,7 @@ export async function run(): Promise<void> {
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
 		try {
-			await store(`Iteration crashed with error: ${message}`)
+			await storePastMemory(`Iteration crashed with error: ${message}`)
 		} catch { /* Swallowed because the crash itself may have been caused by a DB failure */ }
 		throw error
 	} finally {
@@ -42,7 +42,7 @@ async function iterate(): Promise<boolean> {
 	const gitLog = await getRecentLog()
 
 	const { plan: iterationPlan, messages: plannerMessages } = await plan(recentMemory, gitLog)
-	await store(`Planned change "${iterationPlan.title}": ${iterationPlan.description}`)
+	await storePastMemory(`Planned change "${iterationPlan.title}": ${iterationPlan.description}`)
 
 	const session = new PatchSession(iterationPlan, recentMemory)
 	const branchName = await createBranch(iterationPlan.title)
@@ -73,7 +73,7 @@ async function iterate(): Promise<boolean> {
 			}
 
 			logger.warn(`CI failed, attempting fix: ${error.slice(0, 200)}`)
-			await store(`CI failed for "${iterationPlan.title}" (PR #${prNumber}): ${error.slice(0, 500)}`)
+			await storePastMemory(`CI failed for "${iterationPlan.title}" (PR #${prNumber}): ${error.slice(0, 500)}`)
 
 			try {
 				edits = await session.fixPatch(error)
@@ -94,12 +94,12 @@ async function iterate(): Promise<boolean> {
 	if (merged) {
 		await mergePR(prNumber!)
 		await deleteRemoteBranch(branchName).catch(() => {})
-		await store(`Merged PR #${prNumber}: "${iterationPlan.title}" — CI passed and change is now on main.`)
+		await storePastMemory(`Merged PR #${prNumber}: "${iterationPlan.title}" — CI passed and change is now on main.`)
 		logger.info(`PR #${prNumber} merged.`)
 
 		const coverage = await getCoverage()
 		if (coverage) {
-			await store(`Post-merge coverage report:\n${coverage}`)
+			await storePastMemory(`Post-merge coverage report:\n${coverage}`)
 			logger.info('Stored coverage report in memory')
 		}
 	}
@@ -110,9 +110,9 @@ async function iterate(): Promise<boolean> {
 		if (prNumber !== null) {
 			await closePR(prNumber)
 			await deleteRemoteBranch(branchName).catch(() => {})
-			await store(`Closed PR #${prNumber}: "${iterationPlan.title}" — ${outcome}`)
+			await storePastMemory(`Closed PR #${prNumber}: "${iterationPlan.title}" — ${outcome}`)
 		} else {
-			await store(`Gave up on "${iterationPlan.title}" — ${outcome}`)
+			await storePastMemory(`Gave up on "${iterationPlan.title}" — ${outcome}`)
 		}
 		logger.error(`Plan "${iterationPlan.title}" failed — starting fresh plan.`)
 	}
@@ -120,7 +120,7 @@ async function iterate(): Promise<boolean> {
 	logSummary()
 	const allMessages = [...plannerMessages, ...session.conversation]
 	const reflection = await reflect(outcome, allMessages)
-	await store(`Self-reflection: ${reflection}`)
+	await storePastMemory(`Self-reflection: ${reflection}`)
 	await saveUsageData(iterationPlan.title)
 
 	return merged

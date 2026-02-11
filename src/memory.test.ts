@@ -41,7 +41,7 @@ beforeEach(async () => {
 describe('memory', () => {
 	describe('store', () => {
 		it('creates an unpinned memory with a summary', async () => {
-			await memory.store('Built a new feature for HTTP requests')
+			await memory.storePastMemory('Built a new feature for HTTP requests')
 
 			const memories = await MemoryModel.find({})
 			expect(memories).toHaveLength(1)
@@ -53,7 +53,7 @@ describe('memory', () => {
 
 	describe('pin', () => {
 		it('creates a pinned memory and returns confirmation', async () => {
-			const result = await memory.pin('Goal: add test coverage')
+			const result = await memory.storePinnedMemory('Goal: add test coverage')
 
 			expect(result).toContain('Note saved')
 			expect(result).toContain('mock summary')
@@ -66,10 +66,10 @@ describe('memory', () => {
 
 	describe('unpin', () => {
 		it('unpins an existing pinned note', async () => {
-			const result = await memory.pin('Some goal')
+			const result = await memory.storePinnedMemory('Some goal')
 			const id = result.match(/\(([a-f0-9]+)\)/)?.[1]
 
-			const unpinResult = await memory.unpin(id!)
+			const unpinResult = await memory.unpinMemory(id!)
 			expect(unpinResult).toContain('Note dismissed')
 
 			const doc = await MemoryModel.findById(id)
@@ -78,15 +78,15 @@ describe('memory', () => {
 
 		it('returns error for non-existent id', async () => {
 			const fakeId = new mongoose.Types.ObjectId().toString()
-			const result = await memory.unpin(fakeId)
+			const result = await memory.unpinMemory(fakeId)
 			expect(result).toContain('No note found')
 		})
 
 		it('returns error for unpinned memory', async () => {
-			await memory.store('not pinned')
+			await memory.storePastMemory('not pinned')
 			const doc = await MemoryModel.findOne({ pinned: false })
 
-			const result = await memory.unpin(doc!._id.toString())
+			const result = await memory.unpinMemory(doc!._id.toString())
 			expect(result).toContain('not a note')
 		})
 	})
@@ -98,7 +98,7 @@ describe('memory', () => {
 		})
 
 		it('includes pinned notes in "Notes to self" section', async () => {
-			await memory.pin('Goal: become self-aware')
+			await memory.storePinnedMemory('Goal: become self-aware')
 
 			const context = await memory.getContext()
 			expect(context).toContain('## Notes to self')
@@ -106,7 +106,7 @@ describe('memory', () => {
 		})
 
 		it('includes unpinned memories in "Past" section', async () => {
-			await memory.store('Merged PR #1')
+			await memory.storePastMemory('Merged PR #1')
 
 			const context = await memory.getContext()
 			expect(context).toContain('## Past')
@@ -114,8 +114,8 @@ describe('memory', () => {
 		})
 
 		it('shows both sections when both types exist', async () => {
-			await memory.pin('Goal: add HTTP')
-			await memory.store('Merged PR #1')
+			await memory.storePinnedMemory('Goal: add HTTP')
+			await memory.storePastMemory('Merged PR #1')
 
 			const context = await memory.getContext()
 			expect(context).toContain('## Notes to self')

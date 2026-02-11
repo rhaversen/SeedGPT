@@ -3,26 +3,26 @@ import { config } from './config.js'
 import logger from './logger.js'
 import { callApi } from './api.js'
 
-async function summarize(content: string): Promise<string> {
+async function summarizeMemory(content: string): Promise<string> {
 	const response = await callApi('memory', [{ role: 'user', content }])
 	const text = response.content.find(c => c.type === 'text')?.text ?? content.slice(0, 200)
 	return text.trim()
 }
 
-export async function store(content: string): Promise<void> {
-	const summary = await summarize(content)
+export async function storePastMemory(content: string): Promise<void> {
+	const summary = await summarizeMemory(content)
 	await MemoryModel.create({ content, summary })
 	logger.debug(`Stored memory: ${summary.slice(0, 80)}`)
 }
 
-export async function pin(content: string): Promise<string> {
-	const summary = await summarize(content)
+export async function storePinnedMemory(content: string): Promise<string> {
+	const summary = await summarizeMemory(content)
 	const memory = await MemoryModel.create({ content, summary, pinned: true })
 	logger.debug(`Pinned note: ${summary.slice(0, 80)}`)
 	return `Note saved (${memory._id}): ${summary}`
 }
 
-export async function unpin(id: string): Promise<string> {
+export async function unpinMemory(id: string): Promise<string> {
 	const memory = await MemoryModel.findById(id)
 	if (!memory) return `No note found with id "${id}".`
 	if (!memory.pinned) return `That memory is not a note.`
