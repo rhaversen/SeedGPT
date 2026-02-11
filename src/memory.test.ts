@@ -9,24 +9,15 @@ jest.unstable_mockModule('./config.js', () => ({
 	},
 }))
 
-jest.unstable_mockModule('./usage.js', () => ({
-	trackUsage: jest.fn(),
-}))
+const mockCallApi = jest.fn<() => Promise<{ content: Array<{ type: string, text: string }>; usage: { input_tokens: number; output_tokens: number } }>>()
+	.mockResolvedValue({ content: [{ type: 'text', text: 'mock summary' }], usage: { input_tokens: 10, output_tokens: 5 } })
 
-jest.unstable_mockModule('@anthropic-ai/sdk', () => {
-	const mockCreate = jest.fn<() => Promise<{ content: Array<{ type: string, text: string }>; usage: { input_tokens: number; output_tokens: number } }>>()
-		.mockResolvedValue({ content: [{ type: 'text', text: 'mock summary' }], usage: { input_tokens: 10, output_tokens: 5 } })
-	return {
-		default: jest.fn().mockImplementation(() => ({
-			messages: { create: mockCreate },
-		})),
-		__mockCreate: mockCreate,
-	}
-})
+jest.unstable_mockModule('./api.js', () => ({
+	callApi: mockCallApi,
+}))
 
 const memory = await import('./memory.js')
 const MemoryModel = (await import('./models/Memory.js')).default
-const sdk = await import('@anthropic-ai/sdk') as unknown as { __mockCreate: jest.MockedFunction<() => Promise<{ content: Array<{ type: string, text: string }> }>> }
 
 let replSet: MongoMemoryReplSet
 
