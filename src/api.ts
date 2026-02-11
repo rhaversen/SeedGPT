@@ -57,6 +57,7 @@ export async function callApi(phase: Phase, messages: Anthropic.MessageParam[]):
 			GeneratedModel.create({
 				phase,
 				modelId: model,
+				system,
 				messages,
 				response: response.content,
 				inputTokens: response.usage.input_tokens,

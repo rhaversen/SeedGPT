@@ -5,6 +5,7 @@ import mongoose, { type Document, type Model, Schema } from 'mongoose'
 export interface IGenerated extends Document {
 	phase: string
 	modelId: string
+	system: unknown[]
 	messages: unknown[]
 	response: unknown[]
 	inputTokens: number
@@ -17,6 +18,7 @@ export interface IGenerated extends Document {
 const generatedSchema = new Schema<IGenerated>({
 	phase: { type: String, required: true },
 	modelId: { type: String, required: true },
+	system: { type: Schema.Types.Mixed, required: true },
 	messages: { type: Schema.Types.Mixed, required: true },
 	response: { type: Schema.Types.Mixed, required: true },
 	inputTokens: { type: Number, required: true },
