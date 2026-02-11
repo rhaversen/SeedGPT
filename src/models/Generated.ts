@@ -1,5 +1,7 @@
 import mongoose, { type Document, type Model, Schema } from 'mongoose'
 
+// IMPORTANT: This model is for logging all API interactions for auditing and analysis by the operator. It should not be used for any real-time logic or features, as it contains a lot of chars and is not optimized for performance.
+
 export interface IGenerated extends Document {
 	phase: string
 	modelId: string
