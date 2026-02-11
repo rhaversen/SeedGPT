@@ -1,0 +1,122 @@
+import { jest, describe, it, expect, beforeEach } from '@jest/globals'
+
+jest.unstable_mockModule('./logger.js', () => {
+	const buffer: Array<{ timestamp: string; level: string; message: string; context?: Record<string, unknown> }> = []
+	const noop = () => {}
+	return {
+		default: { debug: noop, info: noop, warn: noop, error: noop },
+		getLogBuffer: () => buffer,
+	}
+})
+
+const mockCallApi = jest.fn<((...args: unknown[]) => Promise<{ content: Array<{ type: string; text: string }>; usage: { input_tokens: number; output_tokens: number } }>)>()
+	.mockResolvedValue({
+		content: [{ type: 'text', text: 'Thoughtful reflection on the iteration.' }],
+		usage: { input_tokens: 500, output_tokens: 50 },
+	})
+
+jest.unstable_mockModule('./api.js', () => ({
+	callApi: mockCallApi,
+}))
+
+const { reflect } = await import('./reflect.js')
+
+beforeEach(() => {
+	jest.clearAllMocks()
+})
+
+describe('reflect', () => {
+	it('calls the API with a transcript of the conversation', async () => {
+		const result = await reflect('PR #1 merged successfully.', [
+			{ role: 'user', content: 'Start working' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'I will implement the change.' }] },
+		])
+
+		expect(mockCallApi).toHaveBeenCalledTimes(1)
+		expect(mockCallApi).toHaveBeenCalledWith('reflect', expect.any(Array))
+		const callArgs = mockCallApi.mock.calls[0] as unknown[]
+		const messages = callArgs[1] as Array<{ role: string; content: string }>
+		expect(messages.length).toBe(1)
+		expect(messages[0].content).toContain('## Outcome')
+		expect(messages[0].content).toContain('PR #1 merged successfully.')
+		expect(messages[0].content).toContain('## Conversation')
+		expect(result).toBe('Thoughtful reflection on the iteration.')
+	})
+
+	it('includes tool use and tool result blocks in the transcript', async () => {
+		const messages = [
+			{
+				role: 'assistant' as const,
+				content: [
+					{ type: 'text' as const, text: 'Let me read the file' },
+					{ type: 'tool_use' as const, id: 't1', name: 'read_file', input: { filePath: 'src/a.ts' } },
+				],
+			},
+			{
+				role: 'user' as const,
+				content: [
+					{ type: 'tool_result' as const, tool_use_id: 't1', content: 'file contents here' },
+				],
+			},
+		]
+
+		await reflect('Change succeeded.', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('[tool: read_file]')
+		expect(transcript).toContain('[result]')
+	})
+
+	it('marks error tool results', async () => {
+		const messages = [
+			{
+				role: 'assistant' as const,
+				content: [{ type: 'tool_use' as const, id: 't1', name: 'read_file', input: { filePath: 'missing.ts' } }],
+			},
+			{
+				role: 'user' as const,
+				content: [{ type: 'tool_result' as const, tool_use_id: 't1', content: 'File not found', is_error: true }],
+			},
+		]
+
+		await reflect('Failed', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('[result ERROR]')
+	})
+
+	it('returns empty string when API returns no text blocks', async () => {
+		mockCallApi.mockResolvedValueOnce({
+			content: [],
+			usage: { input_tokens: 100, output_tokens: 10 },
+		})
+
+		const result = await reflect('outcome', [])
+		expect(result).toBe('')
+	})
+
+	it('includes iteration log in the transcript', async () => {
+		const { getLogBuffer } = await import('./logger.js')
+		const buffer = getLogBuffer() as Array<{ timestamp: string; level: string; message: string }>
+		buffer.push({ timestamp: '2025-01-01T12:00:00.000Z', level: 'info', message: 'Test log entry' })
+
+		await reflect('Done', [])
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('## Iteration Log')
+		expect(transcript).toContain('Test log entry')
+
+		buffer.length = 0
+	})
+
+	it('handles string-only assistant messages', async () => {
+		const messages = [
+			{ role: 'assistant' as const, content: 'Simple string response' },
+		]
+
+		await reflect('outcome', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('Simple string response')
+	})
+})
