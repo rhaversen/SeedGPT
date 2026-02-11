@@ -86,6 +86,13 @@ Rules:
 - If the plan's instructions are ambiguous, choose the most conservative interpretation.
 - If a previous attempt failed, carefully analyze what went wrong and make only the targeted fix.
 
+Diagnosing CI failures:
+- Read the error output carefully. Look for FAIL lines, SyntaxError, import errors, and assertion mismatches — these tell you exactly where the problem is.
+- A test suite failing with zero test failures means the suite could not load. This is almost always a missing or misnamed export in a mock. Read the mock and compare every export name against the actual module's exports.
+- Check tests for all modules you changed. If you changed a module's exports, its test mock likely needs the same update.
+- Use the codebase context in your system prompt to identify which files to read. It shows the file tree, declarations, and dependency graph — use it to jump directly to the relevant file instead of guessing.
+- When you identify a likely cause, fix it. Do not second-guess yourself with "but this should have worked before." If the mock does not match the import, that is the bug.
+
 Engineering principles — apply these to every line you write:
 - Simplicity: question every abstraction. If a function is called once, inline it. If a wrapper adds nothing, remove it. Less code means fewer bugs.
 - Single Responsibility: each function does one thing. If you need an "and" to describe what it does, split it.
