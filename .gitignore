@@ -4,3 +4,4 @@ logs/
 .env
 workspace/
 *.log
+coverage/
