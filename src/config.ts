@@ -40,11 +40,18 @@ export const config = {
 	githubToken: requireEnv('GITHUB_TOKEN'),
 	githubOwner: requireEnv('GITHUB_OWNER'),
 	githubRepo: requireEnv('GITHUB_REPO'),
-	planModel,
-	patchModel,
-	reflectModel,
+	phases: {
+		planner: { model: planModel, maxTokens: 4096 },
+		builder: { model: patchModel, maxTokens: 16384 },
+		reflect: { model: reflectModel, maxTokens: 512 },
+	},
 	maxPlannerRounds: 25,
 	maxBuilderRounds: 40,
+	api: {
+		maxRetries: 5,
+		initialRetryDelay: 30_000,
+		maxRetryDelay: 120_000,
+	},
 	workspacePath: isProduction ? '/app/workspace' : './workspace',
 	memoryTokenBudget: 10_000,
 	db: {

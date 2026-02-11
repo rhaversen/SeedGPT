@@ -50,6 +50,43 @@ export function getLogBuffer(): readonly LogEntry[] {
 	return logBuffer
 }
 
+export function toolLogSuffix(block: { name: string; input: unknown }): string {
+	const input = block.input as Record<string, unknown>
+	if (block.name === 'read_file') {
+		const path = input.filePath as string
+		const start = input.startLine as number | undefined
+		const end = input.endLine as number | undefined
+		if (start && end) return `: ${path} L${start}-${end}`
+		if (start) return `: ${path} L${start}+`
+		return `: ${path}`
+	}
+	if (block.name === 'edit_file') {
+		const lines = (input.oldString as string)?.split('\n').length ?? 0
+		return `: ${input.filePath} (replacing ${lines} line${lines !== 1 ? 's' : ''})`
+	}
+	if (block.name === 'create_file') {
+		const lines = (input.content as string)?.split('\n').length ?? 0
+		return `: ${input.filePath} (${lines} line${lines !== 1 ? 's' : ''})`
+	}
+	if (block.name === 'delete_file') {
+		return `: ${input.filePath}`
+	}
+	if (block.name === 'grep_search') {
+		const suffix = input.includePattern ? ` in ${input.includePattern}` : ''
+		return `: "${(input.query as string)?.slice(0, 60)}"${suffix}`
+	}
+	if (block.name === 'file_search') {
+		return `: "${(input.query as string)?.slice(0, 60)}"`
+	}
+	if (block.name === 'list_directory') {
+		return `: ${input.path}`
+	}
+	if (block.name === 'done') {
+		return `: ${(input.summary as string)?.slice(0, 100)}`
+	}
+	return ''
+}
+
 const logger = {
 	debug: (msg: string, ctx?: Record<string, unknown>) => log('debug', msg, ctx),
 	info: (msg: string, ctx?: Record<string, unknown>) => log('info', msg, ctx),

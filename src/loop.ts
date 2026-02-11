@@ -1,12 +1,14 @@
-import * as git from './tools/git.js'
-import * as github from './tools/github.js'
-import * as codebase from './tools/codebase.js'
-import * as llm from './llm.js'
-import * as pipeline from './pipeline.js'
-import * as memory from './memory.js'
+import { cloneRepo, commitAndPush, createBranch, getRecentLog, resetWorkspace } from './tools/git.js'
+import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
+import { buildCodebaseContext } from './tools/codebase.js'
+import { awaitChecks, cleanupStalePRs } from './pipeline.js'
+import { getContext, store } from './memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
 import { logSummary, saveIterationData } from './usage.js'
+import { plan } from './plan.js'
+import { PatchSession } from './build.js'
+import { reflect } from './reflect.js'
 
 export async function run(): Promise<void> {
 	logger.info('SeedGPT starting iteration...')
@@ -14,8 +16,8 @@ export async function run(): Promise<void> {
 	await connectToDatabase()
 
 	try {
-		await pipeline.cleanupStalePRs()
-		await git.cloneRepo()
+		await cleanupStalePRs()
+		await cloneRepo()
 
 		let merged = false
 		while (!merged) {
@@ -24,7 +26,7 @@ export async function run(): Promise<void> {
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
 		try {
-			await memory.store(`Iteration crashed with error: ${message}`)
+			await store(`Iteration crashed with error: ${message}`)
 		} catch { /* Swallowed because the crash itself may have been caused by a DB failure */ }
 		throw error
 	} finally {
@@ -34,15 +36,15 @@ export async function run(): Promise<void> {
 }
 
 async function iterate(): Promise<boolean> {
-	const recentMemory = await memory.getContext()
-	const codebaseContext = await codebase.buildCodebaseContext()
-	const gitLog = await git.getRecentLog()
+	const recentMemory = await getContext()
+	const codebaseContext = await buildCodebaseContext()
+	const gitLog = await getRecentLog()
 
-	const { plan, messages: plannerMessages } = await llm.plan(recentMemory, codebaseContext, gitLog)
-	await memory.store(`Planned change "${plan.title}": ${plan.description}`)
+	const { plan: iterationPlan, messages: plannerMessages } = await plan(recentMemory, codebaseContext, gitLog)
+	await store(`Planned change "${iterationPlan.title}": ${iterationPlan.description}`)
 
-	const session = new llm.PatchSession(plan, recentMemory)
-	const branchName = await git.createBranch(plan.title)
+	const session = new PatchSession(iterationPlan, recentMemory)
+	const branchName = await createBranch(iterationPlan.title)
 
 	let edits = await session.createPatch()
 	let prNumber: number | null = null
@@ -52,11 +54,11 @@ async function iterate(): Promise<boolean> {
 	if (edits.length === 0) {
 		outcome = 'Builder produced no edits.'
 	} else {
-		await git.commitAndPush(plan.title)
-		prNumber = await github.openPR(branchName, plan.title, plan.description)
+		await commitAndPush(iterationPlan.title)
+		prNumber = await openPR(branchName, iterationPlan.title, iterationPlan.description)
 
 		while (true) {
-			const result = await pipeline.awaitChecks()
+			const result = await awaitChecks()
 			if (result.passed) {
 				merged = true
 				outcome = `PR #${prNumber} merged successfully.`
@@ -70,7 +72,7 @@ async function iterate(): Promise<boolean> {
 			}
 
 			logger.warn(`CI failed, attempting fix: ${error.slice(0, 200)}`)
-			await memory.store(`CI failed for "${plan.title}" (PR #${prNumber}): ${error.slice(0, 500)}`)
+			await store(`CI failed for "${iterationPlan.title}" (PR #${prNumber}): ${error.slice(0, 500)}`)
 
 			try {
 				edits = await session.fixPatch(error)
@@ -84,35 +86,35 @@ async function iterate(): Promise<boolean> {
 				break
 			}
 
-			await git.commitAndPush(`fix: ${plan.title}`)
+			await commitAndPush(`fix: ${iterationPlan.title}`)
 		}
 	}
 
 	if (merged) {
-		await github.mergePR(prNumber!)
-		await github.deleteRemoteBranch(branchName).catch(() => {})
-		await memory.store(`Merged PR #${prNumber}: "${plan.title}" — CI passed and change is now on main.`)
+		await mergePR(prNumber!)
+		await deleteRemoteBranch(branchName).catch(() => {})
+		await store(`Merged PR #${prNumber}: "${iterationPlan.title}" — CI passed and change is now on main.`)
 		logger.info(`PR #${prNumber} merged.`)
 	}
 
-	await git.resetWorkspace()
+	await resetWorkspace()
 
 	if (!merged) {
 		if (prNumber !== null) {
-			await github.closePR(prNumber)
-			await github.deleteRemoteBranch(branchName).catch(() => {})
-			await memory.store(`Closed PR #${prNumber}: "${plan.title}" — ${outcome}`)
+			await closePR(prNumber)
+			await deleteRemoteBranch(branchName).catch(() => {})
+			await store(`Closed PR #${prNumber}: "${iterationPlan.title}" — ${outcome}`)
 		} else {
-			await memory.store(`Gave up on "${plan.title}" — ${outcome}`)
+			await store(`Gave up on "${iterationPlan.title}" — ${outcome}`)
 		}
-		logger.error(`Plan "${plan.title}" failed — starting fresh plan.`)
+		logger.error(`Plan "${iterationPlan.title}" failed — starting fresh plan.`)
 	}
 
 	logSummary()
 	const builderMessages = session.conversation
-	const reflection = await llm.reflect(outcome, plannerMessages, builderMessages)
-	await memory.store(`Self-reflection: ${reflection}`)
-	await saveIterationData(plan.title, outcome, plannerMessages, builderMessages, reflection)
+	const reflection = await reflect(outcome, plannerMessages, builderMessages)
+	await store(`Self-reflection: ${reflection}`)
+	await saveIterationData(iterationPlan.title, outcome, plannerMessages, builderMessages, reflection)
 
 	return merged
 }

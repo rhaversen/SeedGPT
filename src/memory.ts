@@ -8,7 +8,7 @@ const client = new Anthropic({ apiKey: config.anthropicApiKey })
 
 async function summarize(content: string): Promise<string> {
 	const response = await client.messages.create({
-		model: config.planModel,
+		model: config.phases.planner.model,
 		max_tokens: 64,
 		system: [
 			'Write a one-sentence summary (under 25 words) of this memory.',
@@ -19,7 +19,7 @@ async function summarize(content: string): Promise<string> {
 		].join(' '),
 		messages: [{ role: 'user', content }],
 	})
-	trackUsage('memory.summarize', config.planModel, response.usage)
+	trackUsage('memory.summarize', config.phases.planner.model, response.usage)
 	const text = response.content.find(c => c.type === 'text')?.text ?? content.slice(0, 200)
 	return text.trim()
 }

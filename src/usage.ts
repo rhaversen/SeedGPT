@@ -1,5 +1,5 @@
 import logger from './logger.js'
-import { summarizeMessages } from './llm.js'
+import { summarizeMessages } from './compression.js'
 import UsageModel from './models/Usage.js'
 import GeneratedModel from './models/Generated.js'
 import type Anthropic from '@anthropic-ai/sdk'
