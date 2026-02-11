@@ -30,7 +30,7 @@ const db = isProduction ? {
 // where reasoning quality matters. Reflection always uses haiku since it's a lightweight
 // summary task — saving cost without sacrificing iteration quality.
 const planModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
-const patchModel = isProduction ? 'claude-opus-4-6' : 'claude-haiku-4-5'
+const patchModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const reflectModel = 'claude-haiku-4-5'
 
 export const config = {
