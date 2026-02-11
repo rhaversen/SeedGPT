@@ -7,6 +7,11 @@ export async function awaitChecks(): Promise<github.CheckResult> {
 	return github.awaitPRChecks(sha)
 }
 
+export async function getCoverage(): Promise<string | null> {
+	const sha = await git.getHeadSha()
+	return github.extractCoverage(sha)
+}
+
 export async function cleanupStalePRs(): Promise<void> {
 	const prs = await github.findOpenAgentPRs()
 	for (const pr of prs) {

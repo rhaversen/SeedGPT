@@ -11,6 +11,25 @@ export interface CheckResult {
 	error?: string
 }
 
+interface CoverageMetric {
+	total: number
+	covered: number
+	skipped: number
+	pct: number
+}
+
+interface FileCoverage {
+	statements: CoverageMetric
+	branches: CoverageMetric
+	functions: CoverageMetric
+	lines: CoverageMetric
+}
+
+interface CoverageSummaryJson {
+	total: FileCoverage
+	[filePath: string]: FileCoverage
+}
+
 export async function openPR(branch: string, title: string, body: string): Promise<number> {
 	logger.info(`Opening PR: "${title}"`)
 	const { data } = await octokit.pulls.create({
@@ -212,6 +231,97 @@ export async function findOpenAgentPRs(): Promise<Array<{ number: number, head: 
 	return data
 		.filter(pr => pr.head.ref.startsWith('seedgpt/'))
 		.map(pr => ({ number: pr.number, head: { ref: pr.head.ref, sha: pr.head.sha } }))
+}
+
+export function extractCoverageFromLogs(logText: string): string | null {
+	const raw = logText.split('\n')
+	const lines = raw.map(stripLogLine)
+
+	const stepSections: { name: string; start: number; end: number }[] = []
+	let current: { name: string; start: number } | null = null
+
+	for (let i = 0; i < lines.length; i++) {
+		const match = lines[i].match(/^##\[group](.+)/)
+		if (match) {
+			if (current) stepSections.push({ ...current, end: i })
+			current = { name: match[1], start: i }
+		}
+	}
+	if (current) stepSections.push({ ...current, end: lines.length })
+
+	const coverageSection = stepSections.find(s =>
+		s.name === 'Coverage' || s.name === 'Run Coverage' || s.name.includes('Coverage')
+	)
+	if (!coverageSection) return null
+
+	const sectionLines = lines.slice(coverageSection.start, coverageSection.end)
+		.filter(l => !l.startsWith('##[') && l.trim() !== '')
+
+	const jsonLine = sectionLines.find(l => l.trim().startsWith('{') && l.includes('"total"'))
+	if (!jsonLine) return null
+
+	try {
+		const data = JSON.parse(jsonLine.trim()) as CoverageSummaryJson
+		return formatCoverageSummary(data)
+	} catch {
+		return null
+	}
+}
+
+function formatCoverageSummary(data: CoverageSummaryJson): string {
+	const t = data.total
+	const parts: string[] = [
+		`Coverage: ${t.statements.pct}% statements, ${t.branches.pct}% branches, ${t.functions.pct}% functions, ${t.lines.pct}% lines`,
+	]
+
+	const fileEntries = Object.entries(data)
+		.filter(([key]) => key !== 'total')
+		.map(([filePath, cov]) => ({ filePath, pct: cov.statements.pct }))
+		.sort((a, b) => a.pct - b.pct)
+
+	const lowCoverage = fileEntries.filter(f => f.pct < 50)
+	if (lowCoverage.length > 0) {
+		const listed = lowCoverage.slice(0, 10).map(f => `${f.filePath} (${f.pct}%)`).join(', ')
+		parts.push(`Low coverage (<50%): ${listed}`)
+	}
+
+	const zeroCoverage = fileEntries.filter(f => f.pct === 0)
+	if (zeroCoverage.length > 0) {
+		parts.push(`Untested files: ${zeroCoverage.length}`)
+	}
+
+	return parts.join('\n')
+}
+
+export async function extractCoverage(sha: string): Promise<string | null> {
+	try {
+		const { data: runs } = await octokit.actions.listWorkflowRunsForRepo({
+			owner, repo, head_sha: sha, status: 'completed',
+		})
+
+		for (const run of runs.workflow_runs.filter(r => r.conclusion === 'success')) {
+			const { data: jobs } = await octokit.actions.listJobsForWorkflowRun({
+				owner, repo, run_id: run.id,
+			})
+
+			for (const job of jobs.jobs) {
+				try {
+					const { data: logData } = await octokit.actions.downloadJobLogsForWorkflowRun({
+						owner, repo, job_id: job.id,
+					})
+					const logText = typeof logData === 'string' ? logData : String(logData)
+					const coverage = extractCoverageFromLogs(logText)
+					if (coverage) {
+						logger.info('Extracted coverage data from CI logs')
+						return coverage
+					}
+				} catch { /* logs unavailable for this job */ }
+			}
+		}
+	} catch {
+		logger.warn('Failed to fetch coverage data from CI')
+	}
+	return null
 }
 
 function sleep(ms: number): Promise<void> {

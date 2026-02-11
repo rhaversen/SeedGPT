@@ -1,7 +1,7 @@
 import { cloneRepo, commitAndPush, createBranch, getRecentLog, resetWorkspace } from './tools/git.js'
 import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
 import { snapshotCodebase } from './tools/codebase.js'
-import { awaitChecks, cleanupStalePRs } from './pipeline.js'
+import { awaitChecks, cleanupStalePRs, getCoverage } from './pipeline.js'
 import { config } from './config.js'
 import { getContext, store } from './memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
@@ -96,6 +96,12 @@ async function iterate(): Promise<boolean> {
 		await deleteRemoteBranch(branchName).catch(() => {})
 		await store(`Merged PR #${prNumber}: "${iterationPlan.title}" — CI passed and change is now on main.`)
 		logger.info(`PR #${prNumber} merged.`)
+
+		const coverage = await getCoverage()
+		if (coverage) {
+			await store(`Post-merge coverage report:\n${coverage}`)
+			logger.info('Stored coverage report in memory')
+		}
 	}
 
 	await resetWorkspace()

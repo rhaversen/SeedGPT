@@ -50,6 +50,7 @@ jest.unstable_mockModule('./memory.js', () => ({
 jest.unstable_mockModule('./pipeline.js', () => ({
 	cleanupStalePRs: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 	awaitChecks: jest.fn<() => Promise<{ passed: boolean; error?: string }>>().mockResolvedValue({ passed: true }),
+	getCoverage: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
 }))
 
 jest.unstable_mockModule('./usage.js', () => ({
@@ -119,7 +120,25 @@ describe('run', () => {
 		expect(github.mergePR).toHaveBeenCalledWith(1)
 		expect(github.deleteRemoteBranch).toHaveBeenCalledWith('seedgpt/test-change')
 		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('Merged PR'))
+		expect(pipeline.getCoverage).toHaveBeenCalledTimes(1)
 		expect(database.disconnectFromDatabase).toHaveBeenCalledTimes(1)
+	})
+
+	it('stores coverage report in memory when available', async () => {
+		const getCoverage = pipeline.getCoverage as jest.MockedFunction<typeof pipeline.getCoverage>
+		getCoverage.mockResolvedValueOnce('Coverage: 80% statements, 70% branches')
+
+		await run()
+
+		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('Post-merge coverage report'))
+		expect(memory.store).toHaveBeenCalledWith(expect.stringContaining('80% statements'))
+	})
+
+	it('skips coverage memory when no coverage data available', async () => {
+		await run()
+
+		const storeCalls = (memory.store as jest.Mock).mock.calls.map(c => c[0] as string)
+		expect(storeCalls.some(c => c.includes('coverage report'))).toBe(false)
 	})
 
 	it('retries with fixPatch on CI failure and merges', async () => {

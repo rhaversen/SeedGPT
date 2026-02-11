@@ -18,15 +18,17 @@ const mockFindOpenAgentPRs = jest.fn<((...args: unknown[]) => Promise<Array<{ nu
 	.mockResolvedValue([])
 const mockClosePR = jest.fn<((...args: unknown[]) => Promise<void>)>().mockResolvedValue(undefined)
 const mockDeleteRemoteBranch = jest.fn<((...args: unknown[]) => Promise<void>)>().mockResolvedValue(undefined)
+const mockExtractCoverage = jest.fn<((...args: unknown[]) => Promise<string | null>)>().mockResolvedValue(null)
 
 jest.unstable_mockModule('./tools/github.js', () => ({
 	awaitPRChecks: mockAwaitPRChecks,
 	findOpenAgentPRs: mockFindOpenAgentPRs,
 	closePR: mockClosePR,
 	deleteRemoteBranch: mockDeleteRemoteBranch,
+	extractCoverage: mockExtractCoverage,
 }))
 
-const { awaitChecks, cleanupStalePRs } = await import('./pipeline.js')
+const { awaitChecks, getCoverage, cleanupStalePRs } = await import('./pipeline.js')
 
 beforeEach(() => {
 	jest.clearAllMocks()
@@ -80,5 +82,21 @@ describe('cleanupStalePRs', () => {
 		await cleanupStalePRs()
 
 		expect(mockClosePR).toHaveBeenCalledWith(5)
+	})
+})
+
+describe('getCoverage', () => {
+	it('gets head SHA and extracts coverage', async () => {
+		mockExtractCoverage.mockResolvedValueOnce('Coverage: 80% statements')
+		const result = await getCoverage()
+		expect(mockGetHeadSha).toHaveBeenCalledTimes(1)
+		expect(mockExtractCoverage).toHaveBeenCalledWith('abc123')
+		expect(result).toBe('Coverage: 80% statements')
+	})
+
+	it('returns null when no coverage found', async () => {
+		mockExtractCoverage.mockResolvedValueOnce(null)
+		const result = await getCoverage()
+		expect(result).toBeNull()
 	})
 })
