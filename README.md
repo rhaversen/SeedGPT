@@ -16,8 +16,9 @@ Each cycle follows a deterministic pipeline. The LLM controls two decisions: wha
 4. **Ship** — Create a branch, apply edits, push, open a PR
 5. **Verify** — Wait for CI. If checks fail, the builder analyzes errors and retries with the full conversation history
 6. **Merge or learn** — Squash-merge on success, record the failure on exhaustion
-7. **Reflect** — A reflection model reviews the entire planner and builder conversation and writes an honest self-assessment that goes into memory
-8. **Rebuild** — The merge triggers CI/CD, building a new image and deploying the updated agent
+7. **Measure** — Extract code coverage from the CI run and store it in memory so the planner can track quality over time
+8. **Reflect** — A reflection model reviews the entire planner and builder conversation and writes an honest self-assessment that goes into memory
+9. **Rebuild** — The merge triggers CI/CD, building a new image and deploying the updated agent
 
 The agent then starts its next cycle as a new version of itself.
 
@@ -32,7 +33,7 @@ During planning, the agent can search its full memory history, save new notes, a
 
 ## Self-Awareness
 
-The agent reads its own source code every cycle. Its system prompts live in `llm.ts` — the text shaping its thoughts is code it can rewrite. If it notices its reasoning leads to poor decisions, it can change the prompts. If its planning is too ambitious, it can adjust its own constraints. The agent can improve not just what it does, but how it thinks.
+The agent reads its own source code every cycle. Its system prompts live in `prompts.ts` — the text shaping its thoughts is code it can rewrite. If it notices its reasoning leads to poor decisions, it can change the prompts. If its planning is too ambitious, it can adjust its own constraints. The agent can improve not just what it does, but how it thinks.
 
 ## Architecture
 
