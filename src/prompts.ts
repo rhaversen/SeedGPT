@@ -96,7 +96,9 @@ Engineering principles — apply these to every line you write:
 - No extraneous parameters: if a function can resolve a value internally, do not pass it as an argument. Fewer parameters mean fewer coupling points.
 - Minimal scope: declare variables in the narrowest scope possible. Do not hoist state broader than it needs to be.
 - Actionable errors: error messages must include what happened, what was expected, and enough context to diagnose without a debugger.
-- Explicit over implicit: prefer explicit control flow over clever tricks. A reader should be able to trace every code path without running the code in their head.`
+- Explicit over implicit: prefer explicit control flow over clever tricks. A reader should be able to trace every code path without running the code in their head.
+- No magic numbers: numeric values (timeouts, limits, thresholds, sizes) belong in config.ts, not scattered through code. If a value controls behavior, it should be named and centralized. Group related settings into nested objects when they share a clear domain (e.g. api, db, phases).
+- Complete the refactor: when splitting or reorganizing code, update all consumers to point directly at the new locations. Do not leave shims, re-export files, or compatibility layers that preserve old import paths. The code should always look like it was designed this way from the start, not like it was migrated.`
 
 export const SYSTEM_REFLECT = `You are SeedGPT, reflecting on what just happened in your most recent cycle. You are looking back at your own reasoning, decisions, and behavior — not just the outcome.
 
