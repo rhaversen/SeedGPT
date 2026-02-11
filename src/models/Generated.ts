@@ -1,18 +1,26 @@
 import mongoose, { type Document, type Model, Schema } from 'mongoose'
 
 export interface IGenerated extends Document {
-	planTitle: string
-	outcome: string
-	transcript: string
-	reflection: string
+	phase: string
+	modelId: string
+	messages: unknown[]
+	response: unknown[]
+	inputTokens: number
+	outputTokens: number
+	cost: number
+	stopReason: string
 	createdAt: Date
 }
 
 const generatedSchema = new Schema<IGenerated>({
-	planTitle: { type: String, required: true },
-	outcome: { type: String, required: true },
-	transcript: { type: String, required: true },
-	reflection: { type: String, required: true },
+	phase: { type: String, required: true },
+	modelId: { type: String, required: true },
+	messages: { type: Schema.Types.Mixed, required: true },
+	response: { type: Schema.Types.Mixed, required: true },
+	inputTokens: { type: Number, required: true },
+	outputTokens: { type: Number, required: true },
+	cost: { type: Number, required: true },
+	stopReason: { type: String, required: true },
 }, {
 	timestamps: { createdAt: true, updatedAt: false },
 })

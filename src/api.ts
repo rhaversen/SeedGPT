@@ -2,10 +2,11 @@ import Anthropic from '@anthropic-ai/sdk'
 import { config } from './config.js'
 import logger from './logger.js'
 import { compressOldMessages } from './compression.js'
-import { trackUsage } from './usage.js'
+import { trackUsage, computeCost } from './usage.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS } from './tools/definitions.js'
 import { getCodebaseContext } from './tools/codebase.js'
 import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT, SYSTEM_MEMORY } from './prompts.js'
+import GeneratedModel from './models/Generated.js'
 
 export type Phase = 'planner' | 'builder' | 'reflect' | 'memory'
 
@@ -52,6 +53,18 @@ export async function callApi(phase: Phase, messages: Anthropic.MessageParam[]):
 		try {
 			const response = await client.messages.create(params)
 			trackUsage(phase, model, response.usage)
+
+			GeneratedModel.create({
+				phase,
+				modelId: model,
+				messages,
+				response: response.content,
+				inputTokens: response.usage.input_tokens,
+				outputTokens: response.usage.output_tokens,
+				cost: computeCost(model, response.usage.input_tokens, response.usage.output_tokens),
+				stopReason: response.stop_reason ?? 'unknown',
+			}).catch(err => logger.error('Failed to save generated data', { error: err }))
+
 			return response
 		} catch (error: unknown) {
 			const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 0

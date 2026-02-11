@@ -6,7 +6,7 @@ import { config } from './config.js'
 import { getContext, store } from './memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
-import { logSummary, saveIterationData } from './usage.js'
+import { logSummary, saveUsageData } from './usage.js'
 import { plan } from './plan.js'
 import { PatchSession } from './build.js'
 import { reflect } from './reflect.js'
@@ -115,7 +115,7 @@ async function iterate(): Promise<boolean> {
 	const allMessages = [...plannerMessages, ...session.conversation]
 	const reflection = await reflect(outcome, allMessages)
 	await store(`Self-reflection: ${reflection}`)
-	await saveIterationData(iterationPlan.title, outcome, allMessages, reflection)
+	await saveUsageData(iterationPlan.title)
 
 	return merged
 }

@@ -1,8 +1,5 @@
 import logger from './logger.js'
-import { summarizeMessages } from './compression.js'
 import UsageModel from './models/Usage.js'
-import GeneratedModel from './models/Generated.js'
-import type Anthropic from '@anthropic-ai/sdk'
 
 interface ModelPricing {
 	inputPerMTok: number
@@ -28,7 +25,7 @@ interface UsageEntry {
 
 const entries: UsageEntry[] = []
 
-function computeCost(model: string, inputTokens: number, outputTokens: number): number {
+export function computeCost(model: string, inputTokens: number, outputTokens: number): number {
 	const pricing = PRICING[model] ?? DEFAULT_PRICING
 	return (inputTokens * pricing.inputPerMTok + outputTokens * pricing.outputPerMTok) / 1_000_000
 }
@@ -80,12 +77,7 @@ export function logSummary(): void {
 	}
 }
 
-export async function saveIterationData(
-	planTitle: string,
-	outcome: string,
-	messages: Anthropic.MessageParam[],
-	reflection: string,
-): Promise<void> {
+export async function saveUsageData(planTitle: string): Promise<void> {
 	try {
 		let totalInput = 0
 		let totalOutput = 0
@@ -113,16 +105,9 @@ export async function saveIterationData(
 			breakdown: [...callerMap.values()],
 		})
 
-		await GeneratedModel.create({
-			planTitle,
-			outcome,
-			transcript: summarizeMessages(messages),
-			reflection,
-		})
-
-		logger.info(`Saved usage and generated data for "${planTitle}"`)
+		logger.info(`Saved usage data for "${planTitle}"`)
 	} catch (err) {
-		logger.error('Failed to save iteration data', { error: err })
+		logger.error('Failed to save usage data', { error: err })
 	}
 }
 

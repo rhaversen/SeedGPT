@@ -79,28 +79,3 @@ export function compressOldMessages(messages: Anthropic.MessageParam[], keepFirs
 		}
 	}
 }
-
-export function summarizeMessages(messages: Anthropic.MessageParam[]): string {
-	const compressed = messages.map(m => {
-		if (typeof m.content === 'string') return { ...m }
-		if (Array.isArray(m.content)) return { ...m, content: [...m.content] }
-		return { ...m }
-	})
-	compressOldMessages(compressed, 1, 0)
-
-	return compressed.map(m => {
-		const role = m.role === 'assistant' ? 'ASSISTANT' : 'USER'
-		if (typeof m.content === 'string') return `[${role}] ${m.content}`
-		if (!Array.isArray(m.content)) return `[${role}] (empty)`
-		const parts = m.content.map(block => {
-			if (block.type === 'text') return ('text' in block) ? (block as Anthropic.TextBlockParam).text : ''
-			if (block.type === 'tool_use') return `[tool: ${block.name}]`
-			if (block.type === 'tool_result') {
-				const content = typeof block.content === 'string' ? block.content : JSON.stringify(block.content)
-				return `[result${block.is_error ? ' ERROR' : ''}] ${content ?? '(empty)'}`
-			}
-			return ''
-		}).filter(Boolean)
-		return `[${role}] ${parts.join('\n')}`
-	}).join('\n\n')
-}
