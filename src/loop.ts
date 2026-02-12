@@ -31,7 +31,6 @@ export async function run(): Promise<void> {
 		} catch { /* Swallowed because the crash itself may have been caused by a DB failure */ }
 		throw error
 	} finally {
-		await writeIterationLog()
 		await disconnectFromDatabase()
 	}
 }
@@ -122,6 +121,7 @@ async function iterate(): Promise<boolean> {
 	const reflection = await reflect(outcome, allMessages)
 	await storePastMemory(`Self-reflection: ${reflection}`)
 	await saveUsageData(iterationPlan.title)
+	await writeIterationLog()
 
 	return merged
 }
