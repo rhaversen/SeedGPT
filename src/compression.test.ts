@@ -1,88 +1,115 @@
 import { describe, it, expect } from '@jest/globals'
 import type Anthropic from '@anthropic-ai/sdk'
-import { compressToolResult, compressOldMessages } from './compression.js'
+import { redactToolResult, summarizeToolResult, compressOldMessages } from './compression.js'
 
-describe('compressToolResult', () => {
-	it('compresses read_file with path and line count', () => {
-		const result = compressToolResult('read_file', { filePath: 'src/index.ts' }, 'line1\nline2\nline3')
-		expect(result).toBe('[Previously read src/index.ts (3 lines)]')
+describe('summarizeToolResult', () => {
+	it('summarizes read_file with path and line count', () => {
+		expect(summarizeToolResult('read_file', { filePath: 'src/index.ts' }, 'line1\nline2\nline3'))
+			.toBe('[Read src/index.ts (3 lines)]')
 	})
 
-	it('compresses grep_search with match count', () => {
-		const result = compressToolResult('grep_search', { query: 'foo' }, 'src/a.ts:1: foo\nsrc/b.ts:2: foo')
-		expect(result).toBe('[Searched "foo": 2 matches]')
+	it('summarizes grep_search with match count', () => {
+		expect(summarizeToolResult('grep_search', { query: 'foo' }, 'src/a.ts:1: foo\nsrc/b.ts:2: foo'))
+			.toBe('[Searched "foo": 2 matches]')
 	})
 
-	it('compresses grep_search with no matches', () => {
-		const result = compressToolResult('grep_search', { query: 'nonexistent' }, 'No matches found.')
-		expect(result).toBe('[Searched "nonexistent": 0 matches]')
+	it('summarizes grep_search with no matches', () => {
+		expect(summarizeToolResult('grep_search', { query: 'x' }, 'No matches found.'))
+			.toBe('[Searched "x": 0 matches]')
 	})
 
-	it('compresses grep_search with singular match', () => {
-		const result = compressToolResult('grep_search', { query: 'unique' }, 'src/a.ts:1: unique')
-		expect(result).toBe('[Searched "unique": 1 match]')
+	it('summarizes list_directory', () => {
+		expect(summarizeToolResult('list_directory', { path: 'src' }, 'a.ts\nb.ts'))
+			.toBe('[Listed src: 2 entries]')
+	})
+
+	it('summarizes git_diff', () => {
+		expect(summarizeToolResult('git_diff', {}, '+a\n-b\n c'))
+			.toBe('[Diff: 3 lines]')
+	})
+
+	it('truncates unknown tools to 200 chars', () => {
+		const long = 'x'.repeat(300)
+		expect(summarizeToolResult('unknown', {}, long)).toBe('x'.repeat(200))
+	})
+})
+
+describe('redactToolResult', () => {
+	it('redacts read_file with path', () => {
+		const result = redactToolResult('read_file', { filePath: 'src/index.ts' }, 'line1\nline2\nline3')
+		expect(result).toBe('[Content of src/index.ts was removed from context — you do NOT know what this file contains. Re-read it if needed.]')
+	})
+
+	it('redacts grep_search with query', () => {
+		const result = redactToolResult('grep_search', { query: 'foo' }, 'src/a.ts:1: foo\nsrc/b.ts:2: foo')
+		expect(result).toBe('[Search results for "foo" were removed from context — search again if needed.]')
+	})
+
+	it('redacts grep_search with no matches', () => {
+		const result = redactToolResult('grep_search', { query: 'nonexistent' }, 'No matches found.')
+		expect(result).toBe('[Search results for "nonexistent" were removed from context — search again if needed.]')
 	})
 
 	it('truncates long grep_search queries to 60 chars', () => {
 		const longQuery = 'a'.repeat(100)
-		const result = compressToolResult('grep_search', { query: longQuery }, 'src/a.ts:1: match')
+		const result = redactToolResult('grep_search', { query: longQuery }, 'src/a.ts:1: match')
 		expect(result).toContain('a'.repeat(60))
 		expect(result).not.toContain('a'.repeat(61))
 	})
 
-	it('compresses file_search with result count', () => {
-		const result = compressToolResult('file_search', { query: '**/*.ts' }, 'src/a.ts\nsrc/b.ts')
-		expect(result).toBe('[File search "**/*.ts": 2 results]')
+	it('redacts file_search', () => {
+		const result = redactToolResult('file_search', { query: '**/*.ts' }, 'src/a.ts\nsrc/b.ts')
+		expect(result).toBe('[File search results were removed from context — search again if needed.]')
 	})
 
-	it('compresses file_search with no matches', () => {
-		const result = compressToolResult('file_search', { query: '**/*.xyz' }, 'No files matched.')
-		expect(result).toBe('[File search "**/*.xyz": 0 result]')
+	it('redacts file_search with no matches', () => {
+		const result = redactToolResult('file_search', { query: '**/*.xyz' }, 'No files matched.')
+		expect(result).toBe('[File search results were removed from context — search again if needed.]')
 	})
 
-	it('compresses list_directory with entry count', () => {
-		const result = compressToolResult('list_directory', { path: 'src' }, 'a.ts\nb.ts\nc.ts')
-		expect(result).toBe('[Listed src: 3 entries]')
+	it('redacts list_directory with path', () => {
+		const result = redactToolResult('list_directory', { path: 'src' }, 'a.ts\nb.ts\nc.ts')
+		expect(result).toBe('[Directory listing for src was removed from context — list again if needed.]')
 	})
 
-	it('compresses list_directory with singular entry', () => {
-		const result = compressToolResult('list_directory', { path: 'src' }, 'index.ts')
-		expect(result).toBe('[Listed src: 1 entry]')
+	it('redacts list_directory singular entry', () => {
+		const result = redactToolResult('list_directory', { path: 'src' }, 'index.ts')
+		expect(result).toBe('[Directory listing for src was removed from context — list again if needed.]')
 	})
 
-	it('compresses git_diff', () => {
-		const result = compressToolResult('git_diff', {}, 'diff --git a/file.ts\n+added\n-removed')
-		expect(result).toBe('[Diff viewed: 3 lines]')
+	it('redacts git_diff', () => {
+		const result = redactToolResult('git_diff', {}, 'diff --git a/file.ts\n+added\n-removed')
+		expect(result).toBe('[Diff was removed from context — run git_diff again if needed.]')
 	})
 
-	it('compresses codebase_context', () => {
-		const result = compressToolResult('codebase_context', {}, 'full context...')
-		expect(result).toBe('[Codebase context viewed]')
+	it('redacts codebase_context', () => {
+		const result = redactToolResult('codebase_context', {}, 'full context...')
+		expect(result).toBe('[Codebase context was removed — call again if needed.]')
 	})
 
-	it('compresses codebase_diff', () => {
-		const result = compressToolResult('codebase_diff', {}, 'diff output...')
-		expect(result).toBe('[Codebase context viewed]')
+	it('redacts codebase_diff', () => {
+		const result = redactToolResult('codebase_diff', {}, 'diff output...')
+		expect(result).toBe('[Codebase context was removed — call again if needed.]')
 	})
 
 	it('passes through note_to_self unchanged', () => {
 		const content = 'Note saved (abc123): my note'
-		expect(compressToolResult('note_to_self', {}, content)).toBe(content)
+		expect(redactToolResult('note_to_self', {}, content)).toBe(content)
 	})
 
 	it('passes through dismiss_note unchanged', () => {
 		const content = 'Note dismissed: old goal'
-		expect(compressToolResult('dismiss_note', {}, content)).toBe(content)
+		expect(redactToolResult('dismiss_note', {}, content)).toBe(content)
 	})
 
 	it('passes through recall_memory unchanged', () => {
 		const content = 'Memory content here'
-		expect(compressToolResult('recall_memory', {}, content)).toBe(content)
+		expect(redactToolResult('recall_memory', {}, content)).toBe(content)
 	})
 
 	it('passes through unknown tool names unchanged', () => {
 		const content = 'some result content'
-		expect(compressToolResult('unknown_tool', {}, content)).toBe(content)
+		expect(redactToolResult('unknown_tool', {}, content)).toBe(content)
 	})
 })
 
@@ -121,7 +148,7 @@ describe('compressOldMessages', () => {
 		compressOldMessages(messages)
 		const compressed = messages[1]
 		const block = (compressed.content as Anthropic.ContentBlockParam[])[0]
-		expect(block).toHaveProperty('content', '[Previously read src/foo.ts (2 lines)]')
+		expect(block).toHaveProperty('content', '[Content of src/foo.ts was removed from context — you do NOT know what this file contains. Re-read it if needed.]')
 	})
 
 	it('does not compress short tool results (<=100 chars)', () => {
@@ -176,6 +203,6 @@ describe('compressOldMessages', () => {
 		compressOldMessages(messages)
 		const content = messages[1].content as Anthropic.ContentBlockParam[]
 		expect(content[0]).toHaveProperty('text', 'some context')
-		expect((content[1] as { content: string }).content).toContain('[Searched "test"')
+		expect((content[1] as { content: string }).content).toContain('[Search results for "test" were removed')
 	})
 })

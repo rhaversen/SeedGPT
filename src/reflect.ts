@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import logger, { getLogBuffer } from './logger.js'
 import { callApi } from './api.js'
-import { compressToolResult } from './compression.js'
+import { summarizeToolResult } from './compression.js'
 
 function buildTranscript(messages: Anthropic.MessageParam[]): string {
 	const toolNames = new Map<string, { name: string; input: Record<string, unknown> }>()
@@ -22,7 +22,7 @@ function buildTranscript(messages: Anthropic.MessageParam[]): string {
 			} else if (block.type === 'tool_result') {
 				const text = typeof block.content === 'string' ? block.content : ''
 				const tool = toolNames.get(block.tool_use_id)
-				const compressed = tool ? compressToolResult(tool.name, tool.input, text) : text.slice(0, 100)
+				const compressed = tool ? summarizeToolResult(tool.name, tool.input, text) : text.slice(0, 100)
 				parts.push(`[result${block.is_error ? ' ERROR' : ''}] ${compressed}`)
 			}
 		}

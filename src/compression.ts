@@ -1,11 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-export function compressToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
+// Summarize tool results while keeping key information
+export function summarizeToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
 	const lines = resultContent.split('\n').length
 	switch (toolName) {
 	case 'read_file': {
 		const path = toolInput.filePath as string
-		return `[Previously read ${path} (${lines} lines)]`
+		return `[Read ${path} (${lines} lines)]`
 	}
 	case 'grep_search': {
 		const query = toolInput.query as string
@@ -21,6 +22,31 @@ export function compressToolResult(toolName: string, toolInput: Record<string, u
 	case 'codebase_context':
 	case 'codebase_diff':
 		return `[Codebase context viewed]`
+	default:
+		return resultContent.slice(0, 200)
+	}
+}
+
+// Redact tool use information to avoid model hallucination - strictly explain that the result was removed
+export function redactToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
+	switch (toolName) {
+	case 'read_file': {
+		const path = toolInput.filePath as string
+		return `[Content of ${path} was removed from context — you do NOT know what this file contains. Re-read it if needed.]`
+	}
+	case 'grep_search': {
+		const query = toolInput.query as string
+		return `[Search results for "${query.slice(0, 60)}" were removed from context — search again if needed.]`
+	}
+	case 'file_search':
+		return `[File search results were removed from context — search again if needed.]`
+	case 'list_directory':
+		return `[Directory listing for ${toolInput.path} was removed from context — list again if needed.]`
+	case 'git_diff':
+		return `[Diff was removed from context — run git_diff again if needed.]`
+	case 'codebase_context':
+	case 'codebase_diff':
+		return `[Codebase context was removed — call again if needed.]`
 	case 'note_to_self':
 	case 'dismiss_note':
 	case 'recall_memory':
@@ -61,7 +87,7 @@ export function compressOldMessages(messages: Anthropic.MessageParam[]): void {
 
 			const tool = toolNameMap.get(block.tool_use_id)
 			changed = true
-			if (tool) return { ...block, content: compressToolResult(tool.name, tool.input, text) }
+			if (tool) return { ...block, content: redactToolResult(tool.name, tool.input, text) }
 			return { ...block, content: text.slice(0, 100) + '\n[...compressed]' }
 		})
 		if (changed) messages[i] = { ...msg, content }
