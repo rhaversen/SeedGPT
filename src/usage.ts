@@ -106,6 +106,7 @@ export async function saveUsageData(planTitle: string): Promise<void> {
 		})
 
 		logger.info(`Saved usage data for "${planTitle}"`)
+		entries.length = 0
 	} catch (err) {
 		logger.error('Failed to save usage data', { error: err })
 	}
