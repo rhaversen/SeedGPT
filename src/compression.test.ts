@@ -25,7 +25,7 @@ describe('summarizeToolResult', () => {
 
 	it('summarizes git_diff', () => {
 		expect(summarizeToolResult('git_diff', {}, '+a\n-b\n c'))
-			.toBe('[Diff: 3 lines]')
+			.toBe('[Diff viewed: 3 lines]')
 	})
 
 	it('truncates unknown tools to 200 chars', () => {
