@@ -89,34 +89,54 @@ function stripLogLine(line: string): string {
 		.replace(/\x1b\[[0-9;]*m/g, '')
 }
 
+function isNoise(line: string): boolean {
+	return /^\s*(console\.(log|warn|error))$/.test(line) ||
+		/^\s+at\s+\S+\s+\(/.test(line) ||
+		/^\s*\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+\[(INFO|DEBUG)]/.test(line) ||
+		/^\s*● Console$/.test(line)
+}
+
 function prioritizeFailures(lines: string[]): string {
 	const failBlocks: string[] = []
 	const summaryLines: string[] = []
 	let inFail = false
+	let inPass = false
 
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i]
+	for (const line of lines) {
 		if (/^\s*FAIL\s/.test(line)) {
 			inFail = true
+			inPass = false
 			failBlocks.push(line)
-		} else if (inFail) {
-			if (/^\s*PASS\s/.test(line) || /^Test Suites:/.test(line)) {
-				inFail = false
-			} else {
-				failBlocks.push(line)
-			}
-		}
-		if (/^Test Suites:|^Tests:|^Snapshots:|^Time:|^Ran all/.test(line) || /^ERROR:/.test(line)) {
+		} else if (/^\s*PASS\s/.test(line)) {
+			inFail = false
+			inPass = true
+		} else if (/^(Test Suites:|Tests:|Snapshots:|Time:|Ran all)/.test(line) || /^ERROR:/.test(line)) {
+			inFail = false
+			inPass = false
 			summaryLines.push(line)
+		} else if (inFail) {
+			failBlocks.push(line)
 		}
 	}
 
 	if (failBlocks.length > 0) {
-		const parts = [...failBlocks, '', ...summaryLines]
-		return parts.join('\n').slice(-8000)
+		return [...failBlocks, '', ...summaryLines].join('\n').slice(-8000)
 	}
 
-	return lines.join('\n').slice(-8000)
+	const errorLines = lines.filter(l =>
+		/error\s*TS\d+/i.test(l) ||
+		/SyntaxError|TypeError|ReferenceError|RangeError/.test(l) ||
+		/Cannot find module|Module not found/.test(l) ||
+		/ENOENT|EACCES/.test(l) ||
+		(/^ERROR:/i.test(l) && !/Process completed with exit code/.test(l)),
+	)
+
+	if (errorLines.length > 0 || summaryLines.length > 0) {
+		return [...errorLines, '', ...summaryLines].join('\n').slice(-8000)
+	}
+
+	const cleaned = lines.filter(l => l.trim() !== '' && !isNoise(l) && !/^\s*PASS\s/.test(l))
+	return cleaned.join('\n').slice(-8000)
 }
 
 export function extractFailedStepOutput(logText: string, failedStepNames: string[]): string {
@@ -136,7 +156,9 @@ export function extractFailedStepOutput(logText: string, failedStepNames: string
 	if (current) stepSections.push({ ...current, end: lines.length })
 
 	const matchesStep = (sectionName: string, stepName: string): boolean => {
-		return sectionName.includes(stepName) || sectionName === `Run ${stepName}`
+		const a = sectionName.toLowerCase()
+		const b = stepName.toLowerCase()
+		return a.includes(b) || a === `run ${b}`
 	}
 
 	const failedSections = failedStepNames.length > 0
@@ -153,25 +175,11 @@ export function extractFailedStepOutput(logText: string, failedStepNames: string
 		return output.slice(-8000)
 	}
 
-	const errorIndices = lines.reduce<number[]>((acc, l, i) => {
-		if (l.startsWith('##[error]')) acc.push(i)
-		return acc
-	}, [])
+	const cleanedLines = lines
+		.filter(l => !l.startsWith('##[group]') && !l.startsWith('##[endgroup]') && l.trim() !== '')
+		.map(l => l.replace(/^##\[error]/, 'ERROR: '))
 
-	if (errorIndices.length > 0) {
-		return errorIndices.map(i => {
-			const start = Math.max(0, i - 40)
-			return lines.slice(start, i + 1)
-				.filter(l => !l.startsWith('##[group]') && !l.startsWith('##[endgroup]'))
-				.map(l => l.replace(/^##\[error]/, 'ERROR: '))
-				.join('\n')
-		}).join('\n\n---\n\n').slice(-8000)
-	}
-
-	return lines
-		.filter(l => l.trim() !== '' && !l.startsWith('##['))
-		.join('\n')
-		.slice(-6000)
+	return prioritizeFailures(cleanedLines)
 }
 
 async function collectErrors(
@@ -190,6 +198,7 @@ async function collectErrors(
 				owner, repo, check_run_id: run.id,
 			})
 			for (const ann of annotations) {
+				if (/Process completed with exit code/.test(ann.message ?? '')) continue
 				detail += `\n  ${ann.path}:${ann.start_line} [${ann.annotation_level}] ${ann.message}`
 			}
 		} catch { /* annotations unavailable */ }

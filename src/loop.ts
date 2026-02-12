@@ -68,12 +68,12 @@ async function iterate(): Promise<boolean> {
 
 			const error = result.error ?? 'CI checks failed with unknown error'
 			if (session.exhausted) {
-				outcome = `CI failed: ${error.slice(0, 500)}`
+				outcome = `CI failed: ${error.slice(0, 10000)}`
 				break
 			}
 
 			logger.warn(`CI failed, attempting fix: ${error.slice(0, 200)}`)
-			await storePastMemory(`CI failed for "${iterationPlan.title}" (PR #${prNumber}): ${error.slice(0, 500)}`)
+			await storePastMemory(`CI failed for "${iterationPlan.title}" (PR #${prNumber}): ${error.slice(0, 10000)}`)
 
 			try {
 				edits = await session.fixPatch(error)

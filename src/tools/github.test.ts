@@ -219,4 +219,34 @@ describe('extractFailedStepOutput', () => {
 
 		expect(result).toContain('Fatal error occurred')
 	})
+
+	it('filters PASS noise from fallback when step matching fails', () => {
+		const log = [
+			'2026-01-01T00:00:00Z ##[group]Run tests',
+			'2026-01-01T00:00:01Z  FAIL  dist/api.test.js',
+			'2026-01-01T00:00:01Z   ● API > should respond',
+			'2026-01-01T00:00:01Z     TypeError: Cannot read property of undefined',
+			'2026-01-01T00:00:02Z  PASS  dist/logger.test.js',
+			'2026-01-01T00:00:02Z   ● Console',
+			'2026-01-01T00:00:02Z     console.log',
+			'2026-01-01T00:00:02Z       at log (src/logger.ts:28:11)',
+			'2026-01-01T00:00:02Z       2026-02-11T22:59:03.582Z [INFO] Applied 1 edit(s) successfully',
+			'2026-01-01T00:00:03Z  PASS  dist/usage.test.js',
+			'2026-01-01T00:00:03Z   ● Console',
+			'2026-01-01T00:00:03Z     console.log',
+			'2026-01-01T00:00:03Z       Saved usage',
+			'2026-01-01T00:00:04Z Test Suites: 1 failed, 2 passed, 3 total',
+			'2026-01-01T00:00:04Z ##[error]Process completed with exit code 1.',
+			'2026-01-01T00:00:05Z ##[endgroup]',
+		].join('\n')
+
+		const result = extractFailedStepOutput(log, ['nonexistent-step'])
+
+		expect(result).toContain('FAIL')
+		expect(result).toContain('TypeError: Cannot read property of undefined')
+		expect(result).toContain('Test Suites: 1 failed')
+		expect(result).not.toContain('console.log')
+		expect(result).not.toContain('Applied 1 edit(s)')
+		expect(result).not.toContain('Saved usage')
+	})
 })
