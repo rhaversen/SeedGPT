@@ -19,9 +19,9 @@ Remove dep graph entirely. See if we can use a lower level verbosity for the dec
 ### Build fix intitial message
 
 Entire git diff (very large for file creations)
-Possibly only show modifications, not insertions or deletions (abbv. to filenames)
+Possibly only show modifications, not insertions or deletions (abbv. to filenames). Perhaps move to system prompt instead of user message, so it can be cached, or alternatively cache the first user message.
 
-Huge file creations or modifications returned in the next tool response. Maybe selectively compress messages immediatly, not just the previous tool responses.
+Huge file creations or modifications returned in the next tool response. Maybe selectively compress messages immediatly, not just the previous tool responses. The text in the tool response is already included in the assistant tool call message.
 
 ### Each call has approx 50/50 system/user input tokens
 
