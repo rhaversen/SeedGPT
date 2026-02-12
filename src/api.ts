@@ -54,17 +54,21 @@ export async function callApi(phase: Phase, messages: Anthropic.MessageParam[]):
 			const response = await client.messages.create(params)
 			trackUsage(phase, model, response.usage)
 
-			GeneratedModel.create({
-				phase,
-				modelId: model,
-				system,
-				messages,
-				response: response.content,
-				inputTokens: response.usage.input_tokens,
-				outputTokens: response.usage.output_tokens,
-				cost: computeCost(model, response.usage.input_tokens, response.usage.output_tokens),
-				stopReason: response.stop_reason ?? 'unknown',
-			}).catch(err => logger.error('Failed to save generated data', { error: err }))
+			try {
+				await GeneratedModel.create({
+					phase,
+					modelId: model,
+					system,
+					messages,
+					response: response.content,
+					inputTokens: response.usage.input_tokens,
+					outputTokens: response.usage.output_tokens,
+					cost: computeCost(model, response.usage.input_tokens, response.usage.output_tokens),
+					stopReason: response.stop_reason ?? 'unknown',
+				})
+			} catch (err) {
+				logger.error('Failed to save generated data', { error: err })
+			}
 
 			return response
 		} catch (error: unknown) {
