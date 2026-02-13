@@ -207,6 +207,7 @@ async function summarizeCandidates(
 	let kept = 0
 	let summarized = 0
 	let failed = 0
+	const diffs: string[] = []
 
 	try {
 		const responses = await callBatchApi(requests)
@@ -217,8 +218,10 @@ async function summarizeCandidates(
 				kept++
 			} else {
 				const input = toolCall.input as { summary?: string }
+				const summary = input.summary ?? ''
 				summarized++
-				applySummary(messages, candidates[i], input.summary ?? '')
+				diffs.push(`${candidates[i].toolName}: ${candidates[i].charLen} → ${summary.length} chars`)
+				applySummary(messages, candidates[i], summary)
 			}
 		}
 	} catch {
@@ -228,7 +231,8 @@ async function summarizeCandidates(
 		}
 	}
 
-	logger.info(`Summarizer: ${kept} kept, ${summarized} summarized, ${failed} failed (${candidates.length} candidates)`)
+	const diffLog = diffs.length > 0 ? ` | ${diffs.join(' | ')}` : ''
+	logger.info(`Summarizer: ${kept} kept, ${summarized} summarized, ${failed} failed (${candidates.length} candidates)${diffLog}`)
 }
 
 function addCacheBreakpoint(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {

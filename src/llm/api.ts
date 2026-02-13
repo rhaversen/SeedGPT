@@ -124,8 +124,11 @@ export async function callBatchApi(requests: BatchRequest[]): Promise<Anthropic.
 		await new Promise(r => setTimeout(r, delay))
 		const poll = await client.messages.batches.retrieve(batch.id)
 		status = poll.processing_status
-		logger.debug(`Batch ${batch.id} status: ${status}`)
-		delay = Math.min(maxPollInterval, delay * pollBackoff)
+		if (status !== 'ended') {
+			const nextDelay = Math.min(maxPollInterval, delay * pollBackoff)
+			logger.info(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
+			delay = nextDelay
+		}
 	}
 
 	const resultMap = new Map<string, Anthropic.Message>()
@@ -148,12 +151,22 @@ export async function callBatchApi(requests: BatchRequest[]): Promise<Anthropic.
 	}
 
 	const ordered: Anthropic.Message[] = []
+	let totalCacheRead = 0
+	let totalCacheWrite = 0
+	let totalInput = 0
 	for (let i = 0; i < entries.length; i++) {
 		const response = resultMap.get(`${idPrefix}${i}`)!
+		const usage = response.usage as ApiUsage
+		totalCacheRead += usage.cache_read_input_tokens ?? 0
+		totalCacheWrite += usage.cache_creation_input_tokens ?? 0
+		totalInput += usage.input_tokens
 		await recordGenerated(entries[i].phase, entries[i].params, response, true)
 		ordered.push(response)
 	}
 
-	logger.info(`Batch completed: ${resultMap.size} result(s) (50% discount applied)`)
+	const cacheStatus = totalCacheRead > 0
+		? `cache hit (${totalCacheRead} read, ${totalCacheWrite} written)`
+		: totalCacheWrite > 0 ? `cache miss (${totalCacheWrite} written, 0 read)` : 'no cache'
+	logger.info(`Batch completed: ${resultMap.size} result(s), ${totalInput} input tokens, ${cacheStatus}`)
 	return ordered
 }
