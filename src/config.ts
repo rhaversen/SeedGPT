@@ -63,6 +63,11 @@ export const config = {
 	},
 	workspacePath: isProduction ? '/app/workspace' : './workspace',
 	memoryTokenBudget: 10_000,
+	summarization: {
+		charThreshold: 20_000,
+		minResultChars: 300,
+		protectedTurns: 2,
+	},
 	db: {
 		uri: db
 			? `mongodb+srv://${db.user}:${db.password}@${db.host}/${db.name}?retryWrites=true&w=majority&appName=SeedGPT`
