@@ -1,7 +1,29 @@
 import Anthropic from '@anthropic-ai/sdk'
 import logger, { getLogBuffer } from './logger.js'
 import { callApi } from './api.js'
-import { summarizeToolResult } from './compression.js'
+
+function summarizeToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
+	const lines = resultContent.split('\n').length
+	switch (toolName) {
+	case 'read_file':
+		return `[Read ${toolInput.filePath} (${lines} lines)]`
+	case 'grep_search': {
+		const matchCount = resultContent === 'No matches found.' ? 0 : lines
+		return `[Searched "${(toolInput.query as string).slice(0, 60)}": ${matchCount} match${matchCount !== 1 ? 'es' : ''}]`
+	}
+	case 'file_search':
+		return `[File search: ${resultContent === 'No files matched.' ? 0 : lines} result${lines !== 1 ? 's' : ''}]`
+	case 'list_directory':
+		return `[Listed ${toolInput.path}: ${lines} entr${lines !== 1 ? 'ies' : 'y'}]`
+	case 'git_diff':
+		return `[Diff: ${lines} lines]`
+	case 'codebase_context':
+	case 'codebase_diff':
+		return `[Codebase context viewed: ${lines} lines]`
+	default:
+		return resultContent.slice(0, 200)
+	}
+}
 
 function buildTranscript(messages: Anthropic.MessageParam[]): string {
 	const toolNames = new Map<string, { name: string; input: Record<string, unknown> }>()

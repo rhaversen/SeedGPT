@@ -1,32 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-// Summarize tool results while keeping key information
-export function summarizeToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
-	const lines = resultContent.split('\n').length
-	switch (toolName) {
-	case 'read_file': {
-		const path = toolInput.filePath as string
-		return `[Read ${path} (${lines} lines)]`
-	}
-	case 'grep_search': {
-		const query = toolInput.query as string
-		const matchCount = resultContent === 'No matches found.' ? 0 : lines
-		return `[Searched "${query.slice(0, 60)}": ${matchCount} match${matchCount !== 1 ? 'es' : ''}]`
-	}
-	case 'file_search':
-		return `[File search "${(toolInput.query as string)?.slice(0, 60)}": ${resultContent === 'No files matched.' ? 0 : lines} result${lines !== 1 ? 's' : ''}]`
-	case 'list_directory':
-		return `[Listed ${toolInput.path}: ${lines} entr${lines !== 1 ? 'ies' : 'y'}]`
-	case 'git_diff':
-		return `[Diff viewed: ${lines} lines]`
-	case 'codebase_context':
-	case 'codebase_diff':
-		return `[Codebase context viewed]`
-	default:
-		return resultContent.slice(0, 200)
-	}
-}
-
 // Redact tool use information to avoid model hallucination - strictly explain that the result was removed
 export function redactToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
 	switch (toolName) {
