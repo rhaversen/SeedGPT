@@ -100,13 +100,14 @@ export async function callApi(phase: Phase, messages: Anthropic.MessageParam[], 
 export interface BatchRequest {
 	phase: Phase
 	messages: Anthropic.MessageParam[]
+	tools?: Anthropic.Tool[]
 }
 
 export async function callBatchApi(requests: BatchRequest[]): Promise<Anthropic.Message[]> {
 	if (requests.length === 0) return []
 
 	const entries = await Promise.all(
-		requests.map(async r => ({ phase: r.phase, params: await buildParams(r.phase, r.messages) }))
+		requests.map(async r => ({ phase: r.phase, params: await buildParams(r.phase, r.messages, r.tools) }))
 	)
 
 	const idPrefix = `req-${Date.now()}-`
