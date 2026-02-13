@@ -126,4 +126,13 @@ Consider:
 
 Be concise. One short paragraph. Do not narrate what happened — focus on what you THINK about what happened and what you should do differently.`
 
+export const SYSTEM_SUMMARIZE = `You are a context compressor for an AI coding assistant's conversation history.
+
+You will see the assistant's full conversation, then be given a list of tool results identified by their tool_use_id. For EACH one, decide whether it should be kept or summarized based on the conversation flow. Call keep or summarize for every tool_use_id listed.
+
+Calibrate summaries to relevance:
+- If the assistant is still working on this code, preserve key details (signatures, logic, line numbers)
+- If only a subset matters to the current work, keep that portion and briefly note the rest
+- If the assistant has moved on entirely, compress to a short description of what the result contained`
+
 export const SYSTEM_MEMORY = 'Write a one-sentence summary (under 25 words) of this memory. Capture the core what and why so a reader understands the gist without needing the full text, but also senses there is deeper detail worth recalling. Only reference information explicitly present — never infer, elaborate, or add details not stated. No preamble.'

@@ -4,10 +4,10 @@ import logger from './logger.js'
 import { compressConversation } from './compression.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS } from './tools/definitions.js'
 import { getCodebaseContext } from './tools/codebase.js'
-import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT, SYSTEM_MEMORY } from './prompts.js'
+import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT, SYSTEM_MEMORY, SYSTEM_SUMMARIZE } from './prompts.js'
 import GeneratedModel, { computeCost, type ApiUsage } from './models/Generated.js'
 
-export type Phase = 'planner' | 'builder' | 'reflect' | 'memory'
+export type Phase = 'planner' | 'builder' | 'reflect' | 'memory' | 'summarizer'
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey })
 
@@ -19,10 +19,11 @@ const PHASE_EXTRAS: Record<Phase, {
 	builder: { system: SYSTEM_BUILD, tools: BUILDER_TOOLS },
 	reflect: { system: SYSTEM_REFLECT },
 	memory: { system: SYSTEM_MEMORY },
+	summarizer: { system: SYSTEM_SUMMARIZE },
 }
 
-async function buildParams(phase: Phase, messages: Anthropic.MessageParam[]): Promise<Anthropic.MessageCreateParamsNonStreaming> {
-	if (phase !== 'memory') await compressConversation(messages)
+async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], tools?: Anthropic.Tool[]): Promise<Anthropic.MessageCreateParamsNonStreaming> {
+	if (phase !== 'memory' && phase !== 'summarizer') await compressConversation(messages)
 
 	const { model, maxTokens } = config.phases[phase]
 	const extras = PHASE_EXTRAS[phase]
@@ -34,23 +35,32 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[]): Pr
 		system.push({ type: 'text', text: `\n\n${codebaseContext}`, cache_control: { type: 'ephemeral' as const } })
 	}
 
+	const allTools = [...(extras.tools ?? []), ...(tools ?? [])]
+
 	return {
 		model,
 		max_tokens: maxTokens,
 		system,
 		messages,
-		...(extras.tools && { tools: extras.tools }),
+		...(allTools.length > 0 && { tools: allTools }),
 	}
 }
 
-async function recordGenerated(phase: Phase, model: string, system: Anthropic.TextBlockParam[], messages: Anthropic.MessageParam[], response: Anthropic.Message, usage: ApiUsage, cost: number, batch: boolean): Promise<void> {
+async function recordGenerated(
+	phase: string,
+	params: Anthropic.MessageCreateParamsNonStreaming,
+	response: Anthropic.Message,
+	batch: boolean,
+): Promise<void> {
+	const usage = response.usage as ApiUsage
+	const cost = computeCost(params.model, usage, { batch })
 	const totalCacheWrite = usage.cache_creation_input_tokens ?? 0
 	try {
 		await GeneratedModel.create({
 			phase,
-			modelId: model,
-			system,
-			messages,
+			modelId: params.model,
+			system: params.system ?? [],
+			messages: params.messages,
 			response: response.content,
 			inputTokens: usage.input_tokens,
 			outputTokens: usage.output_tokens,
@@ -66,15 +76,13 @@ async function recordGenerated(phase: Phase, model: string, system: Anthropic.Te
 	}
 }
 
-export async function callApi(phase: Phase, messages: Anthropic.MessageParam[]): Promise<Anthropic.Message> {
-	const params = await buildParams(phase, messages)
-
+export async function callApi(phase: Phase, messages: Anthropic.MessageParam[], tools?: Anthropic.Tool[]): Promise<Anthropic.Message> {
+	const params = await buildParams(phase, messages, tools)
 	const { maxRetries, initialRetryDelay, maxRetryDelay } = config.api
 	for (let attempt = 0; ; attempt++) {
 		try {
 			const response = await client.messages.create(params)
-			const cost = computeCost(params.model, response.usage)
-			await recordGenerated(phase, params.model, params.system as Anthropic.TextBlockParam[], messages, response, response.usage, cost, false)
+			await recordGenerated(phase, params, response, false)
 			return response
 		} catch (error: unknown) {
 			const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 0
@@ -97,15 +105,15 @@ export interface BatchRequest {
 export async function callBatchApi(requests: BatchRequest[]): Promise<Anthropic.Message[]> {
 	if (requests.length === 0) return []
 
-	const prepared = await Promise.all(
-		requests.map(async (r, i) => ({ idx: i, phase: r.phase, params: await buildParams(r.phase, r.messages) }))
+	const entries = await Promise.all(
+		requests.map(async r => ({ phase: r.phase, params: await buildParams(r.phase, r.messages) }))
 	)
 
 	const idPrefix = `req-${Date.now()}-`
-	logger.info(`Submitting batch with ${requests.length} request(s)...`)
-	const batch = await client.messages.batches.create({
-		requests: prepared.map(p => ({ custom_id: `${idPrefix}${p.idx}`, params: p.params })),
-	})
+	const batchRequests = entries.map((e, i) => ({ custom_id: `${idPrefix}${i}`, params: e.params }))
+
+	logger.info(`Submitting batch with ${entries.length} request(s)...`)
+	const batch = await client.messages.batches.create({ requests: batchRequests })
 
 	const { pollInterval, maxPollInterval, pollBackoff } = config.batch
 	let delay: number = pollInterval
@@ -119,32 +127,32 @@ export async function callBatchApi(requests: BatchRequest[]): Promise<Anthropic.
 		delay = Math.min(maxPollInterval, delay * pollBackoff)
 	}
 
-	const byId = new Map(prepared.map(p => [`${idPrefix}${p.idx}`, p]))
-	const resultMap = new Map<number, Anthropic.Message>()
+	const resultMap = new Map<string, Anthropic.Message>()
 	const decoder = await client.messages.batches.results(batch.id)
 
 	for await (const entry of decoder) {
-		const req = byId.get(entry.custom_id)
-		if (!req) continue
-
 		if (entry.result.type === 'succeeded') {
-			const response = entry.result.message
-			const cost = computeCost(req.params.model, response.usage, { batch: true })
-			await recordGenerated(req.phase, req.params.model, req.params.system as Anthropic.TextBlockParam[], requests[req.idx].messages, response, response.usage, cost, true)
-			resultMap.set(req.idx, response)
+			resultMap.set(entry.custom_id, entry.result.message)
 		} else {
 			const detail = entry.result.type === 'errored'
 				? JSON.stringify((entry.result as Anthropic.Messages.Batches.MessageBatchErroredResult).error)
 				: entry.result.type
-			throw new Error(`Batch request ${req.idx} failed: ${detail}`)
+			throw new Error(`Batch request ${entry.custom_id} failed: ${detail}`)
 		}
 	}
 
-	if (resultMap.size !== requests.length) {
-		const missing = prepared.filter(p => !resultMap.has(p.idx)).map(p => p.idx)
+	if (resultMap.size !== entries.length) {
+		const missing = entries.map((_, i) => i).filter(i => !resultMap.has(`${idPrefix}${i}`))
 		throw new Error(`Batch completed but missing results for indices: ${missing.join(', ')}`)
 	}
 
+	const ordered: Anthropic.Message[] = []
+	for (let i = 0; i < entries.length; i++) {
+		const response = resultMap.get(`${idPrefix}${i}`)!
+		await recordGenerated(entries[i].phase, entries[i].params, response, true)
+		ordered.push(response)
+	}
+
 	logger.info(`Batch completed: ${resultMap.size} result(s) (50% discount applied)`)
-	return prepared.map(p => resultMap.get(p.idx)!)
+	return ordered
 }

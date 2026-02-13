@@ -32,6 +32,8 @@ const db = isProduction ? {
 const planModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const patchModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const reflectModel = 'claude-haiku-4-5'
+const memoryModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
+const summarizerModel = 'claude-haiku-4-5'
 
 export const config = {
 	env,
@@ -44,7 +46,8 @@ export const config = {
 		planner: { model: planModel, maxTokens: 4096 },
 		builder: { model: patchModel, maxTokens: 16384 },
 		reflect: { model: reflectModel, maxTokens: 512 },
-		memory: { model: planModel, maxTokens: 64 },
+		memory: { model: memoryModel, maxTokens: 64 },
+		summarizer: { model: summarizerModel, maxTokens: 2048 },
 	},
 	maxPlannerRounds: 25,
 	maxBuilderRounds: 40,
