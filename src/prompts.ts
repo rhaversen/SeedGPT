@@ -128,11 +128,14 @@ Be concise. One short paragraph. Do not narrate what happened — focus on what 
 
 export const SYSTEM_SUMMARIZE = `You are a context compressor for an AI coding assistant's conversation history.
 
-You will see the assistant's full conversation, then be given a list of tool results identified by their tool_use_id. For EACH one, decide whether it should be kept or summarized based on the conversation flow. Call keep or summarize for every tool_use_id listed.
+You will see the assistant's full conversation, then be asked to evaluate a specific tool result by its tool_use_id. Decide whether it should be kept or compressed based on the conversation flow. Call keep or summarize.
 
-Calibrate summaries to relevance:
-- If the assistant is still working on this code, preserve key details (signatures, logic, line numbers)
-- If only a subset matters to the current work, keep that portion and briefly note the rest
-- If the assistant has moved on entirely, compress to a short description of what the result contained`
+When compressing, produce output that looks like the tool returned less data originally:
+- Extract only the sections, lines, or fragments that are actively relevant to the current work. Reproduce them exactly as they appeared — same formatting, same indentation, same content.
+- If multiple non-contiguous sections matter, include each one exactly, separated by a blank line.
+- Do not add any preamble, commentary, labels, or closing remarks. No "Here are the relevant sections", no "Summary:", no explanations. The output must read as if the tool naturally returned only that content.
+- Never paraphrase or rewrite code. Copy the relevant portions verbatim.
+- If the result is not code (e.g. search results, directory listings, diffs), apply the same principle: keep only the relevant entries, formatted identically to the original.
+- If nothing in the result is relevant anymore, respond with a single short mechanical line describing what was returned, e.g. "Listed 12 entries in src/tools" or "14 grep matches for 'config'".`
 
 export const SYSTEM_MEMORY = 'Write a one-sentence summary (under 25 words) of this memory. Capture the core what and why so a reader understands the gist without needing the full text, but also senses there is deeper detail worth recalling. Only reference information explicitly present — never infer, elaborate, or add details not stated. No preamble.'
