@@ -191,8 +191,8 @@ const SUMMARIZE_TOOL: Anthropic.Tool = {
 	input_schema: {
 		type: 'object' as const,
 		properties: {
-			tool_use_id: { type: 'string' as const, description: 'The tool_use_id of the result to compress' },
-			summary: { type: 'string' as const, description: 'The compressed content — only the relevant portions, verbatim' },
+			tool_use_id: { type: 'string' as const, description: 'The tool_use_id of the result to summarize' },
+			summary: { type: 'string' as const, description: 'The summarized content — only the relevant portions, verbatim' },
 		},
 		required: ['tool_use_id', 'summary'],
 	},
@@ -208,10 +208,10 @@ async function summarizeCandidates(
 		phase: 'summarizer' as const,
 		messages: [
 			...cachedMessages,
-			{ role: 'assistant' as const, content: 'I will now evaluate tool results for compression.' },
+			{ role: 'assistant' as const, content: 'I will now evaluate tool results for summarization.' },
 			{
 				role: 'user' as const,
-				content: `Evaluate the tool result with tool_use_id="${c.toolUseId}" (${c.toolName}${c.inputHint}, ${c.charLen} chars) for compression. Its content starts with:\n${c.contentPreview}\n\nCall either keep or summarize.`,
+				content: `Evaluate the tool result with tool_use_id="${c.toolUseId}" (${c.toolName}${c.inputHint}, ${c.charLen} chars) for summarization. Its content starts with:\n${c.contentPreview}\n\nCall either keep or summarize.`,
 			},
 		],
 		tools: [KEEP_TOOL, SUMMARIZE_TOOL],
