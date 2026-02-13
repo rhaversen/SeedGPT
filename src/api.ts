@@ -2,11 +2,10 @@ import Anthropic from '@anthropic-ai/sdk'
 import { config } from './config.js'
 import logger from './logger.js'
 import { compressConversation } from './compression.js'
-import { trackUsage, computeCost } from './usage.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS } from './tools/definitions.js'
 import { getCodebaseContext } from './tools/codebase.js'
 import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT, SYSTEM_MEMORY } from './prompts.js'
-import GeneratedModel from './models/Generated.js'
+import GeneratedModel, { computeCost, type ApiUsage } from './models/Generated.js'
 
 export type Phase = 'planner' | 'builder' | 'reflect' | 'memory'
 
@@ -44,7 +43,8 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[]): Pr
 	}
 }
 
-async function recordGenerated(phase: Phase, model: string, system: Anthropic.TextBlockParam[], messages: Anthropic.MessageParam[], response: Anthropic.Message, cost: number): Promise<void> {
+async function recordGenerated(phase: Phase, model: string, system: Anthropic.TextBlockParam[], messages: Anthropic.MessageParam[], response: Anthropic.Message, usage: ApiUsage, cost: number, batch: boolean): Promise<void> {
+	const totalCacheWrite = usage.cache_creation_input_tokens ?? 0
 	try {
 		await GeneratedModel.create({
 			phase,
@@ -52,9 +52,13 @@ async function recordGenerated(phase: Phase, model: string, system: Anthropic.Te
 			system,
 			messages,
 			response: response.content,
-			inputTokens: response.usage.input_tokens,
-			outputTokens: response.usage.output_tokens,
+			inputTokens: usage.input_tokens,
+			outputTokens: usage.output_tokens,
+			cacheWrite5mTokens: usage.cache_creation?.ephemeral_5m_input_tokens ?? totalCacheWrite,
+			cacheWrite1hTokens: usage.cache_creation?.ephemeral_1h_input_tokens ?? 0,
+			cacheReadTokens: usage.cache_read_input_tokens ?? 0,
 			cost,
+			batch,
 			stopReason: response.stop_reason ?? 'unknown',
 		})
 	} catch (err) {
@@ -69,9 +73,8 @@ export async function callApi(phase: Phase, messages: Anthropic.MessageParam[]):
 	for (let attempt = 0; ; attempt++) {
 		try {
 			const response = await client.messages.create(params)
-			trackUsage(phase, params.model, response.usage)
 			const cost = computeCost(params.model, response.usage)
-			await recordGenerated(phase, params.model, params.system as Anthropic.TextBlockParam[], messages, response, cost)
+			await recordGenerated(phase, params.model, params.system as Anthropic.TextBlockParam[], messages, response, response.usage, cost, false)
 			return response
 		} catch (error: unknown) {
 			const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 0
@@ -126,9 +129,8 @@ export async function callBatchApi(requests: BatchRequest[]): Promise<Anthropic.
 
 		if (entry.result.type === 'succeeded') {
 			const response = entry.result.message
-			trackUsage(req.phase, req.params.model, response.usage, { batch: true })
 			const cost = computeCost(req.params.model, response.usage, { batch: true })
-			await recordGenerated(req.phase, req.params.model, req.params.system as Anthropic.TextBlockParam[], requests[req.idx].messages, response, cost)
+			await recordGenerated(req.phase, req.params.model, req.params.system as Anthropic.TextBlockParam[], requests[req.idx].messages, response, response.usage, cost, true)
 			resultMap.set(req.idx, response)
 		} else {
 			const detail = entry.result.type === 'errored'
