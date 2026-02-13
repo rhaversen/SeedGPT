@@ -6,12 +6,15 @@ const IGNORE = new Set(['node_modules', '.git', 'dist', 'logs', '.tmp-patch.diff
 const TS_EXTENSIONS = new Set(['.ts', '.js', '.mjs', '.cjs'])
 
 export async function getCodebaseContext(rootPath: string): Promise<string> {
-	const [tree, declarations, depGraph] = await Promise.all([
+	const tasks: [Promise<string>, Promise<string>, Promise<string>?] = [
 		getFileTree(rootPath),
 		getDeclarationIndex(rootPath),
-		getDependencyGraph(rootPath),
-	])
-	return `## File Tree\n\`\`\`\n${tree}\n\`\`\`\n\n## Dependency Graph\n${depGraph}\n\n## Declarations\n${declarations}`
+	]
+	const [tree, declarations] = await Promise.all(tasks)
+
+	const sections = [`## File Tree\n\`\`\`\n${tree}\n\`\`\``]
+	sections.push(`## Declarations\n${declarations}`)
+	return sections.join('\n\n')
 }
 
 export async function getFileTree(rootPath: string): Promise<string> {
@@ -29,11 +32,13 @@ export async function getDeclarationIndex(rootPath: string): Promise<string> {
 		if (relPath.endsWith('/')) continue
 		const ext = extname(relPath)
 
+		if (isTestFile(relPath)) continue
+
 		if (TS_EXTENSIONS.has(ext)) {
 			try {
 				const content = await fsReadFile(join(rootPath, relPath), 'utf-8')
 				const lineCount = content.split('\n').length
-				const declarations = extractDeclarations(content, relPath)
+				const declarations = extractDeclarations(content, relPath, { exportedOnly: true })
 				const header = `### ${relPath} (${lineCount} lines)`
 				sections.push(declarations.length > 0 ? `${header}\n${declarations.join('\n')}` : header)
 			} catch { /* skip unreadable */ }
@@ -49,102 +54,32 @@ export async function getDeclarationIndex(rootPath: string): Promise<string> {
 	return sections.join('\n\n')
 }
 
-export async function getDependencyGraph(rootPath: string): Promise<string> {
-	const allFiles: string[] = []
-	await walk(rootPath, '', allFiles)
-
-	const sourceContents = new Map<string, string>()
-	for (const relPath of allFiles) {
-		if (relPath.endsWith('/') || !TS_EXTENSIONS.has(extname(relPath))) continue
-		try {
-			sourceContents.set(relPath, await fsReadFile(join(rootPath, relPath), 'utf-8'))
-		} catch { /* skip */ }
-	}
-
-	return buildDependencyGraph(sourceContents)
+export interface ExtractOptions {
+	exportedOnly?: boolean
 }
 
-function buildDependencyGraph(sourceContents: Map<string, string>): string {
-	const allFiles = new Set(sourceContents.keys())
-	const graph = new Map<string, { local: string[]; external: string[] }>()
-
-	for (const [filePath, content] of sourceContents) {
-		const sf = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true)
-		const local: string[] = []
-		const external: string[] = []
-
-		for (const stmt of sf.statements) {
-			let specifier: string | null = null
-			if (ts.isImportDeclaration(stmt) && stmt.moduleSpecifier && ts.isStringLiteral(stmt.moduleSpecifier)) {
-				specifier = stmt.moduleSpecifier.text
-			} else if (ts.isExportDeclaration(stmt) && stmt.moduleSpecifier && ts.isStringLiteral(stmt.moduleSpecifier)) {
-				specifier = stmt.moduleSpecifier.text
-			}
-			if (!specifier) continue
-
-			if (specifier.startsWith('.')) {
-				const resolved = resolveLocalImport(filePath, specifier, allFiles)
-				if (resolved) local.push(resolved)
-			} else {
-				const pkg = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0]
-				if (!external.includes(pkg)) external.push(pkg)
-			}
-		}
-
-		graph.set(filePath, { local, external })
-	}
-
-	const lines: string[] = []
-	for (const [file, deps] of [...graph].sort((a, b) => a[0].localeCompare(b[0]))) {
-		if (deps.local.length === 0 && deps.external.length === 0) continue
-		const parts: string[] = []
-		if (deps.local.length > 0) parts.push(deps.local.join(', '))
-		if (deps.external.length > 0) parts.push(`[${deps.external.join(', ')}]`)
-		lines.push(`${file} → ${parts.join(', ')}`)
-	}
-
-	return lines.length > 0 ? `\`\`\`\n${lines.join('\n')}\n\`\`\`` : 'No dependencies found.'
-}
-
-// Resolves ESM import specifiers to actual source files. TypeScript ESM requires .js
-// extensions in imports even for .ts source files, so we strip the .js extension and
-// try all possible source extensions (.ts, .js, .mjs, .cjs, index files).
-function resolveLocalImport(fromFile: string, specifier: string, allFiles: Set<string>): string | null {
-	const dir = dirname(fromFile).replace(/\\/g, '/')
-	const raw = posix.normalize(dir === '.' ? specifier.slice(2) : `${dir}/${specifier.slice(2)}`)
-		.replace(/\\/g, '/')
-	const stripped = raw.replace(/\.js$|\.mjs$|\.cjs$/, '')
-
-	for (const ext of ['.ts', '.js', '.mjs', '.cjs']) {
-		if (allFiles.has(stripped + ext)) return stripped + ext
-	}
-	if (allFiles.has(stripped + '/index.ts')) return stripped + '/index.ts'
-	if (allFiles.has(stripped + '/index.js')) return stripped + '/index.js'
-	if (allFiles.has(raw)) return raw
-	return null
-}
-
-// Uses the TypeScript compiler API to parse actual AST rather than regex.
-// This gives accurate line numbers, modifiers, and signatures for the codebase index
-// that both the planner and builder rely on for navigation.
-export function extractDeclarations(sourceText: string, filePath: string): string[] {
+export function extractDeclarations(sourceText: string, filePath: string, options?: ExtractOptions): string[] {
 	const kind = filePath.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS
 	const sf = ts.createSourceFile(filePath, sourceText, ts.ScriptTarget.Latest, true, kind)
+	const expOnly = options?.exportedOnly ?? false
 	const lines: string[] = []
-	for (const stmt of sf.statements) visitNode(sf, stmt, lines, '  ')
+	for (const stmt of sf.statements) visitNode(sf, stmt, lines, '  ', expOnly)
 	return lines
 }
 
-function visitNode(sf: ts.SourceFile, node: ts.Node, out: string[], indent: string): void {
+function visitNode(sf: ts.SourceFile, node: ts.Node, out: string[], indent: string, expOnly: boolean): void {
+	const exported = isExported(node)
+	if (expOnly && !exported) return
+
 	const range = lineRange(sf, node)
-	const exp = isExported(node) ? 'export ' : ''
+	const exp = exported ? 'export ' : ''
 
 	if (ts.isFunctionDeclaration(node) && node.name) {
 		const a = mod(node, ts.SyntaxKind.AsyncKeyword) ? 'async ' : ''
 		out.push(`${indent}${exp}${a}function ${node.name.text}(${params(sf, node)})${retType(sf, node)}  [${range}]`)
 	} else if (ts.isClassDeclaration(node) && node.name) {
 		out.push(`${indent}${exp}class ${node.name.text}  [${range}]`)
-		for (const m of node.members) visitClassMember(sf, m, out, indent + '  ')
+		for (const m of node.members) visitClassMember(sf, m, out, indent + '  ', expOnly)
 	} else if (ts.isInterfaceDeclaration(node)) {
 		out.push(`${indent}${exp}interface ${node.name.text}  [${range}]`)
 		for (const m of node.members) visitTypeMember(sf, m, out, indent + '  ')
@@ -165,7 +100,9 @@ function visitNode(sf: ts.SourceFile, node: ts.Node, out: string[], indent: stri
 	}
 }
 
-function visitClassMember(sf: ts.SourceFile, node: ts.Node, out: string[], indent: string): void {
+function visitClassMember(sf: ts.SourceFile, node: ts.Node, out: string[], indent: string, expOnly: boolean): void {
+	if (expOnly && mod(node, ts.SyntaxKind.PrivateKeyword)) return
+
 	const range = lineRange(sf, node)
 	const access = mod(node, ts.SyntaxKind.PrivateKeyword) ? 'private '
 		: mod(node, ts.SyntaxKind.ProtectedKeyword) ? 'protected ' : ''
@@ -223,6 +160,10 @@ function lineRange(sf: ts.SourceFile, node: ts.Node): string {
 
 function isExported(node: ts.Node): boolean {
 	return ts.canHaveModifiers(node) && (ts.getModifiers(node)?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) ?? false)
+}
+
+function isTestFile(relPath: string): boolean {
+	return /\.(test|spec)\.[tj]sx?$/.test(relPath)
 }
 
 function mod(node: ts.Node, kind: ts.SyntaxKind): boolean {
@@ -351,15 +292,14 @@ export async function listDirectory(rootPath: string, dirPath: string): Promise<
 // Captures a baseline snapshot of the codebase structure at the start of each iteration.
 // The builder can later call diffContext to see what structural changes its edits caused
 // (new files, removed declarations, changed dependencies) without reading a full git diff.
-let snapshot: { tree: string; declarations: string; depGraph: string } | null = null
+let snapshot: { tree: string; declarations: string } | null = null
 
 export async function snapshotCodebase(rootPath: string): Promise<void> {
-	const [tree, declarations, depGraph] = await Promise.all([
+	const [tree, declarations] = await Promise.all([
 		getFileTree(rootPath),
 		getDeclarationIndex(rootPath),
-		getDependencyGraph(rootPath),
 	])
-	snapshot = { tree, declarations, depGraph }
+	snapshot = { tree, declarations }
 }
 
 function diffSection(label: string, oldText: string, newText: string): string | null {
@@ -382,16 +322,14 @@ function diffSection(label: string, oldText: string, newText: string): string | 
 export async function diffContext(rootPath: string): Promise<string> {
 	if (!snapshot) return 'No previous snapshot to compare against.'
 
-	const [tree, declarations, depGraph] = await Promise.all([
+	const [tree, declarations] = await Promise.all([
 		getFileTree(rootPath),
 		getDeclarationIndex(rootPath),
-		getDependencyGraph(rootPath),
 	])
 
 	const sections = [
 		diffSection('File Tree', snapshot.tree, tree),
 		diffSection('Declarations', snapshot.declarations, declarations),
-		diffSection('Dependency Graph', snapshot.depGraph, depGraph),
 	].filter(Boolean)
 
 	if (sections.length === 0) return 'No structural changes detected.'
