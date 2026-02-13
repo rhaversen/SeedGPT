@@ -7,7 +7,7 @@ A running list of improvements to make, and experiments to try. This is a living
 - Codebase context system prompt:
 
 | Component | Chars | % of builder system |
-|-----------|-------|---------------------|
+| --------- | ----- | ------------------- |
 | Declarations | 15,681 | 64.6% |
 | SYSTEM_BUILD instructions | 6,206 | 25.6% |
 | Dep Graph | 1,727 | 7.1% |
@@ -59,3 +59,11 @@ If an iteration fails, try and recover programatically. Clean up branches, reset
 If the PR has already merged, meaning the latest code is already deployed, we need to go into RECOVERY MODE, where we roll back to the last known good state with ArgoCD, and then set the agent to fix the specific issue causing the failure and retry indefinitely until it succeeds. This way we can guarantee that the agent will eventually succeed and keep evolving, even if it hits a wall on a particular change.
 
 Alternatively, restructure so that the agent always runs as a new branch off main, and only merges the past PR to main after the code has successfully completed a iteration. Sort of testing the previous iteration by trying to build the new iteration off of it, which fits well with the idea that each iteration is a new version of the agent. This way if an iteration fails, we can just abandon that branch and start fresh from main, without worrying about rolling back deployed code. The downside is that if the previous iteration introduced a failure, all work done in the new iteration up to the failure is reached will be lost.
+
+## Better idea generation and memory mangagement
+
+if we prompt the planner to brainstorm new ideas, or evaluate and reflect on current ideas, creating new memories, editing or dismissing old memories based on their relevance and usefulness, we can create a more dynamic and adaptive planning process.
+
+## Small things to remember to fix
+
+When ready, only use batch requests (done with testing, saves in the long run, slower but more efficient and cost effective). In the createMessage, use a batch request under the hood.
