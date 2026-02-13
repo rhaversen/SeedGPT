@@ -5,7 +5,6 @@ import { handleTool, getEditOperation } from './tools/definitions.js'
 import type { EditOperation, ToolResult } from './tools/definitions.js'
 import { callApi } from './api.js'
 import { toolLogSuffix } from './logger.js'
-import { getDiff } from './tools/git.js'
 import type { Plan } from './plan.js'
 
 export type { EditOperation } from './tools/definitions.js'
@@ -53,17 +52,18 @@ export class PatchSession {
 	async fixPatch(error: string): Promise<EditOperation[]> {
 		logger.info('Builder fixing implementation...')
 
-		const diff = await getDiff()
-
 		const fixMessage: Anthropic.MessageParam = {
 			role: 'user',
-			content: [
-				`You were implementing "${this.plan.title}": ${this.plan.description}`,
-				'The changes were applied but CI failed. You have a limited turn budget to diagnose and fix the issue.',
-				`## Your changes\n\`\`\`\n${diff}\n\`\`\``,
-				`## Error\n\`\`\`\n${error}\n\`\`\``,
-				'Start by reading the files implicated in the error. If the error points at a test, read that test file. If not, check tests for the modules you changed. Make the targeted fix, then call done. Do not redo work that already succeeded.',
-			].join('\n\n'),
+			content: [{
+				type: 'text' as const,
+				text: [
+					`You were implementing "${this.plan.title}": ${this.plan.description}`,
+					'The changes were applied but CI failed. You have a limited turn budget to diagnose and fix the issue.',
+					`## Error\n\`\`\`\n${error}\n\`\`\``,
+					'Start by reading the files implicated in the error. If the error points at a test, read that test file. If not, check tests for the modules you changed. Make the targeted fix, then call done. Do not redo work that already succeeded.',
+				].join('\n\n'),
+				cache_control: { type: 'ephemeral' },
+			}],
 		}
 		this.messages = [fixMessage]
 		this.fullHistory.push(fixMessage)
