@@ -31,9 +31,9 @@ const db = isProduction ? {
 // summary task — saving cost without sacrificing iteration quality.
 const planModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const patchModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
-const reflectModel = 'claude-haiku-4-5'
+const reflectModel = isProduction ? 'claude-haiku-4-5' : 'claude-haiku-3'
 const memoryModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
-const summarizerModel = 'claude-haiku-4-5'
+const summarizerModel = isProduction ? 'claude-haiku-4-5' : 'claude-haiku-3'
 
 export const config = {
 	env,
