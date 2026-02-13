@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals'
 
-jest.unstable_mockModule('./config.js', () => ({
+jest.unstable_mockModule('../config.js', () => ({
 	config: {
 		anthropicApiKey: 'test-key',
 		summarization: {
@@ -13,7 +13,7 @@ jest.unstable_mockModule('./config.js', () => ({
 	},
 }))
 
-jest.unstable_mockModule('./logger.js', () => {
+jest.unstable_mockModule('../logger.js', () => {
 	const buffer: Array<{ timestamp: string; level: string; message: string; context?: Record<string, unknown> }> = []
 	const noop = () => {}
 	return {
@@ -28,7 +28,7 @@ const mockCallApi = jest.fn<((...args: unknown[]) => Promise<{ content: Array<{ 
 		usage: { input_tokens: 500, output_tokens: 50 },
 	})
 
-jest.unstable_mockModule('./api.js', () => ({
+jest.unstable_mockModule('../llm/api.js', () => ({
 	callApi: mockCallApi,
 	callBatchApi: jest.fn(),
 }))
@@ -110,7 +110,7 @@ describe('reflect', () => {
 	})
 
 	it('includes iteration log in the transcript', async () => {
-		const { getLogBuffer } = await import('./logger.js')
+		const { getLogBuffer } = await import('../logger.js')
 		const buffer = getLogBuffer() as Array<{ timestamp: string; level: string; message: string }>
 		buffer.push({ timestamp: '2025-01-01T12:00:00.000Z', level: 'info', message: 'Test log entry' })
 

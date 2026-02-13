@@ -1,6 +1,6 @@
 import { config } from '../config.js'
 import logger from '../logger.js'
-import * as memory from '../memory.js'
+import * as memory from '../agents/memory.js'
 import * as codebase from './codebase.js'
 import * as git from './git.js'
 

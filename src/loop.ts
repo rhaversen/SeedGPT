@@ -3,12 +3,12 @@ import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
 import { snapshotCodebase } from './tools/codebase.js'
 import { awaitChecks, cleanupStalePRs, getCoverage } from './pipeline.js'
 import { config } from './config.js'
-import { getContext, storePastMemory } from './memory.js'
+import { getContext, storePastMemory } from './agents/memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
-import { plan } from './plan.js'
-import { PatchSession } from './build.js'
-import { reflect } from './reflect.js'
+import { plan } from './agents/plan.js'
+import { PatchSession } from './agents/build.js'
+import { reflect } from './agents/reflect.js'
 
 export async function run(): Promise<void> {
 	logger.info('SeedGPT starting iteration...')

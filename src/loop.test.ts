@@ -40,9 +40,10 @@ jest.unstable_mockModule('./tools/github.js', () => ({
 
 jest.unstable_mockModule('./tools/codebase.js', () => ({
 	snapshotCodebase: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+	getCodebaseContext: jest.fn<() => Promise<string>>().mockResolvedValue('codebase context'),
 }))
 
-jest.unstable_mockModule('./memory.js', () => ({
+jest.unstable_mockModule('./agents/memory.js', () => ({
 	getContext: jest.fn<() => Promise<string>>().mockResolvedValue('No memories yet. This is your first run.'),
 	storePastMemory: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }))
@@ -71,15 +72,15 @@ const mockPatchSession = {
 	conversation: [] as unknown[],
 }
 
-jest.unstable_mockModule('./plan.js', () => ({
+jest.unstable_mockModule('./agents/plan.js', () => ({
 	plan: jest.fn<() => Promise<{ plan: typeof mockPlan; messages: [] }>>().mockResolvedValue({ plan: mockPlan, messages: [] }),
 }))
 
-jest.unstable_mockModule('./reflect.js', () => ({
+jest.unstable_mockModule('./agents/reflect.js', () => ({
 	reflect: jest.fn<() => Promise<string>>().mockResolvedValue('Test reflection.'),
 }))
 
-jest.unstable_mockModule('./build.js', () => ({
+jest.unstable_mockModule('./agents/build.js', () => ({
 	PatchSession: jest.fn().mockImplementation(() => mockPatchSession),
 }))
 
@@ -88,10 +89,10 @@ const database = await import('./database.js')
 const git = await import('./tools/git.js')
 const github = await import('./tools/github.js')
 const pipeline = await import('./pipeline.js')
-const memory = await import('./memory.js')
-const planModule = await import('./plan.js')
-const reflectModule = await import('./reflect.js')
-const buildModule = await import('./build.js')
+const memory = await import('./agents/memory.js')
+const planModule = await import('./agents/plan.js')
+const reflectModule = await import('./agents/reflect.js')
+const buildModule = await import('./agents/build.js')
 
 beforeEach(() => {
 	jest.clearAllMocks()

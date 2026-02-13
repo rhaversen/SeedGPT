@@ -1,7 +1,7 @@
-import MemoryModel from './models/Memory.js'
-import { config } from './config.js'
-import logger from './logger.js'
-import { callApi } from './api.js'
+import MemoryModel from '../models/Memory.js'
+import { config } from '../config.js'
+import logger from '../logger.js'
+import { callApi } from '../llm/api.js'
 
 async function summarizeMemory(content: string): Promise<string> {
 	const response = await callApi('memory', [{ role: 'user', content }])

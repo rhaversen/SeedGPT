@@ -1,10 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { config } from './config.js'
-import logger from './logger.js'
-import { handleTool } from './tools/definitions.js'
-import type { ToolResult } from './tools/definitions.js'
-import { callApi } from './api.js'
-import { toolLogSuffix } from './logger.js'
+import { config } from '../config.js'
+import logger from '../logger.js'
+import { handleTool } from '../tools/definitions.js'
+import type { ToolResult } from '../tools/definitions.js'
+import { callApi } from '../llm/api.js'
+import { toolLogSuffix } from '../logger.js'
 
 export interface Plan {
 	title: string

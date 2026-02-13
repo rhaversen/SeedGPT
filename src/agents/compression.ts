@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { config } from './config.js'
-import logger from './logger.js'
-import { callBatchApi, type BatchRequest } from './api.js'
+import { config } from '../config.js'
+import logger from '../logger.js'
+import { callBatchApi, type BatchRequest } from '../llm/api.js'
 
 // --- Types ---
 

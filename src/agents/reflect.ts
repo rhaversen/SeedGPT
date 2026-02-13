@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
-import logger, { getLogBuffer } from './logger.js'
-import { callApi } from './api.js'
+import logger, { getLogBuffer } from '../logger.js'
+import { callApi } from '../llm/api.js'
 
 function summarizeToolResult(toolName: string, toolInput: Record<string, unknown>, resultContent: string): string {
 	const lines = resultContent.split('\n').length

@@ -2,7 +2,7 @@ import { jest, describe, it, expect, beforeAll, afterAll, beforeEach } from '@je
 import mongoose from 'mongoose'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 
-jest.unstable_mockModule('./config.js', () => ({
+jest.unstable_mockModule('../config.js', () => ({
 	config: {
 		planModel: 'claude-haiku-4-5',
 		memoryTokenBudget: 10000,
@@ -12,13 +12,13 @@ jest.unstable_mockModule('./config.js', () => ({
 const mockCallApi = jest.fn<() => Promise<{ content: Array<{ type: string, text: string }>; usage: { input_tokens: number; output_tokens: number } }>>()
 	.mockResolvedValue({ content: [{ type: 'text', text: 'mock summary' }], usage: { input_tokens: 10, output_tokens: 5 } })
 
-jest.unstable_mockModule('./api.js', () => ({
+jest.unstable_mockModule('../llm/api.js', () => ({
 	callApi: mockCallApi,
 	callBatchApi: jest.fn(),
 }))
 
 const memory = await import('./memory.js')
-const MemoryModel = (await import('./models/Memory.js')).default
+const MemoryModel = (await import('../models/Memory.js')).default
 
 let replSet: MongoMemoryReplSet
 
@@ -124,7 +124,7 @@ describe('memory', () => {
 		})
 
 		it('respects token budget by limiting past memories', async () => {
-			const { config } = await import('./config.js');
+			const { config } = await import('../config.js');
 			(config as { memoryTokenBudget: number }).memoryTokenBudget = 100
 
 			for (let i = 0; i < 50; i++) {

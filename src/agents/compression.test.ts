@@ -1,7 +1,7 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals'
 import type Anthropic from '@anthropic-ai/sdk'
 
-jest.unstable_mockModule('./config.js', () => ({
+jest.unstable_mockModule('../config.js', () => ({
 	config: {
 		anthropicApiKey: 'test-key',
 		summarization: {
@@ -12,7 +12,7 @@ jest.unstable_mockModule('./config.js', () => ({
 	},
 }))
 
-jest.unstable_mockModule('./logger.js', () => {
+jest.unstable_mockModule('../logger.js', () => {
 	const noop = () => {}
 	return { default: { debug: noop, info: noop, warn: noop, error: noop } }
 })
@@ -20,7 +20,7 @@ jest.unstable_mockModule('./logger.js', () => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let mockCallBatchApi: jest.Mock<(...args: any[]) => any>
 
-jest.unstable_mockModule('./api.js', () => {
+jest.unstable_mockModule('../llm/api.js', () => {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	mockCallBatchApi = jest.fn<(...args: any[]) => any>()
 	return { callBatchApi: mockCallBatchApi }

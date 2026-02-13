@@ -3,7 +3,7 @@ import { writeFile, unlink, readFile, mkdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import { config } from '../config.js'
 import logger from '../logger.js'
-import type { EditOperation } from '../build.js'
+import type { EditOperation } from '../agents/build.js'
 
 let client: SimpleGit
 

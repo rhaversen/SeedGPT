@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals'
 
-jest.unstable_mockModule('./config.js', () => ({
+jest.unstable_mockModule('../config.js', () => ({
 	config: {
 		anthropicApiKey: 'test-key',
 		phases: {
@@ -16,29 +16,29 @@ jest.unstable_mockModule('./config.js', () => ({
 	},
 }))
 
-jest.unstable_mockModule('./logger.js', () => {
+jest.unstable_mockModule('../logger.js', () => {
 	const noop = () => {}
 	return { default: { debug: noop, info: noop, warn: noop, error: noop } }
 })
 
-jest.unstable_mockModule('./compression.js', () => ({
+jest.unstable_mockModule('../agents/compression.js', () => ({
 	compressConversation: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }))
 
 const mockComputeCost = jest.fn<(...args: unknown[]) => number>(() => 0.01)
 const mockModelCreate = jest.fn<() => Promise<void>>().mockResolvedValue(undefined as never)
 
-jest.unstable_mockModule('./models/Generated.js', () => ({
+jest.unstable_mockModule('../models/Generated.js', () => ({
 	default: { create: mockModelCreate },
 	computeCost: mockComputeCost,
 }))
 
-jest.unstable_mockModule('./tools/definitions.js', () => ({
+jest.unstable_mockModule('../tools/definitions.js', () => ({
 	PLANNER_TOOLS: [],
 	BUILDER_TOOLS: [],
 }))
 
-jest.unstable_mockModule('./tools/codebase.js', () => ({
+jest.unstable_mockModule('../tools/codebase.js', () => ({
 	getCodebaseContext: jest.fn<() => Promise<string>>().mockResolvedValue('codebase context'),
 }))
 
