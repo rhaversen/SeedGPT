@@ -16,6 +16,8 @@ interface Candidate {
 	toolUseId: string
 	toolName: string
 	charLen: number
+	inputHint: string
+	contentPreview: string
 }
 
 // --- Constants ---
@@ -151,11 +153,22 @@ function selectCandidates(messages: Anthropic.MessageParam[], toolMap: Map<strin
 				toolUseId: (block as Anthropic.ToolResultBlockParam).tool_use_id,
 				toolName: tool.name,
 				charLen: text.length,
+				inputHint: buildInputHint(tool),
+				contentPreview: text.slice(0, 200),
 			})
 		}
 	}
 
 	return candidates
+}
+
+function buildInputHint(tool: ToolInfo): string {
+	const input = tool.input
+	if (tool.name === 'read_file') return `: ${input.filePath}`
+	if (tool.name === 'grep_search') return `: "${(input.query as string)?.slice(0, 60)}"`
+	if (tool.name === 'file_search') return `: "${(input.query as string)?.slice(0, 60)}"`
+	if (tool.name === 'list_directory') return `: ${input.path}`
+	return ''
 }
 
 // --- Batched LLM Summarization with Prompt Caching ---
@@ -198,7 +211,7 @@ async function summarizeCandidates(
 			{ role: 'assistant' as const, content: 'I will now evaluate tool results for compression.' },
 			{
 				role: 'user' as const,
-				content: `Evaluate the tool result with tool_use_id="${c.toolUseId}" (${c.toolName}, ${c.charLen} chars) for compression. Call either keep or summarize.`,
+				content: `Evaluate the tool result with tool_use_id="${c.toolUseId}" (${c.toolName}${c.inputHint}, ${c.charLen} chars) for compression. Its content starts with:\n${c.contentPreview}\n\nCall either keep or summarize.`,
 			},
 		],
 		tools: [KEEP_TOOL, SUMMARIZE_TOOL],

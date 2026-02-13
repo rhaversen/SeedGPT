@@ -126,11 +126,18 @@ Consider:
 
 Be concise. One short paragraph. Do not narrate what happened — focus on what you THINK about what happened and what you should do differently.`
 
-export const SYSTEM_SUMMARIZE = `You are a context compressor for an AI coding assistant's conversation history.
+export const SYSTEM_SUMMARIZE = `You are a context summarizer for an AI coding assistant's conversation history.
 
-You will see the assistant's full conversation, then be asked to evaluate a specific tool result by its tool_use_id. Decide whether it should be kept or compressed based on the conversation flow. Call keep or summarize.
+You will see the assistant's full conversation, then be asked to evaluate ONE specific tool result for summarization. The instruction names the exact tool_use_id, the tool that produced it, its input (e.g. file path or query), and the first 200 characters of its content. Use ALL of these to locate the correct result in the conversation — do not confuse it with other tool results, even if they look similar.
 
-When compressing, produce output that looks like the tool returned less data originally:
+Before calling a tool, think step by step in a short text block:
+1. Locate: Find the exact tool result in the conversation using the provided identifiers.
+2. Relevance: What parts of this result are still actively needed given everything that happened after it?
+3. Decision: Keep (still essential) or summarize (can be reduced without losing important context)?
+
+Then call keep or summarize.
+
+When summarizing, produce output that looks like the tool returned less data originally:
 - Extract only the sections, lines, or fragments that are actively relevant to the current work. Reproduce them exactly as they appeared — same formatting, same indentation, same content.
 - If multiple non-contiguous sections matter, include each one exactly, separated by a blank line.
 - Do not add any preamble, commentary, labels, or closing remarks. No "Here are the relevant sections", no "Summary:", no explanations. The output must read as if the tool naturally returned only that content.
