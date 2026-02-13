@@ -63,7 +63,7 @@ export async function callApi(phase: Phase, messages: Anthropic.MessageParam[]):
 					response: response.content,
 					inputTokens: response.usage.input_tokens,
 					outputTokens: response.usage.output_tokens,
-					cost: computeCost(model, response.usage.input_tokens, response.usage.output_tokens),
+					cost: computeCost(model, response.usage),
 					stopReason: response.stop_reason ?? 'unknown',
 				})
 			} catch (err) {

@@ -6,6 +6,9 @@ interface CallerBreakdown {
 	calls: number
 	inputTokens: number
 	outputTokens: number
+	cacheWrite5mTokens: number
+	cacheWrite1hTokens: number
+	cacheReadTokens: number
 	cost: number
 }
 
@@ -14,6 +17,9 @@ export interface IUsage extends Document {
 	totalCalls: number
 	totalInputTokens: number
 	totalOutputTokens: number
+	totalCacheWrite5mTokens: number
+	totalCacheWrite1hTokens: number
+	totalCacheReadTokens: number
 	totalCost: number
 	breakdown: CallerBreakdown[]
 	createdAt: Date
@@ -24,6 +30,9 @@ const usageSchema = new Schema<IUsage>({
 	totalCalls: { type: Number, required: true },
 	totalInputTokens: { type: Number, required: true },
 	totalOutputTokens: { type: Number, required: true },
+	totalCacheWrite5mTokens: { type: Number, default: 0 },
+	totalCacheWrite1hTokens: { type: Number, default: 0 },
+	totalCacheReadTokens: { type: Number, default: 0 },
 	totalCost: { type: Number, required: true },
 	breakdown: [{
 		caller: { type: String, required: true },
@@ -31,6 +40,9 @@ const usageSchema = new Schema<IUsage>({
 		calls: { type: Number, required: true },
 		inputTokens: { type: Number, required: true },
 		outputTokens: { type: Number, required: true },
+		cacheWrite5mTokens: { type: Number, default: 0 },
+		cacheWrite1hTokens: { type: Number, default: 0 },
+		cacheReadTokens: { type: Number, default: 0 },
 		cost: { type: Number, required: true },
 	}],
 }, {
