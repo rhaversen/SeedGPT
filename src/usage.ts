@@ -42,7 +42,7 @@ interface UsageEntry {
 
 const entries: UsageEntry[] = []
 
-export function computeCost(model: string, usage: ApiUsage): number {
+export function computeCost(model: string, usage: ApiUsage, options?: { batch?: boolean }): number {
 	const pricing = PRICING[model] ?? DEFAULT_PRICING
 
 	const totalCacheWrite = usage.cache_creation_input_tokens ?? 0
@@ -66,11 +66,12 @@ export function computeCost(model: string, usage: ApiUsage): number {
 		+ cacheRead * pricing.cacheReadPerMTok
 	const outputCost = usage.output_tokens * pricing.outputPerMTok
 
-	return (inputCost + outputCost) / 1_000_000
+	const total = (inputCost + outputCost) / 1_000_000
+	return options?.batch ? total * 0.5 : total
 }
 
-export function trackUsage(caller: string, model: string, usage: ApiUsage): void {
-	const cost = computeCost(model, usage)
+export function trackUsage(caller: string, model: string, usage: ApiUsage, options?: { batch?: boolean }): void {
+	const cost = computeCost(model, usage, options)
 	const totalCacheWrite = usage.cache_creation_input_tokens ?? 0
 	entries.push({
 		caller, model,

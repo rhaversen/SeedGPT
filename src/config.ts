@@ -53,6 +53,11 @@ export const config = {
 		initialRetryDelay: 30_000,
 		maxRetryDelay: 120_000,
 	},
+	batch: {
+		pollInterval: 10_000,
+		maxPollInterval: 60_000,
+		pollBackoff: 1.5,
+	},
 	workspacePath: isProduction ? '/app/workspace' : './workspace',
 	memoryTokenBudget: 10_000,
 	db: {
