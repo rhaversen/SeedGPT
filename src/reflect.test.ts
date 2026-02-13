@@ -1,5 +1,18 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals'
 
+jest.unstable_mockModule('./config.js', () => ({
+	config: {
+		anthropicApiKey: 'test-key',
+		summarization: {
+			charThreshold: 20_000,
+			minResultChars: 300,
+			protectedTurns: 2,
+			model: 'claude-haiku-4-5',
+			maxTokens: 2048,
+		},
+	},
+}))
+
 jest.unstable_mockModule('./logger.js', () => {
 	const buffer: Array<{ timestamp: string; level: string; message: string; context?: Record<string, unknown> }> = []
 	const noop = () => {}
@@ -17,6 +30,7 @@ const mockCallApi = jest.fn<((...args: unknown[]) => Promise<{ content: Array<{ 
 
 jest.unstable_mockModule('./api.js', () => ({
 	callApi: mockCallApi,
+	callBatchApi: jest.fn(),
 }))
 
 const { reflect } = await import('./reflect.js')

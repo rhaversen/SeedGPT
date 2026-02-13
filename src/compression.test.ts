@@ -1,208 +1,336 @@
-import { describe, it, expect } from '@jest/globals'
+import { jest, describe, it, expect, beforeEach } from '@jest/globals'
 import type Anthropic from '@anthropic-ai/sdk'
-import { redactToolResult, summarizeToolResult, compressOldMessages } from './compression.js'
 
-describe('summarizeToolResult', () => {
-	it('summarizes read_file with path and line count', () => {
-		expect(summarizeToolResult('read_file', { filePath: 'src/index.ts' }, 'line1\nline2\nline3'))
-			.toBe('[Read src/index.ts (3 lines)]')
-	})
+jest.unstable_mockModule('./config.js', () => ({
+	config: {
+		anthropicApiKey: 'test-key',
+		summarization: {
+			charThreshold: 500,
+			minResultChars: 100,
+			protectedTurns: 2,
+		},
+	},
+}))
 
-	it('summarizes grep_search with match count', () => {
-		expect(summarizeToolResult('grep_search', { query: 'foo' }, 'src/a.ts:1: foo\nsrc/b.ts:2: foo'))
-			.toBe('[Searched "foo": 2 matches]')
-	})
-
-	it('summarizes grep_search with no matches', () => {
-		expect(summarizeToolResult('grep_search', { query: 'x' }, 'No matches found.'))
-			.toBe('[Searched "x": 0 matches]')
-	})
-
-	it('summarizes list_directory', () => {
-		expect(summarizeToolResult('list_directory', { path: 'src' }, 'a.ts\nb.ts'))
-			.toBe('[Listed src: 2 entries]')
-	})
-
-	it('summarizes git_diff', () => {
-		expect(summarizeToolResult('git_diff', {}, '+a\n-b\n c'))
-			.toBe('[Diff viewed: 3 lines]')
-	})
-
-	it('truncates unknown tools to 200 chars', () => {
-		const long = 'x'.repeat(300)
-		expect(summarizeToolResult('unknown', {}, long)).toBe('x'.repeat(200))
-	})
+jest.unstable_mockModule('./logger.js', () => {
+	const noop = () => {}
+	return { default: { debug: noop, info: noop, warn: noop, error: noop } }
 })
 
-describe('redactToolResult', () => {
-	it('redacts read_file with path', () => {
-		const result = redactToolResult('read_file', { filePath: 'src/index.ts' }, 'line1\nline2\nline3')
-		expect(result).toBe('[Content of src/index.ts was removed from context — you do NOT know what this file contains. Re-read it if needed.]')
-	})
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mockCallBatchApi: jest.Mock<(...args: any[]) => any>
 
-	it('redacts grep_search with query', () => {
-		const result = redactToolResult('grep_search', { query: 'foo' }, 'src/a.ts:1: foo\nsrc/b.ts:2: foo')
-		expect(result).toBe('[Search results for "foo" were removed from context — search again if needed.]')
-	})
-
-	it('redacts grep_search with no matches', () => {
-		const result = redactToolResult('grep_search', { query: 'nonexistent' }, 'No matches found.')
-		expect(result).toBe('[Search results for "nonexistent" were removed from context — search again if needed.]')
-	})
-
-	it('truncates long grep_search queries to 60 chars', () => {
-		const longQuery = 'a'.repeat(100)
-		const result = redactToolResult('grep_search', { query: longQuery }, 'src/a.ts:1: match')
-		expect(result).toContain('a'.repeat(60))
-		expect(result).not.toContain('a'.repeat(61))
-	})
-
-	it('redacts file_search', () => {
-		const result = redactToolResult('file_search', { query: '**/*.ts' }, 'src/a.ts\nsrc/b.ts')
-		expect(result).toBe('[File search results were removed from context — search again if needed.]')
-	})
-
-	it('redacts file_search with no matches', () => {
-		const result = redactToolResult('file_search', { query: '**/*.xyz' }, 'No files matched.')
-		expect(result).toBe('[File search results were removed from context — search again if needed.]')
-	})
-
-	it('redacts list_directory with path', () => {
-		const result = redactToolResult('list_directory', { path: 'src' }, 'a.ts\nb.ts\nc.ts')
-		expect(result).toBe('[Directory listing for src was removed from context — list again if needed.]')
-	})
-
-	it('redacts list_directory singular entry', () => {
-		const result = redactToolResult('list_directory', { path: 'src' }, 'index.ts')
-		expect(result).toBe('[Directory listing for src was removed from context — list again if needed.]')
-	})
-
-	it('redacts git_diff', () => {
-		const result = redactToolResult('git_diff', {}, 'diff --git a/file.ts\n+added\n-removed')
-		expect(result).toBe('[Diff was removed from context — run git_diff again if needed.]')
-	})
-
-	it('redacts codebase_context', () => {
-		const result = redactToolResult('codebase_context', {}, 'full context...')
-		expect(result).toBe('[Codebase context was removed — call again if needed.]')
-	})
-
-	it('redacts codebase_diff', () => {
-		const result = redactToolResult('codebase_diff', {}, 'diff output...')
-		expect(result).toBe('[Codebase context was removed — call again if needed.]')
-	})
-
-	it('passes through note_to_self unchanged', () => {
-		const content = 'Note saved (abc123): my note'
-		expect(redactToolResult('note_to_self', {}, content)).toBe(content)
-	})
-
-	it('passes through dismiss_note unchanged', () => {
-		const content = 'Note dismissed: old goal'
-		expect(redactToolResult('dismiss_note', {}, content)).toBe(content)
-	})
-
-	it('passes through recall_memory unchanged', () => {
-		const content = 'Memory content here'
-		expect(redactToolResult('recall_memory', {}, content)).toBe(content)
-	})
-
-	it('passes through unknown tool names unchanged', () => {
-		const content = 'some result content'
-		expect(redactToolResult('unknown_tool', {}, content)).toBe(content)
-	})
+jest.unstable_mockModule('./api.js', () => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	mockCallBatchApi = jest.fn<(...args: any[]) => any>()
+	return { callBatchApi: mockCallBatchApi }
 })
 
-describe('compressOldMessages', () => {
-	it('does nothing with fewer than 3 messages', () => {
+const { compressConversation } = await import('./compression.js')
+
+function toolUse(id: string, name: string, input: Record<string, unknown>): Anthropic.ToolUseBlock {
+	return { type: 'tool_use', id, name, input }
+}
+
+function toolResult(toolUseId: string, content: string): Anthropic.ToolResultBlockParam {
+	return { type: 'tool_result', tool_use_id: toolUseId, content }
+}
+
+describe('compressConversation', () => {
+	beforeEach(() => {
+		mockCallBatchApi.mockReset()
+	})
+
+	it('does nothing with fewer than 3 messages', async () => {
 		const messages: Anthropic.MessageParam[] = [
 			{ role: 'user', content: 'hello' },
 			{ role: 'assistant', content: 'hi' },
 		]
 		const original = JSON.parse(JSON.stringify(messages))
-		compressOldMessages(messages)
+		await compressConversation(messages)
 		expect(messages).toEqual(original)
 	})
 
-	it('does not compress the last user message', () => {
-		const longResult = 'x'.repeat(200)
+	it('does nothing when total chars are below threshold', async () => {
 		const messages: Anthropic.MessageParam[] = [
-			{ role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'read_file', input: { filePath: 'a.ts' } }] },
-			{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: longResult }] },
-			{ role: 'assistant', content: [{ type: 'text', text: 'done' }] },
-			{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: longResult }] },
-		]
-		compressOldMessages(messages)
-		const lastUser = messages[3]
-		expect((lastUser.content as Anthropic.ContentBlockParam[])[0]).toHaveProperty('content', longResult)
-	})
-
-	it('compresses tool results in earlier user messages', () => {
-		const longResult = 'line1\n' + 'x'.repeat(200)
-		const messages: Anthropic.MessageParam[] = [
-			{ role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'read_file', input: { filePath: 'src/foo.ts' } }] },
-			{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: longResult }] },
-			{ role: 'assistant', content: [{ type: 'text', text: 'thinking...' }] },
-			{ role: 'user', content: 'continue' },
-		]
-		compressOldMessages(messages)
-		const compressed = messages[1]
-		const block = (compressed.content as Anthropic.ContentBlockParam[])[0]
-		expect(block).toHaveProperty('content', '[Content of src/foo.ts was removed from context — you do NOT know what this file contains. Re-read it if needed.]')
-	})
-
-	it('does not compress short tool results (<=100 chars)', () => {
-		const shortResult = 'short'
-		const messages: Anthropic.MessageParam[] = [
-			{ role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'read_file', input: { filePath: 'a.ts' } }] },
-			{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: shortResult }] },
-			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'hi' },
+			{ role: 'assistant', content: 'hello' },
 			{ role: 'user', content: 'go' },
 		]
-		compressOldMessages(messages)
-		const block = (messages[1].content as Anthropic.ContentBlockParam[])[0]
-		expect(block).toHaveProperty('content', shortResult)
-	})
-
-	it('falls back to truncation when tool id is not in tool name map', () => {
-		const longResult = 'a'.repeat(200)
-		const messages: Anthropic.MessageParam[] = [
-			{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 'unknown-id', content: longResult }] },
-			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
-			{ role: 'user', content: 'next' },
-		]
-		compressOldMessages(messages)
-		const block = (messages[0].content as Anthropic.ContentBlockParam[])[0]
-		const content = (block as { content: string }).content
-		expect(content).toContain('[...compressed]')
-		expect(content.length).toBeLessThan(200)
-	})
-
-	it('skips user messages with string content', () => {
-		const messages: Anthropic.MessageParam[] = [
-			{ role: 'user', content: 'first message' },
-			{ role: 'assistant', content: 'response' },
-			{ role: 'user', content: 'second message' },
-		]
 		const original = JSON.parse(JSON.stringify(messages))
-		compressOldMessages(messages)
+		await compressConversation(messages)
 		expect(messages).toEqual(original)
 	})
 
-	it('preserves non-tool-result blocks in user messages', () => {
-		const longResult = 'z'.repeat(200)
+	it('calls LLM with batched candidates and applies summaries', async () => {
+		mockCallBatchApi.mockResolvedValue([{
+			content: [{ type: 'tool_use', id: 'call1', name: 'summarize', input: { tool_use_id: 't1', summary: 'File contents of a.ts' } }],
+		}])
+
+		const longContent = 'x'.repeat(600)
 		const messages: Anthropic.MessageParam[] = [
-			{ role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'grep_search', input: { query: 'test' } }] },
-			{ role: 'user', content: [
-				{ type: 'text', text: 'some context' } as Anthropic.ContentBlockParam,
-				{ type: 'tool_result', tool_use_id: 't1', content: longResult },
-			] },
+			{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: 'a.ts' })] },
+			{ role: 'user', content: [toolResult('t1', longContent)] },
 			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
-			{ role: 'user', content: 'last' },
+			{ role: 'user', content: 'a' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
 		]
-		compressOldMessages(messages)
-		const content = messages[1].content as Anthropic.ContentBlockParam[]
-		expect(content[0]).toHaveProperty('text', 'some context')
-		expect((content[1] as { content: string }).content).toContain('[Search results for "test" were removed')
+		await compressConversation(messages)
+
+		const result = (messages[1].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolResultBlockParam
+		expect(result.content).toBe('File contents of a.ts')
+		expect(mockCallBatchApi).toHaveBeenCalledTimes(1)
+		expect(mockCallBatchApi.mock.calls[0][0]).toHaveLength(1)
+		expect(mockCallBatchApi.mock.calls[0][0][0].phase).toBe('summarizer')
+	})
+
+	it('keeps results when LLM returns keep tool', async () => {
+		mockCallBatchApi.mockResolvedValue([{
+			content: [{ type: 'tool_use', id: 'call1', name: 'keep', input: { tool_use_id: 't1' } }],
+		}])
+
+		const longContent = 'x'.repeat(600)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: 'a.ts' })] },
+			{ role: 'user', content: [toolResult('t1', longContent)] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
+		]
+		await compressConversation(messages)
+
+		const result = (messages[1].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolResultBlockParam
+		expect(result.content).toBe(longContent)
+	})
+
+	it('redacts on LLM failure', async () => {
+		mockCallBatchApi.mockRejectedValue(new Error('Batch error'))
+
+		const longContent = 'x'.repeat(600)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: 'a.ts' })] },
+			{ role: 'user', content: [toolResult('t1', longContent)] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
+		]
+		await compressConversation(messages)
+
+		const result = (messages[1].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolResultBlockParam
+		expect(result.content).toContain('[Redacted:')
+	})
+
+	it('batches multiple candidates into one batch call', async () => {
+		mockCallBatchApi.mockResolvedValue([
+			{ content: [{ type: 'tool_use', id: 'call1', name: 'summarize', input: { tool_use_id: 't1', summary: 'compressed a' } }] },
+			{ content: [{ type: 'tool_use', id: 'call2', name: 'summarize', input: { tool_use_id: 't2', summary: 'compressed b' } }] },
+		])
+
+		const longContent = 'x'.repeat(600)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: 'a.ts' })] },
+			{ role: 'user', content: [toolResult('t1', longContent)] },
+			{ role: 'assistant', content: [toolUse('t2', 'grep_search', { query: 'foo' })] },
+			{ role: 'user', content: [toolResult('t2', longContent)] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
+		]
+		await compressConversation(messages)
+
+		expect(mockCallBatchApi).toHaveBeenCalledTimes(1)
+		expect(mockCallBatchApi.mock.calls[0][0]).toHaveLength(2)
+		const r1 = (messages[1].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolResultBlockParam
+		const r2 = (messages[3].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolResultBlockParam
+		expect(r1.content).toBe('compressed a')
+		expect(r2.content).toBe('compressed b')
+	})
+
+	it('keeps candidates when LLM returns no tool call', async () => {
+		mockCallBatchApi.mockResolvedValue([
+			{ content: [{ type: 'tool_use', id: 'call1', name: 'summarize', input: { tool_use_id: 't1', summary: 'compressed' } }] },
+			{ content: [{ type: 'text', text: 'This result should be kept.' }] },
+		])
+
+		const longContent = 'x'.repeat(600)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: 'a.ts' })] },
+			{ role: 'user', content: [toolResult('t1', longContent)] },
+			{ role: 'assistant', content: [toolUse('t2', 'grep_search', { query: 'foo' })] },
+			{ role: 'user', content: [toolResult('t2', longContent)] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
+		]
+		await compressConversation(messages)
+
+		const r1 = (messages[1].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolResultBlockParam
+		const r2 = (messages[3].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolResultBlockParam
+		expect(r1.content).toBe('compressed')
+		expect(r2.content).toBe(longContent)
+	})
+
+	it('adds cache breakpoints to conversation messages', async () => {
+		mockCallBatchApi.mockResolvedValue([{
+			content: [{ type: 'tool_use', id: 'call1', name: 'keep', input: { tool_use_id: 't1' } }],
+		}])
+
+		const longContent = 'x'.repeat(600)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: 'a.ts' })] },
+			{ role: 'user', content: [toolResult('t1', longContent)] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
+		]
+		await compressConversation(messages)
+
+		const requests = mockCallBatchApi.mock.calls[0][0] as Array<{ messages: Anthropic.MessageParam[] }>
+		const batchMessages = requests[0].messages
+		// cachedMessages end at length - 3 (assistant shim + user instruction follow)
+		const lastConvoMsg = batchMessages[batchMessages.length - 3]
+		const lastContent = Array.isArray(lastConvoMsg.content) ? lastConvoMsg.content : [lastConvoMsg.content]
+		const lastBlock = lastContent[lastContent.length - 1] as { cache_control?: unknown }
+		expect(lastBlock.cache_control).toEqual({ type: 'ephemeral' })
+	})
+
+	it('protects the most recent user messages', async () => {
+		mockCallBatchApi.mockResolvedValue([{
+			content: [{ type: 'tool_use', id: 'call1', name: 'summarize', input: { summary: 'compressed' } }],
+		}])
+
+		const longContent = 'x'.repeat(600)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: 'a.ts' })] },
+			{ role: 'user', content: [toolResult('t1', longContent)] },
+			{ role: 'assistant', content: [toolUse('t2', 'read_file', { filePath: 'b.ts' })] },
+			{ role: 'user', content: [toolResult('t2', longContent)] },
+		]
+		await compressConversation(messages)
+
+		expect(mockCallBatchApi).not.toHaveBeenCalled()
+	})
+
+	it('never selects note_to_self results', async () => {
+		mockCallBatchApi.mockResolvedValue([{
+			content: [{ type: 'tool_use', id: 'call1', name: 'summarize', input: { summary: 'compressed' } }],
+		}])
+
+		const longContent = 'x'.repeat(600)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'note_to_self', { content: 'remember this' })] },
+			{ role: 'user', content: [toolResult('t1', longContent)] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
+		]
+		await compressConversation(messages)
+
+		expect(mockCallBatchApi).not.toHaveBeenCalled()
+	})
+
+	it('strips edit_file inputs outside protected turns', async () => {
+		mockCallBatchApi.mockResolvedValue([])
+
+		const longOld = 'old\n'.repeat(50)
+		const longNew = 'new\n'.repeat(50)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'edit_file', { filePath: 'a.ts', oldString: longOld, newString: longNew })] },
+			{ role: 'user', content: [toolResult('t1', 'Replaced text in a.ts')] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a'.repeat(600) },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
+		]
+		await compressConversation(messages)
+
+		const block = (messages[0].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolUseBlock
+		const input = block.input as { filePath: string; oldString: string; newString: string }
+		expect(input.filePath).toBe('a.ts')
+		expect(input.oldString).toMatch(/^\[applied/)
+		expect(input.newString).toMatch(/^\[applied/)
+	})
+
+	it('strips create_file inputs outside protected turns', async () => {
+		mockCallBatchApi.mockResolvedValue([])
+
+		const longContent = 'line\n'.repeat(100)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'create_file', { filePath: 'b.ts', content: longContent })] },
+			{ role: 'user', content: [toolResult('t1', 'Created b.ts')] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a'.repeat(600) },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
+		]
+		await compressConversation(messages)
+
+		const block = (messages[0].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolUseBlock
+		const input = block.input as { filePath: string; content: string }
+		expect(input.filePath).toBe('b.ts')
+		expect(input.content).toMatch(/^\[applied/)
+	})
+
+	it('preserves write inputs within protected turns', async () => {
+		const longOld = 'old\n'.repeat(50)
+		const longNew = 'new\n'.repeat(50)
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'edit_file', { filePath: 'a.ts', oldString: longOld, newString: longNew })] },
+			{ role: 'user', content: [toolResult('t1', 'Replaced text in a.ts')] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a'.repeat(600) },
+		]
+		await compressConversation(messages)
+
+		const block = (messages[0].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolUseBlock
+		const input = block.input as { oldString: string; newString: string }
+		expect(input.oldString).toBe(longOld)
+		expect(input.newString).toBe(longNew)
+	})
+
+	it('does not re-strip already stripped inputs', async () => {
+		mockCallBatchApi.mockResolvedValue([])
+
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'assistant', content: [toolUse('t1', 'edit_file', { filePath: 'a.ts', oldString: '[applied — 50 lines]', newString: '[applied — 50 lines]' })] },
+			{ role: 'user', content: [toolResult('t1', 'Replaced text in a.ts')] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'a'.repeat(600) },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'b' },
+			{ role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+			{ role: 'user', content: 'c' },
+		]
+		await compressConversation(messages)
+
+		const block = (messages[0].content as Anthropic.ContentBlockParam[])[0] as Anthropic.ToolUseBlock
+		const input = block.input as { oldString: string; newString: string }
+		expect(input.oldString).toBe('[applied — 50 lines]')
+		expect(input.newString).toBe('[applied — 50 lines]')
 	})
 })

@@ -14,6 +14,7 @@ const mockCallApi = jest.fn<() => Promise<{ content: Array<{ type: string, text:
 
 jest.unstable_mockModule('./api.js', () => ({
 	callApi: mockCallApi,
+	callBatchApi: jest.fn(),
 }))
 
 const memory = await import('./memory.js')

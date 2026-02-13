@@ -53,11 +53,6 @@ jest.unstable_mockModule('./pipeline.js', () => ({
 	getCoverage: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
 }))
 
-jest.unstable_mockModule('./usage.js', () => ({
-	logSummary: jest.fn<() => void>(),
-	saveUsageData: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-}))
-
 jest.unstable_mockModule('./logger.js', () => {
 	const noop = () => {}
 	return {

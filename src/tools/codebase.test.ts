@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 import { mkdtemp, writeFile, rm, mkdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { extractDeclarations, getCodebaseContext, getDeclarationIndex, getDependencyGraph, getFileTree } from './codebase.js'
+import { extractDeclarations, getCodebaseContext, getDeclarationIndex, getFileTree, type ExtractOptions } from './codebase.js'
 
 describe('extractDeclarations', () => {
 	it('extracts exported and non-exported functions with signatures', () => {
@@ -169,6 +169,47 @@ const inst = new Map()
 			'  const inst: Map  [L9]',
 		])
 	})
+
+	it('exportedOnly omits non-exported declarations', () => {
+		const src = `export function greet(name: string): string {
+	return 'hi ' + name
+}
+
+function helper(): void {
+	console.log('help')
+}
+
+export const API = 'url'
+const SECRET = 'shh'
+`
+		const result = extractDeclarations(src, 'test.ts', { exportedOnly: true })
+		expect(result).toEqual([
+			'  export function greet(name: string): string  [L1-3]',
+			'  export const API: string  [L9]',
+		])
+	})
+
+	it('exportedOnly hides private class members', () => {
+		const src = `export class Service {
+	private readonly name: string
+	count: number
+
+	constructor(name: string) {
+		this.name = name
+	}
+
+	private internal(): void {}
+	public fetch(): string { return '' }
+}
+`
+		const result = extractDeclarations(src, 'test.ts', { exportedOnly: true })
+		expect(result).toEqual([
+			'  export class Service  [L1-11]',
+			'    count: number  [L3]',
+			'    constructor(name: string)  [L5-7]',
+			'    fetch(): string  [L10]',
+		])
+	})
 })
 
 describe('getDeclarationIndex', () => {
@@ -222,6 +263,27 @@ describe('getDeclarationIndex', () => {
 		expect(result).toContain('### empty.ts (2 lines)')
 		expect(result.split('\n').filter(l => l.includes('empty.ts')).length).toBe(1)
 	})
+
+	it('skips test files', async () => {
+		await writeFile(join(tempDir, 'app.ts'), 'export function main(): void {}\n')
+		await writeFile(join(tempDir, 'app.test.ts'), 'import { main } from "./app.js"\n')
+		await writeFile(join(tempDir, 'app.spec.ts'), 'describe("app", () => {})\n')
+		const result = await getDeclarationIndex(tempDir)
+		expect(result).toContain('### app.ts')
+		expect(result).not.toContain('app.test.ts')
+		expect(result).not.toContain('app.spec.ts')
+	})
+
+	it('only includes exported declarations', async () => {
+		await writeFile(join(tempDir, 'mod.ts'), `export function pub(): void {}
+function priv(): void {}
+const SECRET = 'x'
+`)
+		const result = await getDeclarationIndex(tempDir)
+		expect(result).toContain('export function pub(): void')
+		expect(result).not.toContain('priv')
+		expect(result).not.toContain('SECRET')
+	})
 })
 
 describe('getFileTree', () => {
@@ -274,58 +336,6 @@ describe('getFileTree', () => {
 	})
 })
 
-describe('getDependencyGraph', () => {
-	let tempDir: string
-
-	beforeEach(async () => {
-		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-deps-'))
-	})
-
-	afterEach(async () => {
-		await rm(tempDir, { recursive: true, force: true })
-	})
-
-	it('shows local imports between files', async () => {
-		await writeFile(join(tempDir, 'a.ts'), "import { foo } from './b.js'\n")
-		await writeFile(join(tempDir, 'b.ts'), 'export const foo = 1\n')
-		const result = await getDependencyGraph(tempDir)
-		expect(result).toContain('a.ts → b.ts')
-	})
-
-	it('shows external packages in brackets', async () => {
-		await writeFile(join(tempDir, 'app.ts'), "import express from 'express'\n")
-		const result = await getDependencyGraph(tempDir)
-		expect(result).toContain('app.ts → [express]')
-	})
-
-	it('shows scoped packages correctly', async () => {
-		await writeFile(join(tempDir, 'app.ts'), "import Anthropic from '@anthropic-ai/sdk'\n")
-		const result = await getDependencyGraph(tempDir)
-		expect(result).toContain('app.ts → [@anthropic-ai/sdk]')
-	})
-
-	it('resolves subdirectory imports', async () => {
-		await mkdir(join(tempDir, 'tools'))
-		await writeFile(join(tempDir, 'main.ts'), "import { util } from './tools/helper.js'\n")
-		await writeFile(join(tempDir, 'tools', 'helper.ts'), 'export const util = 1\n')
-		const result = await getDependencyGraph(tempDir)
-		expect(result).toContain('main.ts → tools/helper.ts')
-	})
-
-	it('combines local and external deps on one line', async () => {
-		await writeFile(join(tempDir, 'a.ts'), "import { b } from './b.js'\nimport fs from 'fs'\n")
-		await writeFile(join(tempDir, 'b.ts'), 'export const b = 1\n')
-		const result = await getDependencyGraph(tempDir)
-		expect(result).toContain('a.ts → b.ts, [fs]')
-	})
-
-	it('omits files with no imports', async () => {
-		await writeFile(join(tempDir, 'leaf.ts'), 'export const x = 1\n')
-		const result = await getDependencyGraph(tempDir)
-		expect(result).not.toContain('leaf.ts →')
-	})
-})
-
 describe('getCodebaseContext', () => {
 	let tempDir: string
 
@@ -337,15 +347,21 @@ describe('getCodebaseContext', () => {
 		await rm(tempDir, { recursive: true, force: true })
 	})
 
-	it('combines file tree, dependency graph, and declarations', async () => {
+	it('combines file tree and declarations', async () => {
 		await writeFile(join(tempDir, 'a.ts'), "import { b } from './b.js'\nexport function main(): void {}\n")
 		await writeFile(join(tempDir, 'b.ts'), 'export const b = 1\n')
 		const result = await getCodebaseContext(tempDir)
 		expect(result).toContain('## File Tree')
 		expect(result).toContain('├── a.ts')
-		expect(result).toContain('## Dependency Graph')
-		expect(result).toContain('a.ts → b.ts')
 		expect(result).toContain('## Declarations')
 		expect(result).toContain('export function main(): void  [L2]')
+	})
+
+	it('omits dependency graph by default', async () => {
+		await writeFile(join(tempDir, 'a.ts'), "export function main(): void {}\n")
+		const result = await getCodebaseContext(tempDir)
+		expect(result).toContain('## File Tree')
+		expect(result).toContain('## Declarations')
+		expect(result).not.toContain('## Dependency Graph')
 	})
 })
