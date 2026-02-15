@@ -130,7 +130,7 @@ const readFile = {
 
 const grepSearch = {
 	name: 'grep_search' as const,
-	description: 'Search for a text pattern across all files in the repository. Returns matching lines with file paths and line numbers. Use this to find usages of functions, variables, imports, strings, or any text pattern.',
+	description: 'Search for a text pattern across all files in the repository. Returns matching lines with file paths and line numbers. Use this to find usages of functions, variables, imports, strings, or any text pattern. Note: This tool only searches the current working directory, not logs or memories.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {
