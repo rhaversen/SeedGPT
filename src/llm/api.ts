@@ -3,7 +3,7 @@ import { config } from '../config.js'
 import logger from '../logger.js'
 import { compressConversation } from '../agents/compression.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS } from '../tools/definitions.js'
-import { getCodebaseContext } from '../tools/codebase.js'
+import { getCodebaseContext, findUnusedFunctions } from '../tools/codebase.js'
 import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT, SYSTEM_MEMORY, SYSTEM_SUMMARIZE } from '../llm/prompts.js'
 import GeneratedModel, { computeCost, type ApiUsage } from '../models/Generated.js'
 import { getMemoryContext } from '../agents/memory.js'
@@ -52,6 +52,10 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 		const coverage = await getLatestMainCoverage()
 		if (coverage) {
 			system.push({ type: 'text', text: `\n\n## Code Coverage (last CI run on main)\n${coverage}`, cache_control: { type: 'ephemeral' as const } })
+		}
+		const unusedFunctions = await findUnusedFunctions(config.workspacePath)
+		if (unusedFunctions) {
+			system.push({ type: 'text', text: `\n\n## Unused Functions\n${unusedFunctions}`, cache_control: { type: 'ephemeral' as const } })
 		}
 	}
 

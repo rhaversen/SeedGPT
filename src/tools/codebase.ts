@@ -235,6 +235,65 @@ export async function readFile(rootPath: string, filePath: string): Promise<stri
 	return fsReadFile(join(rootPath, filePath), 'utf-8')
 }
 
+export async function findUnusedFunctions(rootPath: string): Promise<string | null> {
+	const allFiles: string[] = []
+	await walk(rootPath, '', allFiles)
+
+	const tsFiles = allFiles.filter(f => !f.endsWith('/') && TS_EXTENSIONS.has(extname(f)))
+	const srcFiles = tsFiles.filter(f => !isTestFile(f))
+	const testFiles = tsFiles.filter(f => isTestFile(f))
+
+	const declared: Array<{ name: string; file: string }> = []
+	const srcContents = new Map<string, string>()
+
+	for (const relPath of srcFiles) {
+		const content = await fsReadFile(join(rootPath, relPath), 'utf-8')
+		srcContents.set(relPath, content)
+		const kind = relPath.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS
+		const sf = ts.createSourceFile(relPath, content, ts.ScriptTarget.Latest, true, kind)
+		for (const stmt of sf.statements) {
+			collectFunctionNames(stmt, relPath, declared)
+		}
+	}
+
+	const megaSrc = [...srcContents.values()].join('\n\n')
+	const testContents = await Promise.all(testFiles.map(f => fsReadFile(join(rootPath, f), 'utf-8')))
+	const megaTest = testContents.join('\n\n')
+
+	const deadCode: string[] = []
+	const testOnly: string[] = []
+
+	for (const fn of declared) {
+		const re = new RegExp(`\\b${fn.name}\\b`, 'g')
+		const srcMatches = megaSrc.match(re)?.length ?? 0
+		if (srcMatches <= 1) {
+			const testMatches = megaTest.match(re)?.length ?? 0
+			if (testMatches === 0) {
+				deadCode.push(`${fn.file}: ${fn.name}`)
+			} else {
+				testOnly.push(`${fn.file}: ${fn.name}`)
+			}
+		}
+	}
+
+	const sections: string[] = []
+	if (deadCode.length > 0) sections.push(`Not used anywhere:\n${deadCode.join('\n')}`)
+	if (testOnly.length > 0) sections.push(`Only used in tests:\n${testOnly.join('\n')}`)
+	return sections.length > 0 ? sections.join('\n\n') : null
+}
+
+function collectFunctionNames(node: ts.Node, file: string, out: Array<{ name: string; file: string }>): void {
+	if (ts.isFunctionDeclaration(node) && node.name) {
+		out.push({ name: node.name.text, file })
+	} else if (ts.isClassDeclaration(node)) {
+		for (const member of node.members) {
+			if (ts.isMethodDeclaration(member) && ts.isIdentifier(member.name)) {
+				out.push({ name: member.name.text, file })
+			}
+		}
+	}
+}
+
 export async function grepSearch(rootPath: string, pattern: string, options?: { isRegexp?: boolean; includePattern?: string }): Promise<string> {
 	const allFiles: string[] = []
 	await walk(rootPath, '', allFiles)
