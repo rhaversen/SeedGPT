@@ -2,91 +2,107 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 import { mkdtemp, writeFile, rm, mkdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { extractDeclarations, getCodebaseContext, getDeclarationIndex, getFileTree, type ExtractOptions } from './codebase.js'
+import { getCodebaseContext } from './codebase.js'
 
-describe('extractDeclarations', () => {
-	it('extracts exported and non-exported functions with signatures', () => {
+function extractDeclarations(ctx: string): string {
+	return ctx.split('## Declarations')[1] ?? ''
+}
+
+describe('declaration parsing', () => {
+	let tempDir: string
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-decl-'))
+	})
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true })
+	})
+
+	it('extracts functions with signatures', async () => {
 		const src = `export function greet(name: string): string {
 	return 'hi ' + name
 }
 
-function helper(): void {
+export function helper(): void {
 	console.log('help')
 }
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([
-			'  export function greet(name: string): string  [L1-3]',
-			'  function helper(): void  [L5-7]',
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export function greet(name: string): string  [L1-3]')
+		expect(decls).toContain('export function helper(): void  [L5-7]')
 	})
 
-	it('extracts async functions', () => {
+	it('extracts async functions', async () => {
 		const src = `export async function fetchData(url: string): Promise<string> {
 	return ''
 }
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([
-			'  export async function fetchData(url: string): Promise<string>  [L1-3]',
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export async function fetchData(url: string): Promise<string>  [L1-3]')
 	})
 
-	it('extracts interfaces with members', () => {
+	it('extracts interfaces with members', async () => {
 		const src = `export interface User {
 	name: string
 	age?: number
 	greet(msg: string): void
 }
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([
-			'  export interface User  [L1-5]',
-			'    name: string',
-			'    age?: number',
-			'    greet(msg: string): void',
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export interface User  [L1-5]')
+		expect(decls).toContain('name: string')
+		expect(decls).toContain('age?: number')
+		expect(decls).toContain('greet(msg: string): void')
 	})
 
-	it('extracts type aliases (short inline, long omitted)', () => {
+	it('extracts type aliases (short inline, long omitted)', async () => {
 		const src = `export type ID = string
-type LongType = { a: string; b: number; c: boolean; d: string; e: number; f: boolean; g: string; h: number; i: boolean }
+export type LongType = { a: string; b: number; c: boolean; d: string; e: number; f: boolean; g: string; h: number; i: boolean }
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result[0]).toContain('export type ID = string')
-		expect(result[1]).toContain('type LongType')
-		expect(result[1]).not.toContain('{ a:')
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export type ID = string')
+		expect(decls).toContain('export type LongType')
+		expect(decls).not.toContain('{ a:')
 	})
 
-	it('extracts enums with members', () => {
+	it('extracts enums with members', async () => {
 		const src = `export enum Color {
 	Red,
 	Green,
 	Blue,
 }
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([
-			'  export enum Color { Red, Green, Blue }  [L1-5]',
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export enum Color { Red, Green, Blue }  [L1-5]')
 	})
 
-	it('extracts const and let variable declarations with types', () => {
+	it('extracts const and let variable declarations with types', async () => {
 		const src = `export const API_URL: string = 'https://example.com'
-let counter: number = 0
-const untyped = 'hello'
+export let counter: number = 0
+export const untyped = 'hello'
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([
-			'  export const API_URL: string  [L1]',
-			'  let counter: number  [L2]',
-			'  const untyped: string  [L3]',
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export const API_URL: string  [L1]')
+		expect(decls).toContain('export let counter: number  [L2]')
+		expect(decls).toContain('export const untyped: string  [L3]')
 	})
 
-	it('extracts classes with constructor, methods, and properties', () => {
+	it('extracts classes with constructor, methods, and properties', async () => {
 		const src = `export class Service {
-	private readonly name: string
+	readonly name: string
 	protected static count: number
 
 	constructor(name: string) {
@@ -100,77 +116,82 @@ const untyped = 'hello'
 	static reset(): void {}
 }
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([
-			'  export class Service  [L1-14]',
-			'    private readonly name: string  [L2]',
-			'    protected static count: number  [L3]',
-			'    constructor(name: string)  [L5-7]',
-			'    async fetchData(url: string): Promise<string>  [L9-11]',
-			'    static reset(): void  [L13]',
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export class Service  [L1-14]')
+		expect(decls).toContain('readonly name: string  [L2]')
+		expect(decls).toContain('protected static count: number  [L3]')
+		expect(decls).toContain('constructor(name: string)  [L5-7]')
+		expect(decls).toContain('async fetchData(url: string): Promise<string>  [L9-11]')
+		expect(decls).toContain('static reset(): void  [L13]')
 	})
 
-	it('extracts union types from type aliases', () => {
+	it('extracts union types from type aliases', async () => {
 		const src = `export type Result = 'ok' | 'error'
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([
-			"  export type Result = 'ok' | 'error'  [L1]",
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain("export type Result = 'ok' | 'error'  [L1]")
 	})
 
-	it('extracts rest and optional parameters', () => {
-		const src = `function process(required: string, optional?: number, ...rest: string[]): void {}
+	it('extracts rest and optional parameters', async () => {
+		const src = `export function process(required: string, optional?: number, ...rest: string[]): void {}
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([
-			'  function process(required: string, optional?: number, ...rest: string[]): void  [L1]',
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export function process(required: string, optional?: number, ...rest: string[]): void  [L1]')
 	})
 
-	it('returns empty array for files with no declarations', () => {
+	it('returns empty declarations for files with no declarations', async () => {
 		const src = `console.log('hello')
 import { foo } from 'bar'
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('### test.ts')
+		expect(decls.split('\n').filter(l => l.includes('test.ts')).length).toBe(1)
 	})
 
-	it('handles single-line functions', () => {
-		const src = `function id(x: number): number { return x }
+	it('handles single-line functions', async () => {
+		const src = `export function id(x: number): number { return x }
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result[0]).toContain('[L1]')
-		expect(result[0]).not.toContain('L1-')
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('[L1]')
+		expect(decls).not.toContain('L1-')
 	})
 
-	it('infers types from initializers', () => {
-		const src = `const s = 'hello'
-const t = \`template\`
-const n = 42
-const b = true
-const f = false
-const a = [1, 2, 3]
-const obj = { name: 'test', value: 1 }
-const fn = (x: number): string => String(x)
-const inst = new Map()
+	it('infers types from initializers', async () => {
+		const src = `export const s = 'hello'
+export const t = \`template\`
+export const n = 42
+export const b = true
+export const f = false
+export const a = [1, 2, 3]
+export const obj = { name: 'test', value: 1 }
+export const fn = (x: number): string => String(x)
+export const inst = new Map()
 `
-		const result = extractDeclarations(src, 'test.ts')
-		expect(result).toEqual([
-			'  const s: string  [L1]',
-			'  const t: string  [L2]',
-			'  const n: number  [L3]',
-			'  const b: boolean  [L4]',
-			'  const f: boolean  [L5]',
-			'  const a: [...]  [L6]',
-			'  const obj: { name, value }  [L7]',
-			'  const fn: (x: number) => string  [L8]',
-			'  const inst: Map  [L9]',
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export const s: string  [L1]')
+		expect(decls).toContain('export const t: string  [L2]')
+		expect(decls).toContain('export const n: number  [L3]')
+		expect(decls).toContain('export const b: boolean  [L4]')
+		expect(decls).toContain('export const f: boolean  [L5]')
+		expect(decls).toContain('export const a: [...]  [L6]')
+		expect(decls).toContain('export const obj: { name, value }  [L7]')
+		expect(decls).toContain('export const fn: (x: number) => string  [L8]')
+		expect(decls).toContain('export const inst: Map  [L9]')
 	})
 
-	it('exportedOnly omits non-exported declarations', () => {
+	it('exportedOnly omits non-exported declarations', async () => {
 		const src = `export function greet(name: string): string {
 	return 'hi ' + name
 }
@@ -182,14 +203,16 @@ function helper(): void {
 export const API = 'url'
 const SECRET = 'shh'
 `
-		const result = extractDeclarations(src, 'test.ts', { exportedOnly: true })
-		expect(result).toEqual([
-			'  export function greet(name: string): string  [L1-3]',
-			'  export const API: string  [L9]',
-		])
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export function greet(name: string): string  [L1-3]')
+		expect(decls).toContain('export const API: string  [L9]')
+		expect(decls).not.toContain('helper')
+		expect(decls).not.toContain('SECRET')
 	})
 
-	it('exportedOnly hides private class members', () => {
+	it('exportedOnly hides private class members', async () => {
 		const src = `export class Service {
 	private readonly name: string
 	count: number
@@ -202,137 +225,14 @@ const SECRET = 'shh'
 	public fetch(): string { return '' }
 }
 `
-		const result = extractDeclarations(src, 'test.ts', { exportedOnly: true })
-		expect(result).toEqual([
-			'  export class Service  [L1-11]',
-			'    count: number  [L3]',
-			'    constructor(name: string)  [L5-7]',
-			'    fetch(): string  [L10]',
-		])
-	})
-})
-
-describe('getDeclarationIndex', () => {
-	let tempDir: string
-
-	beforeEach(async () => {
-		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-index-'))
-	})
-
-	afterEach(async () => {
-		await rm(tempDir, { recursive: true, force: true })
-	})
-
-	it('indexes .ts files with declarations and line counts', async () => {
-		await writeFile(join(tempDir, 'app.ts'), `export function main(): void {
-	console.log('hi')
-}
-`)
-		const result = await getDeclarationIndex(tempDir)
-		expect(result).toContain('### app.ts (4 lines)')
-		expect(result).toContain('export function main(): void  [L1-3]')
-	})
-
-	it('lists .json files with line count only', async () => {
-		await writeFile(join(tempDir, 'config.json'), '{\n  "key": "value"\n}\n')
-		const result = await getDeclarationIndex(tempDir)
-		expect(result).toContain('### config.json (4 lines)')
-		expect(result).not.toContain('export')
-	})
-
-	it('walks subdirectories', async () => {
-		await mkdir(join(tempDir, 'src'))
-		await writeFile(join(tempDir, 'src', 'util.ts'), 'export const VERSION = 1\n')
-		const result = await getDeclarationIndex(tempDir)
-		expect(result).toContain('### src/util.ts')
-	})
-
-	it('ignores node_modules and .git', async () => {
-		await mkdir(join(tempDir, 'node_modules'))
-		await writeFile(join(tempDir, 'node_modules', 'lib.ts'), 'export const x = 1\n')
-		await mkdir(join(tempDir, '.git'))
-		await writeFile(join(tempDir, '.git', 'config.ts'), 'export const y = 2\n')
-		const result = await getDeclarationIndex(tempDir)
-		expect(result).not.toContain('node_modules')
-		expect(result).not.toContain('.git')
-	})
-
-	it('shows header only for files with no declarations', async () => {
-		await writeFile(join(tempDir, 'empty.ts'), "console.log('side effect')\n")
-		const result = await getDeclarationIndex(tempDir)
-		expect(result).toContain('### empty.ts (2 lines)')
-		expect(result.split('\n').filter(l => l.includes('empty.ts')).length).toBe(1)
-	})
-
-	it('skips test files', async () => {
-		await writeFile(join(tempDir, 'app.ts'), 'export function main(): void {}\n')
-		await writeFile(join(tempDir, 'app.test.ts'), 'import { main } from "./app.js"\n')
-		await writeFile(join(tempDir, 'app.spec.ts'), 'describe("app", () => {})\n')
-		const result = await getDeclarationIndex(tempDir)
-		expect(result).toContain('### app.ts')
-		expect(result).not.toContain('app.test.ts')
-		expect(result).not.toContain('app.spec.ts')
-	})
-
-	it('only includes exported declarations', async () => {
-		await writeFile(join(tempDir, 'mod.ts'), `export function pub(): void {}
-function priv(): void {}
-const SECRET = 'x'
-`)
-		const result = await getDeclarationIndex(tempDir)
-		expect(result).toContain('export function pub(): void')
-		expect(result).not.toContain('priv')
-		expect(result).not.toContain('SECRET')
-	})
-})
-
-describe('getFileTree', () => {
-	let tempDir: string
-
-	beforeEach(async () => {
-		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-tree-'))
-	})
-
-	afterEach(async () => {
-		await rm(tempDir, { recursive: true, force: true })
-	})
-
-	it('draws a tree with connectors', async () => {
-		await writeFile(join(tempDir, 'a.ts'), '')
-		await writeFile(join(tempDir, 'b.ts'), '')
-		const result = await getFileTree(tempDir)
-		expect(result).toBe('.\n├── a.ts\n└── b.ts')
-	})
-
-	it('nests subdirectories with proper indentation', async () => {
-		await mkdir(join(tempDir, 'src'))
-		await writeFile(join(tempDir, 'src', 'index.ts'), '')
-		await writeFile(join(tempDir, 'src', 'util.ts'), '')
-		const result = await getFileTree(tempDir)
-		expect(result).toBe('.\n└── src/\n    ├── index.ts\n    └── util.ts')
-	})
-
-	it('uses │ for non-last directory siblings', async () => {
-		await mkdir(join(tempDir, 'a'))
-		await writeFile(join(tempDir, 'a', 'x.ts'), '')
-		await writeFile(join(tempDir, 'b.ts'), '')
-		const result = await getFileTree(tempDir)
-		expect(result).toBe('.\n├── a/\n│   └── x.ts\n└── b.ts')
-	})
-
-	it('ignores node_modules and .git', async () => {
-		await mkdir(join(tempDir, 'node_modules'))
-		await writeFile(join(tempDir, 'node_modules', 'lib.js'), '')
-		await mkdir(join(tempDir, '.git'))
-		await writeFile(join(tempDir, '.git', 'HEAD'), '')
-		await writeFile(join(tempDir, 'app.ts'), '')
-		const result = await getFileTree(tempDir)
-		expect(result).toBe('.\n└── app.ts')
-	})
-
-	it('returns just root for empty directory', async () => {
-		const result = await getFileTree(tempDir)
-		expect(result).toBe('.')
+		await writeFile(join(tempDir, 'test.ts'), src)
+		const result = await getCodebaseContext(tempDir)
+		const decls = extractDeclarations(result)
+		expect(decls).toContain('export class Service  [L1-11]')
+		expect(decls).toContain('count: number  [L3]')
+		expect(decls).toContain('constructor(name: string)  [L5-7]')
+		expect(decls).toContain('fetch(): string  [L10]')
+		expect(decls).not.toContain('private')
 	})
 })
 
@@ -357,11 +257,94 @@ describe('getCodebaseContext', () => {
 		expect(result).toContain('export function main(): void  [L2]')
 	})
 
-	it('omits dependency graph by default', async () => {
-		await writeFile(join(tempDir, 'a.ts'), "export function main(): void {}\n")
+	it('indexes .ts files with declarations and line counts', async () => {
+		await writeFile(join(tempDir, 'app.ts'), `export function main(): void {
+	console.log('hi')
+}
+`)
 		const result = await getCodebaseContext(tempDir)
-		expect(result).toContain('## File Tree')
-		expect(result).toContain('## Declarations')
-		expect(result).not.toContain('## Dependency Graph')
+		expect(result).toContain('### app.ts (4 lines)')
+		expect(result).toContain('export function main(): void  [L1-3]')
+	})
+
+	it('lists .json files with line count only', async () => {
+		await writeFile(join(tempDir, 'config.json'), '{\n  "key": "value"\n}\n')
+		const result = await getCodebaseContext(tempDir)
+		expect(result).toContain('### config.json (4 lines)')
+	})
+
+	it('walks subdirectories', async () => {
+		await mkdir(join(tempDir, 'src'))
+		await writeFile(join(tempDir, 'src', 'util.ts'), 'export const VERSION = 1\n')
+		const result = await getCodebaseContext(tempDir)
+		expect(result).toContain('### src/util.ts')
+	})
+
+	it('ignores node_modules and .git', async () => {
+		await mkdir(join(tempDir, 'node_modules'))
+		await writeFile(join(tempDir, 'node_modules', 'lib.ts'), 'export const x = 1\n')
+		await mkdir(join(tempDir, '.git'))
+		await writeFile(join(tempDir, '.git', 'config.ts'), 'export const y = 2\n')
+		await writeFile(join(tempDir, 'app.ts'), 'export function main(): void {}\n')
+		const result = await getCodebaseContext(tempDir)
+		expect(result).not.toContain('node_modules')
+		expect(result).not.toContain('.git')
+		expect(result).toContain('app.ts')
+	})
+
+	it('shows header only for files with no declarations', async () => {
+		await writeFile(join(tempDir, 'empty.ts'), "console.log('side effect')\n")
+		const result = await getCodebaseContext(tempDir)
+		expect(result).toContain('### empty.ts (2 lines)')
+	})
+
+	it('skips test files in declarations', async () => {
+		await writeFile(join(tempDir, 'app.ts'), 'export function main(): void {}\n')
+		await writeFile(join(tempDir, 'app.test.ts'), 'import { main } from "./app.js"\n')
+		await writeFile(join(tempDir, 'app.spec.ts'), 'describe("app", () => {})\n')
+		const result = await getCodebaseContext(tempDir)
+		const declarations = result.split('## Declarations')[1]!
+		expect(declarations).toContain('### app.ts')
+		expect(declarations).not.toContain('app.test.ts')
+		expect(declarations).not.toContain('app.spec.ts')
+	})
+
+	it('only includes exported declarations in index', async () => {
+		await writeFile(join(tempDir, 'mod.ts'), `export function pub(): void {}
+function priv(): void {}
+const SECRET = 'x'
+`)
+		const result = await getCodebaseContext(tempDir)
+		expect(result).toContain('export function pub(): void')
+		expect(result).not.toContain('priv')
+		expect(result).not.toContain('SECRET')
+	})
+
+	it('draws a tree with connectors', async () => {
+		await writeFile(join(tempDir, 'a.ts'), '')
+		await writeFile(join(tempDir, 'b.ts'), '')
+		const result = await getCodebaseContext(tempDir)
+		expect(result).toContain('├── a.ts')
+		expect(result).toContain('└── b.ts')
+	})
+
+	it('nests subdirectories with proper indentation', async () => {
+		await mkdir(join(tempDir, 'src'))
+		await writeFile(join(tempDir, 'src', 'index.ts'), '')
+		await writeFile(join(tempDir, 'src', 'util.ts'), '')
+		const result = await getCodebaseContext(tempDir)
+		expect(result).toContain('└── src/')
+		expect(result).toContain('    ├── index.ts')
+		expect(result).toContain('    └── util.ts')
+	})
+
+	it('uses │ for non-last directory siblings', async () => {
+		await mkdir(join(tempDir, 'a'))
+		await writeFile(join(tempDir, 'a', 'x.ts'), '')
+		await writeFile(join(tempDir, 'b.ts'), '')
+		const result = await getCodebaseContext(tempDir)
+		expect(result).toContain('├── a/')
+		expect(result).toContain('│   └── x.ts')
+		expect(result).toContain('└── b.ts')
 	})
 })

@@ -5,7 +5,12 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server'
 jest.unstable_mockModule('../config.js', () => ({
 	config: {
 		planModel: 'claude-haiku-4-5',
-		memoryTokenBudget: 10000,
+		memory: {
+			tokenBudget: 10000,
+			fullReflections: 5,
+			summarizedReflections: 20,
+			estimationRatio: 4,
+		},
 	},
 }))
 
@@ -40,113 +45,130 @@ beforeEach(async () => {
 })
 
 describe('memory', () => {
-	describe('store', () => {
-		it('creates an unpinned memory with a summary', async () => {
-			await memory.storePastMemory('Built a new feature for HTTP requests')
-
-			const memories = await MemoryModel.find({})
-			expect(memories).toHaveLength(1)
-			expect(memories[0].content).toBe('Built a new feature for HTTP requests')
-			expect(memories[0].summary).toBe('mock summary')
-			expect(memories[0].pinned).toBe(false)
-		})
-	})
-
-	describe('pin', () => {
-		it('creates a pinned memory and returns confirmation', async () => {
-			const result = await memory.storePinnedMemory('Goal: add test coverage')
+	describe('storeNote', () => {
+		it('creates a note and returns confirmation', async () => {
+			const result = await memory.storeNote('Goal: add test coverage')
 
 			expect(result).toContain('Note saved')
 			expect(result).toContain('mock summary')
 
-			const memories = await MemoryModel.find({ pinned: true })
+			const memories = await MemoryModel.find({ category: 'note' })
 			expect(memories).toHaveLength(1)
 			expect(memories[0].content).toBe('Goal: add test coverage')
+			expect(memories[0].active).toBe(true)
 		})
 	})
 
-	describe('unpin', () => {
-		it('unpins an existing pinned note', async () => {
-			const result = await memory.storePinnedMemory('Some goal')
+	describe('dismissNote', () => {
+		it('dismisses an existing note', async () => {
+			const result = await memory.storeNote('Some goal')
 			const id = result.match(/\(([a-f0-9]+)\)/)?.[1]
 
-			const unpinResult = await memory.unpinMemory(id!)
-			expect(unpinResult).toContain('Note dismissed')
+			const dismissResult = await memory.dismissNote(id!)
+			expect(dismissResult).toContain('Note dismissed')
 
 			const doc = await MemoryModel.findById(id)
-			expect(doc!.pinned).toBe(false)
+			expect(doc!.active).toBe(false)
 		})
 
 		it('returns error for non-existent id', async () => {
 			const fakeId = new mongoose.Types.ObjectId().toString()
-			const result = await memory.unpinMemory(fakeId)
+			const result = await memory.dismissNote(fakeId)
 			expect(result).toContain('No note found')
 		})
 
-		it('returns error for unpinned memory', async () => {
-			await memory.storePastMemory('not pinned')
-			const doc = await MemoryModel.findOne({ pinned: false })
+		it('returns error for non-note memory', async () => {
+			await memory.storeReflection('just a reflection')
+			const doc = await MemoryModel.findOne({ category: 'reflection' })
 
-			const result = await memory.unpinMemory(doc!._id.toString())
+			const result = await memory.dismissNote(doc!._id.toString())
 			expect(result).toContain('not a note')
 		})
 	})
 
-	describe('getContext', () => {
+	describe('storeReflection', () => {
+		it('creates a reflection memory', async () => {
+			await memory.storeReflection('I should focus more on testing')
+
+			const memories = await MemoryModel.find({ category: 'reflection' })
+			expect(memories).toHaveLength(1)
+			expect(memories[0].content).toBe('I should focus more on testing')
+			expect(memories[0].summary).toBe('mock summary')
+		})
+	})
+
+	describe('getMemoryContext', () => {
 		it('returns first-run message when no memories exist', async () => {
-			const context = await memory.getContext()
-			expect(context).toBe('No memories yet. This is your first run.')
+			const context = await memory.getMemoryContext()
+			expect(context).toBe('No memories yet.')
 		})
 
-		it('includes pinned notes in "Notes to self" section', async () => {
-			await memory.storePinnedMemory('Goal: become self-aware')
+		it('includes active notes in "Notes to self" section', async () => {
+			await memory.storeNote('Goal: become self-aware')
 
-			const context = await memory.getContext()
+			const context = await memory.getMemoryContext()
 			expect(context).toContain('## Notes to self')
 			expect(context).toContain('mock summary')
 		})
 
-		it('includes unpinned memories in "Past" section', async () => {
-			await memory.storePastMemory('Merged PR #1')
+		it('includes reflections in "Recent Reflections" section', async () => {
+			await memory.storeReflection('I need to be more careful')
 
-			const context = await memory.getContext()
-			expect(context).toContain('## Past')
-			expect(context).toContain('mock summary')
+			const context = await memory.getMemoryContext()
+			expect(context).toContain('## Recent Reflections')
 		})
 
 		it('shows both sections when both types exist', async () => {
-			await memory.storePinnedMemory('Goal: add HTTP')
-			await memory.storePastMemory('Merged PR #1')
+			await memory.storeNote('Goal: add HTTP')
+			await memory.storeReflection('Good progress today')
 
-			const context = await memory.getContext()
+			const context = await memory.getMemoryContext()
 			expect(context).toContain('## Notes to self')
-			expect(context).toContain('## Past')
+			expect(context).toContain('## Recent Reflections')
 		})
 
-		it('respects token budget by limiting past memories', async () => {
-			const { config } = await import('../config.js');
-			(config as { memoryTokenBudget: number }).memoryTokenBudget = 100
-
-			for (let i = 0; i < 50; i++) {
+		it('shows full content for recent reflections and summaries for older ones', async () => {
+			for (let i = 0; i < 10; i++) {
 				await MemoryModel.create({
-					content: `Memory ${i} with some longer content to take up tokens`,
-					summary: `Summary of memory number ${i} that is reasonably long`,
-					pinned: false,
+					content: `Full reflection content ${i}`,
+					summary: `Summary ${i}`,
+					category: 'reflection',
+					createdAt: new Date(Date.now() - (10 - i) * 60000),
 				})
 			}
 
-			const context = await memory.getContext()
+			const context = await memory.getMemoryContext()
+			const lines = context.split('\n').filter(l => l.startsWith('- ('))
+			const fullLines = lines.filter(l => l.includes('Full reflection content'))
+			const summaryLines = lines.filter(l => l.includes('Summary ') && !l.includes('Full reflection content'))
+			expect(fullLines.length).toBe(5)
+			expect(summaryLines.length).toBe(5)
+		})
+
+		it('respects token budget by limiting reflections', async () => {
+			const { config } = await import('../config.js');
+			(config as { memory: { tokenBudget: number } }).memory.tokenBudget = 100
+
+			for (let i = 0; i < 50; i++) {
+				await MemoryModel.create({
+					content: `Reflection ${i} with some longer content to take up tokens`,
+					summary: `Summary of reflection number ${i} that is reasonably long`,
+					category: 'reflection',
+				})
+			}
+
+			const context = await memory.getMemoryContext()
 			const lines = context.split('\n').filter(l => l.startsWith('- ('))
 			expect(lines.length).toBeLessThan(50);
 
-			(config as { memoryTokenBudget: number }).memoryTokenBudget = 10000
+			(config as { memory: { tokenBudget: number } }).memory.tokenBudget = 10000
 		})
 	})
 
 	describe('recall', () => {
 		it('finds memories by keyword using regex fallback', async () => {
-			await MemoryModel.create({ content: 'Added HTTP client for web access', summary: 'HTTP client', pinned: false })
-			await MemoryModel.create({ content: 'Fixed a bug in the loop', summary: 'Bug fix', pinned: false })
+			await MemoryModel.create({ content: 'Added HTTP client for web access', summary: 'HTTP client', category: 'reflection' })
+			await MemoryModel.create({ content: 'Fixed a bug in the loop', summary: 'Bug fix', category: 'reflection' })
 
 			const result = await memory.recall('HTTP')
 			expect(result).toContain('HTTP client for web access')
@@ -164,7 +186,7 @@ describe('memory', () => {
 			const doc = await MemoryModel.create({
 				content: 'Specific memory content',
 				summary: 'specific',
-				pinned: false,
+				category: 'reflection',
 			})
 
 			const result = await memory.recallById(doc._id.toString())

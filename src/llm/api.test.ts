@@ -40,6 +40,7 @@ jest.unstable_mockModule('../tools/definitions.js', () => ({
 
 jest.unstable_mockModule('../tools/codebase.js', () => ({
 	getCodebaseContext: jest.fn<() => Promise<string>>().mockResolvedValue('codebase context'),
+	findUnusedFunctions: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
 }))
 
 jest.unstable_mockModule('./prompts.js', () => ({

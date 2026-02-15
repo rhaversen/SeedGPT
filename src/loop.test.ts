@@ -10,11 +10,21 @@ jest.unstable_mockModule('./config.js', () => ({
 		githubRepo: 'test-repo',
 		planModel: 'claude-haiku-4-5',
 		patchModel: 'claude-haiku-4-5',
-		maxPlannerRounds: 25,
-		maxBuilderRounds: 40,
+		turns: {
+			maxPlanner: 25,
+			maxBuilder: 40,
+		},
+		errors: {
+			maxLoopErrorChars: 10000,
+		},
 		workspacePath: './workspace',
 		db: { uri: '', maxRetryAttempts: 5, retryInterval: 5000 },
-		memoryTokenBudget: 10000,
+		memory: {
+			tokenBudget: 10000,
+			fullReflections: 5,
+			summarizedReflections: 20,
+			estimationRatio: 4,
+		},
 	},
 }))
 
@@ -36,22 +46,19 @@ jest.unstable_mockModule('./tools/github.js', () => ({
 	mergePR: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 	closePR: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 	deleteRemoteBranch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+	cleanupStalePRs: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+	awaitChecks: jest.fn<() => Promise<{ passed: boolean; error?: string }>>().mockResolvedValue({ passed: true }),
+	getLatestMainCoverage: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
 }))
 
 jest.unstable_mockModule('./tools/codebase.js', () => ({
-	snapshotCodebase: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 	getCodebaseContext: jest.fn<() => Promise<string>>().mockResolvedValue('codebase context'),
+	findUnusedFunctions: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
 }))
 
 jest.unstable_mockModule('./agents/memory.js', () => ({
-	getContext: jest.fn<() => Promise<string>>().mockResolvedValue('No memories yet. This is your first run.'),
-	storePastMemory: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-}))
-
-jest.unstable_mockModule('./pipeline.js', () => ({
-	cleanupStalePRs: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-	awaitChecks: jest.fn<() => Promise<{ passed: boolean; error?: string }>>().mockResolvedValue({ passed: true }),
-	getCoverage: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
+	getMemoryContext: jest.fn<() => Promise<string>>().mockResolvedValue('No memories yet.'),
+	storeReflection: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }))
 
 jest.unstable_mockModule('./logger.js', () => {
@@ -88,7 +95,6 @@ const { run } = await import('./loop.js')
 const database = await import('./database.js')
 const git = await import('./tools/git.js')
 const github = await import('./tools/github.js')
-const pipeline = await import('./pipeline.js')
 const memory = await import('./agents/memory.js')
 const planModule = await import('./agents/plan.js')
 const reflectModule = await import('./agents/reflect.js')
@@ -104,41 +110,21 @@ describe('run', () => {
 		await run()
 
 		expect(database.connectToDatabase).toHaveBeenCalledTimes(1)
-		expect(pipeline.cleanupStalePRs).toHaveBeenCalledTimes(1)
+		expect(github.cleanupStalePRs).toHaveBeenCalledTimes(1)
 		expect(git.cloneRepo).toHaveBeenCalledTimes(1)
-		expect(memory.getContext).toHaveBeenCalledTimes(1)
 		expect(planModule.plan).toHaveBeenCalledTimes(1)
-		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Planned change'))
 		expect(git.createBranch).toHaveBeenCalledTimes(1)
 		expect(git.commitAndPush).toHaveBeenCalledTimes(1)
 		expect(github.openPR).toHaveBeenCalledTimes(1)
-		expect(pipeline.awaitChecks).toHaveBeenCalledTimes(1)
+		expect(github.awaitChecks).toHaveBeenCalledTimes(1)
 		expect(github.mergePR).toHaveBeenCalledWith(1)
 		expect(github.deleteRemoteBranch).toHaveBeenCalledWith('seedgpt/test-change')
-		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Merged PR'))
-		expect(pipeline.getCoverage).toHaveBeenCalledTimes(1)
+		expect(memory.storeReflection).toHaveBeenCalled()
 		expect(database.disconnectFromDatabase).toHaveBeenCalledTimes(1)
 	})
 
-	it('stores coverage report in memory when available', async () => {
-		const getCoverage = pipeline.getCoverage as jest.MockedFunction<typeof pipeline.getCoverage>
-		getCoverage.mockResolvedValueOnce('Coverage: 80% statements, 70% branches')
-
-		await run()
-
-		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Post-merge coverage report'))
-		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('80% statements'))
-	})
-
-	it('skips coverage memory when no coverage data available', async () => {
-		await run()
-
-		const storeCalls = (memory.storePastMemory as jest.Mock).mock.calls.map(c => c[0] as string)
-		expect(storeCalls.some(c => c.includes('coverage report'))).toBe(false)
-	})
-
 	it('retries with fixPatch on CI failure and merges', async () => {
-		const awaitChecks = pipeline.awaitChecks as jest.MockedFunction<typeof pipeline.awaitChecks>
+		const awaitChecks = github.awaitChecks as jest.MockedFunction<typeof github.awaitChecks>
 		awaitChecks
 			.mockResolvedValueOnce({ passed: false, error: 'type error in index.ts' })
 			.mockResolvedValueOnce({ passed: true })
@@ -151,7 +137,7 @@ describe('run', () => {
 	})
 
 	it('closes PR when builder exhausts turns, then succeeds on next plan', async () => {
-		const awaitChecks = pipeline.awaitChecks as jest.MockedFunction<typeof pipeline.awaitChecks>
+		const awaitChecks = github.awaitChecks as jest.MockedFunction<typeof github.awaitChecks>
 		awaitChecks
 			.mockResolvedValueOnce({ passed: false, error: 'persistent failure' })
 			.mockResolvedValueOnce({ passed: true })
@@ -163,19 +149,19 @@ describe('run', () => {
 		expect(mockPatchSession.fixPatch).not.toHaveBeenCalled()
 		expect(github.closePR).toHaveBeenCalledWith(1)
 		expect(github.deleteRemoteBranch).toHaveBeenCalledWith('seedgpt/test-change')
-		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Closed PR'))
+		expect(memory.storeReflection).toHaveBeenCalled()
 		expect(github.mergePR).toHaveBeenCalled()
 	})
 
 	it('handles empty edits without crashing then succeeds on next plan', async () => {
 		mockPatchSession.createPatch.mockResolvedValueOnce([] as typeof mockEdits)
 
-		const awaitChecks = pipeline.awaitChecks as jest.MockedFunction<typeof pipeline.awaitChecks>
+		const awaitChecks = github.awaitChecks as jest.MockedFunction<typeof github.awaitChecks>
 		awaitChecks.mockResolvedValue({ passed: true })
 
 		await run()
 
-		expect(memory.storePastMemory).toHaveBeenCalledWith(expect.stringContaining('Gave up'))
+		expect(memory.storeReflection).toHaveBeenCalled()
 		expect(github.mergePR).toHaveBeenCalled()
 	})
 

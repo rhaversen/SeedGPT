@@ -1,21 +1,14 @@
-import { jest, describe, it, expect } from '@jest/globals'
+import { describe, it, expect, jest } from '@jest/globals'
 
 jest.unstable_mockModule('../config.js', () => ({
 	config: {
-		githubToken: 'test-token',
-		githubOwner: 'test-owner',
-		githubRepo: 'test-repo',
+		coverage: {
+			maxLowCoverageFiles: 10,
+		},
 	},
 }))
 
-jest.unstable_mockModule('../logger.js', () => {
-	const noop = () => {}
-	return {
-		default: { debug: noop, info: noop, warn: noop, error: noop },
-	}
-})
-
-const { extractCoverageFromLogs, extractFailedStepOutput } = await import('./github.js')
+const { extractCoverageFromLogs, extractFailedStepOutput } = await import('./log-parsing.js')
 
 const COVERAGE_JSON = JSON.stringify({
 	total: {
