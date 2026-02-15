@@ -17,13 +17,13 @@ export async function getCodebaseContext(rootPath: string): Promise<string> {
 	return sections.join('\n\n')
 }
 
-export async function getFileTree(rootPath: string): Promise<string> {
+async function getFileTree(rootPath: string): Promise<string> {
 	const lines: string[] = ['.']
 	await walkTree(rootPath, '', lines)
 	return lines.join('\n')
 }
 
-export async function getDeclarationIndex(rootPath: string): Promise<string> {
+async function getDeclarationIndex(rootPath: string): Promise<string> {
 	const allFiles: string[] = []
 	await walk(rootPath, '', allFiles)
 
@@ -54,11 +54,7 @@ export async function getDeclarationIndex(rootPath: string): Promise<string> {
 	return sections.join('\n\n')
 }
 
-export interface ExtractOptions {
-	exportedOnly?: boolean
-}
-
-export function extractDeclarations(sourceText: string, filePath: string, options?: ExtractOptions): string[] {
+function extractDeclarations(sourceText: string, filePath: string, options?: { exportedOnly?: boolean }): string[] {
 	const kind = filePath.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS
 	const sf = ts.createSourceFile(filePath, sourceText, ts.ScriptTarget.Latest, true, kind)
 	const expOnly = options?.exportedOnly ?? false
