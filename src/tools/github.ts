@@ -1,6 +1,7 @@
 import { Octokit } from '@octokit/rest'
 import { config } from '../config.js'
 import logger from '../logger.js'
+import { getHeadSha } from './git.js'
 
 const octokit = new Octokit({ auth: config.githubToken })
 const owner = config.githubOwner
@@ -269,6 +270,20 @@ export async function findOpenAgentPRs(): Promise<Array<{ number: number, head: 
 	return data
 		.filter(pr => pr.head.ref.startsWith('seedgpt/'))
 		.map(pr => ({ number: pr.number, head: { ref: pr.head.ref, sha: pr.head.sha } }))
+}
+
+export async function awaitChecks(): Promise<CheckResult> {
+	const sha = await getHeadSha()
+	return awaitPRChecks(sha)
+}
+
+export async function cleanupStalePRs(): Promise<void> {
+	const prs = await findOpenAgentPRs()
+	for (const pr of prs) {
+		logger.warn(`Closing stale agent PR #${pr.number} (${pr.head.ref})`)
+		await closePR(pr.number)
+		await deleteRemoteBranch(pr.head.ref).catch(() => {})
+	}
 }
 
 export function extractCoverageFromLogs(logText: string): string | null {

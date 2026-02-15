@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { cloneRepo, commitAndPush, createBranch, resetWorkspace } from './tools/git.js'
-import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
-import { awaitChecks, cleanupStalePRs } from './pipeline.js'
+import { awaitChecks, cleanupStalePRs, closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
 import { storeReflection } from './agents/memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
