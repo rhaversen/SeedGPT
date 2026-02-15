@@ -271,20 +271,11 @@ const gitDiff = {
 	},
 }
 
-const codebaseDiff = {
-	name: 'codebase_diff' as const,
-	description: 'Show what has changed structurally in the codebase since the start of this session: new/removed files, new/removed declarations, changed dependencies. This compares the current codebase context against a snapshot taken at the beginning. Use this to see the high-level impact of your changes.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {},
-	},
-}
-
 // Planner gets read-only tools + memory + submit_plan. Builder gets mutation tools + done.
 // This enforces the architectural separation: the planner decides WHAT to change,
 // the builder decides HOW to implement it. Neither can do the other's job.
 export const PLANNER_TOOLS = [submitPlan, noteToSelf, dismissNote, recallMemory, readFile, grepSearch, fileSearch, listDirectory]
-export const BUILDER_TOOLS = [editFile, createFile, deleteFile, readFile, grepSearch, fileSearch, listDirectory, gitDiff, codebaseDiff, done]
+export const BUILDER_TOOLS = [editFile, createFile, deleteFile, readFile, grepSearch, fileSearch, listDirectory, gitDiff, done]
 
 export async function handleTool(name: string, input: Record<string, unknown>, id: string): Promise<ToolResult> {
 	if (name === 'read_file') {
@@ -381,11 +372,6 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 		const result = await git.getDiff()
 		const diffLines = result.split('\n').length
 		logger.info(`  → ${diffLines} line${diffLines !== 1 ? 's' : ''} of diff`)
-		return { type: 'tool_result', tool_use_id: id, content: result }
-	}
-
-	if (name === 'codebase_diff') {
-		const result = await codebase.diffContext(config.workspacePath)
 		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 

@@ -289,53 +289,6 @@ export async function listDirectory(rootPath: string, dirPath: string): Promise<
 	return entries.map(e => e.isDirectory() ? `${e.name}/` : e.name).join('\n')
 }
 
-// Captures a baseline snapshot of the codebase structure at the start of each iteration.
-// The builder can later call diffContext to see what structural changes its edits caused
-// (new files, removed declarations, changed dependencies) without reading a full git diff.
-let snapshot: { tree: string; declarations: string } | null = null
-
-export async function snapshotCodebase(rootPath: string): Promise<void> {
-	const [tree, declarations] = await Promise.all([
-		getFileTree(rootPath),
-		getDeclarationIndex(rootPath),
-	])
-	snapshot = { tree, declarations }
-}
-
-function diffSection(label: string, oldText: string, newText: string): string | null {
-	const oldLines = oldText.split('\n')
-	const newLines = newText.split('\n')
-	const oldSet = new Set(oldLines)
-	const newSet = new Set(newLines)
-
-	const added = newLines.filter(l => !oldSet.has(l) && l.trim())
-	const removed = oldLines.filter(l => !newSet.has(l) && l.trim())
-
-	if (added.length === 0 && removed.length === 0) return null
-
-	const parts: string[] = [`## ${label}`]
-	if (removed.length > 0) parts.push(removed.map(l => `- ${l}`).join('\n'))
-	if (added.length > 0) parts.push(added.map(l => `+ ${l}`).join('\n'))
-	return parts.join('\n')
-}
-
-export async function diffContext(rootPath: string): Promise<string> {
-	if (!snapshot) return 'No previous snapshot to compare against.'
-
-	const [tree, declarations] = await Promise.all([
-		getFileTree(rootPath),
-		getDeclarationIndex(rootPath),
-	])
-
-	const sections = [
-		diffSection('File Tree', snapshot.tree, tree),
-		diffSection('Declarations', snapshot.declarations, declarations),
-	].filter(Boolean)
-
-	if (sections.length === 0) return 'No structural changes detected.'
-	return sections.join('\n\n')
-}
-
 // Simplified glob matcher to avoid pulling in a minimatch dependency.
 // Handles the basic patterns the agent uses: **, *, ?, and dot escaping.
 function minimatch(filePath: string, pattern: string): boolean {
