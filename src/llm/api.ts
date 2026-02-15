@@ -46,6 +46,12 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 	}
 }
 
+let activeIterationId = ''
+
+export function setIterationId(id: string): void {
+	activeIterationId = id
+}
+
 async function recordGenerated(
 	phase: string,
 	params: Anthropic.MessageCreateParamsNonStreaming,
@@ -59,6 +65,7 @@ async function recordGenerated(
 		await GeneratedModel.create({
 			phase,
 			modelId: params.model,
+			iterationId: activeIterationId,
 			system: params.system ?? [],
 			messages: params.messages,
 			response: response.content,

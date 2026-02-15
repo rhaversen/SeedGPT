@@ -60,6 +60,7 @@ export function computeCost(model: string, usage: ApiUsage, options?: { batch?: 
 export interface IGenerated extends Document {
 	phase: string
 	modelId: string
+	iterationId: string
 	system: unknown[]
 	messages: unknown[]
 	response: unknown[]
@@ -77,6 +78,7 @@ export interface IGenerated extends Document {
 const generatedSchema = new Schema<IGenerated>({
 	phase: { type: String, required: true },
 	modelId: { type: String, required: true },
+	iterationId: { type: String, default: '' },
 	system: { type: Schema.Types.Mixed, required: true },
 	messages: { type: Schema.Types.Mixed, required: true },
 	response: { type: Schema.Types.Mixed, required: true },
@@ -93,6 +95,7 @@ const generatedSchema = new Schema<IGenerated>({
 })
 
 generatedSchema.index({ createdAt: -1 })
+generatedSchema.index({ iterationId: 1 })
 
 const GeneratedModel: Model<IGenerated> = mongoose.model<IGenerated>('Generated', generatedSchema)
 

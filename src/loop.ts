@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { cloneRepo, commitAndPush, createBranch, getRecentLog, resetWorkspace } from './tools/git.js'
 import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
 import { snapshotCodebase } from './tools/codebase.js'
@@ -9,6 +10,7 @@ import logger, { writeIterationLog } from './logger.js'
 import { plan } from './agents/plan.js'
 import { PatchSession } from './agents/build.js'
 import { reflect } from './agents/reflect.js'
+import { setIterationId } from './llm/api.js'
 
 export async function run(): Promise<void> {
 	logger.info('SeedGPT starting iteration...')
@@ -35,6 +37,7 @@ export async function run(): Promise<void> {
 }
 
 async function iterate(): Promise<boolean> {
+	setIterationId(randomUUID())
 	await snapshotCodebase(config.workspacePath)
 	const recentMemory = await getContext()
 	const gitLog = await getRecentLog()
