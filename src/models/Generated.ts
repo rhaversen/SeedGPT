@@ -45,7 +45,7 @@ export function computeCost(model: string, usage: ApiUsage, options?: { batch?: 
 		cacheWrite1h = 0
 	}
 
-	const uncached = usage.input_tokens - totalCacheWrite - cacheRead
+	const uncached = Math.max(0, usage.input_tokens - totalCacheWrite - cacheRead)
 
 	const inputCost = uncached * pricing.inputPerMTok
 		+ cacheWrite5m * pricing.cacheWrite5mPerMTok
