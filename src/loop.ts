@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { cloneRepo, commitAndPush, createBranch, getRecentLog, resetWorkspace } from './tools/git.js'
+import { cloneRepo, commitAndPush, createBranch, resetWorkspace } from './tools/git.js'
 import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
 import { awaitChecks, cleanupStalePRs, getCoverage } from './pipeline.js'
-import { getContext, storePastMemory } from './agents/memory.js'
+import { storePastMemory } from './agents/memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
 import { plan } from './agents/plan.js'
@@ -36,13 +36,11 @@ export async function run(): Promise<void> {
 
 async function iterate(): Promise<boolean> {
 	setIterationId(randomUUID())
-	const recentMemory = await getContext()
-	const gitLog = await getRecentLog()
 
-	const { plan: iterationPlan, messages: plannerMessages } = await plan(recentMemory, gitLog)
+	const { plan: iterationPlan, messages: plannerMessages } = await plan()
 	await storePastMemory(`Planned change "${iterationPlan.title}": ${iterationPlan.description}`)
 
-	const session = new PatchSession(iterationPlan, recentMemory)
+	const session = new PatchSession(iterationPlan)
 	const branchName = await createBranch(iterationPlan.title)
 
 	let edits = await session.createPatch()

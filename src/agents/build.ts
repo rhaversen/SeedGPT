@@ -24,7 +24,7 @@ export class PatchSession {
 		return this.roundsUsed >= config.maxBuilderRounds
 	}
 
-	constructor(plan: Plan, memoryContext: string) {
+	constructor(plan: Plan) {
 		this.plan = plan
 
 		const initial: Anthropic.MessageParam = {
@@ -32,7 +32,6 @@ export class PatchSession {
 			content: [{
 				type: 'text' as const,
 				text: [
-					`--- YOUR MEMORY ---\n${memoryContext}`,
 					`--- PLAN ---\n**${plan.title}**\n${plan.description}`,
 					`--- IMPLEMENTATION INSTRUCTIONS ---\n${plan.implementation}`,
 					`--- BEGIN ---\nStart by reading the files you need based on the implementation instructions and the codebase index in your system prompt. Use read_file to load files or specific line ranges, then use edit_file, create_file, and delete_file to make changes. Batch independent read_file calls together. Call done when the implementation is complete.`,

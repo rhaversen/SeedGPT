@@ -6,6 +6,8 @@ import { PLANNER_TOOLS, BUILDER_TOOLS } from '../tools/definitions.js'
 import { getCodebaseContext } from '../tools/codebase.js'
 import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT, SYSTEM_MEMORY, SYSTEM_SUMMARIZE } from '../llm/prompts.js'
 import GeneratedModel, { computeCost, type ApiUsage } from '../models/Generated.js'
+import { getMemoryContext } from '../agents/memory.js'
+import { getRecentLog } from '../tools/git.js'
 
 export type Phase = 'planner' | 'builder' | 'reflect' | 'memory' | 'summarizer'
 
@@ -28,11 +30,24 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 	const { model, maxTokens } = config.phases[phase]
 	const extras = PHASE_EXTRAS[phase]
 	const system: Anthropic.TextBlockParam[] = []
-	system.push({ type: 'text', text: extras.system, cache_control: { type: 'ephemeral' as const } })
 
+	// Builder and planner gets codebase context
 	if (phase === 'builder' || phase === 'planner') {
 		const codebaseContext = await getCodebaseContext(config.workspacePath)
 		system.push({ type: 'text', text: `\n\n${codebaseContext}`, cache_control: { type: 'ephemeral' as const } })
+	}
+
+	// Add role-specific system prompt
+	system.push({ type: 'text', text: extras.system, cache_control: { type: 'ephemeral' as const } })
+
+	// Planner also gets memory and recent git log for situational awareness to make informed plans.
+	// Memory is excluded from the builder since it should focus on the current plan and implementation,
+	// not be distracted by past memories which may or may not be relevant to the current task.
+	if (phase === 'planner') {
+		const memoryContext = await getMemoryContext()
+		system.push({ type: 'text', text: `\n\n${memoryContext}`, cache_control: { type: 'ephemeral' as const } })
+		const gitLog = await getRecentLog()
+		system.push({ type: 'text', text: `\n\nRecent git log:\n${gitLog}`, cache_control: { type: 'ephemeral' as const } })
 	}
 
 	const allTools = [...(extras.tools ?? []), ...(tools ?? [])]

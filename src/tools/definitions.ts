@@ -253,15 +253,6 @@ const done = {
 	},
 }
 
-const codebaseContext = {
-	name: 'codebase_context' as const,
-	description: 'Get a high-level overview of the entire codebase: file tree, dependency graph, and all declarations (functions, classes, types, etc.) with line numbers. Use this to understand the project structure, find where things are defined, and see how modules relate to each other.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {},
-	},
-}
-
 const gitDiff = {
 	name: 'git_diff' as const,
 	description: 'Show the current uncommitted git diff — all changes made to files since the last commit. Use this to review what has been changed, verify your edits, or understand what the builder has done so far.',
@@ -361,11 +352,6 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 			return { type: 'tool_result', tool_use_id: id, content: result }
 		}
 		return { type: 'tool_result', tool_use_id: id, content: 'Provide a query or id to recall a memory.' }
-	}
-
-	if (name === 'codebase_context') {
-		const result = await codebase.getCodebaseContext(config.workspacePath)
-		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 
 	if (name === 'git_diff') {

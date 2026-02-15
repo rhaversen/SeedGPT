@@ -13,7 +13,7 @@ export async function getCodebaseContext(rootPath: string): Promise<string> {
 	const [tree, declarations] = await Promise.all(tasks)
 
 	const sections = [`## File Tree\n\`\`\`\n${tree}\n\`\`\``]
-	sections.push(`## Declarations\n${declarations}`)
+	sections.push(`## Declarations (Omitting test files)\n${declarations}`)
 	return sections.join('\n\n')
 }
 
