@@ -328,14 +328,14 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 	if (name === 'note_to_self') {
 		const { content } = input as { content: string }
 		logger.info(`Saving note: "${content.slice(0, 200)}"`)
-		const result = await memory.storePinnedMemory(content)
+		const result = await memory.storeNote(content)
 		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 
 	if (name === 'dismiss_note') {
 		const { id: noteId } = input as { id: string }
 		logger.info(`Dismissing note: ${noteId}`)
-		const result = await memory.unpinMemory(noteId)
+		const result = await memory.dismissNote(noteId)
 		return { type: 'tool_result', tool_use_id: id, content: result }
 	}
 
