@@ -27,29 +27,27 @@ export async function openPR(branch: string, title: string, body: string): Promi
 }
 
 export async function awaitPRChecks(sha: string): Promise<CheckResult> {
-	const POLL_INTERVAL = 30_000    // Balance between API rate limits and responsiveness
-	const TIMEOUT = 20 * 60_000     // Generous timeout for CI with compilation + tests + deploy
-	const NO_CHECKS_TIMEOUT = 2 * 60_000 // If no checks appear after 2 min, repo likely has no CI
 	const start = Date.now()
+	const { pollInterval, timeout, noChecksTimeout } = config.ci
 
-	while (Date.now() - start < TIMEOUT) {
+	while (Date.now() - start < timeout) {
 		const { data } = await octokit.checks.listForRef({ owner, repo, ref: sha })
 		const runs = data.check_runs
 
 		if (runs.length === 0) {
-			if (Date.now() - start > NO_CHECKS_TIMEOUT) {
+			if (Date.now() - start > noChecksTimeout) {
 				logger.warn('No CI checks registered after 2 minutes — treating as passed')
 				return { passed: true }
 			}
 			logger.info('No check runs found yet, waiting...')
-			await sleep(POLL_INTERVAL)
+			await sleep(pollInterval)
 			continue
 		}
 
 		const allComplete = runs.every(r => r.status === 'completed')
 		if (!allComplete) {
 			logger.info(`Checks still running (${runs.filter(r => r.status === 'completed').length}/${runs.length} complete)`)
-			await sleep(POLL_INTERVAL)
+			await sleep(pollInterval)
 			continue
 		}
 
@@ -75,7 +73,7 @@ async function collectErrors(
 	for (const run of failedRuns) {
 		let detail = `Check "${run.name}" — ${run.conclusion}`
 		if (run.output.summary) detail += `\n  ${run.output.summary}`
-		if (run.output.text) detail += `\n  ${run.output.text.slice(0, 2000)}`
+		if (run.output.text) detail += `\n  ${run.output.text.slice(0, config.errors.maxCheckOutputChars)}`
 
 		try {
 			const { data: annotations } = await octokit.checks.listAnnotations({

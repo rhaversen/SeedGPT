@@ -23,7 +23,7 @@ export async function plan(): Promise<PlanResult> {
 
 	const messages: Anthropic.MessageParam[] = []
 
-	const maxRounds = config.maxPlannerRounds
+	const maxRounds = config.turns.maxPlanner
 	for (let round = 0; round < maxRounds; round++) {
 		logger.info(`Planner turn ${round + 1}/${maxRounds}`)
 		const response = await callApi('planner', messages)

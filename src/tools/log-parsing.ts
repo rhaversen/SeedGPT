@@ -1,3 +1,5 @@
+import { config } from '../config.js'
+
 interface CoverageMetric {
 	total: number
 	covered: number
@@ -161,7 +163,7 @@ function formatCoverageSummary(data: CoverageSummaryJson): string {
 
 	const lowCoverage = fileEntries.filter(f => f.pct < 50)
 	if (lowCoverage.length > 0) {
-		const listed = lowCoverage.slice(0, 10).map(f => `${f.filePath} (${f.pct}%)`).join(', ')
+		const listed = lowCoverage.slice(0, config.coverage.maxLowCoverageFiles).map(f => `${f.filePath} (${f.pct}%)`).join(', ')
 		parts.push(`Low coverage (<50%): ${listed}`)
 	}
 

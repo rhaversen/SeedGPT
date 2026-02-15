@@ -96,7 +96,7 @@ export async function getHeadSha(): Promise<string> {
 	return (await getClient().revparse(['HEAD'])).trim()
 }
 
-export async function getRecentLog(count = 10): Promise<string> {
+export async function getRecentLog(count = config.git.recentLogCount): Promise<string> {
 	const log = await getClient().log({ maxCount: count })
 	return log.all.map(c => `${c.hash.slice(0, 7)} ${c.message}`).join('\n')
 }

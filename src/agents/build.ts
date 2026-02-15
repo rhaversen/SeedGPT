@@ -21,7 +21,7 @@ export class PatchSession {
 	}
 
 	get exhausted(): boolean {
-		return this.roundsUsed >= config.maxBuilderRounds
+		return this.roundsUsed >= config.turns.maxBuilder
 	}
 
 	constructor(plan: Plan) {
@@ -77,7 +77,7 @@ export class PatchSession {
 	}
 
 	private async runBuilderLoop(): Promise<EditOperation[]> {
-		const maxRounds = config.maxBuilderRounds
+		const maxRounds = config.turns.maxBuilder
 		while (this.roundsUsed < maxRounds) {
 			this.roundsUsed++
 			logger.info(`Builder turn ${this.roundsUsed}/${maxRounds}`)

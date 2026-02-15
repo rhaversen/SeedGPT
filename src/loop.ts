@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { config } from './config.js'
 import { cloneRepo, commitAndPush, createBranch, resetWorkspace } from './tools/git.js'
 import { awaitChecks, cleanupStalePRs, closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
 import { storeReflection } from './agents/memory.js'
@@ -68,7 +69,7 @@ async function iterate(): Promise<boolean> {
 			fixAttempt++
 			const error = result.error ?? 'CI checks failed with unknown error'
 			if (session.exhausted) {
-				outcome = `CI failed (attempt ${fixAttempt}, no budget left): ${error.slice(0, 10000)}`
+				outcome = `CI failed (attempt ${fixAttempt}, no budget left): ${error.slice(0, config.errors.maxLoopErrorChars)}`
 				logger.error(outcome)
 				break
 			}

@@ -36,11 +36,11 @@ export async function storeReflection(content: string): Promise<void> {
 // Rough chars/4 approximation instead of actual tokenization — avoids a tokenizer
 // dependency for a budget that's already an approximate soft limit.
 function estimateTokens(text: string): number {
-	return Math.ceil(text.length / 4)
+	return Math.ceil(text.length / config.memory.estimationRatio)
 }
 
 export async function getMemoryContext(): Promise<string> {
-	const budget = config.memoryTokenBudget
+	const budget = config.memory.tokenBudget
 	let tokensUsed = 0
 	const sections: string[] = []
 
@@ -58,13 +58,10 @@ export async function getMemoryContext(): Promise<string> {
 		sections.push(notesSection)
 	}
 
-	const FULL_REFLECTIONS = 5
-	const SUMMARIZED_REFLECTIONS = 20
-
 	const reflections = await MemoryModel
 		.find({ category: 'reflection' })
 		.sort({ createdAt: -1 })
-		.limit(FULL_REFLECTIONS + SUMMARIZED_REFLECTIONS)
+		.limit(config.memory.fullReflections + config.memory.summarizedReflections)
 		.select('_id content summary createdAt')
 		.lean()
 
@@ -76,7 +73,7 @@ export async function getMemoryContext(): Promise<string> {
 		for (let i = 0; i < reflections.length; i++) {
 			const m = reflections[i]
 			const date = new Date(m.createdAt).toISOString().slice(0, 19).replace('T', ' ')
-			const text = i < FULL_REFLECTIONS ? m.content : m.summary
+			const text = i < config.memory.fullReflections ? m.content : m.summary
 			const line = `- (${m._id}) [${date}] ${text}`
 			const lineTokens = estimateTokens(line + '\n')
 			if (tokensUsed + reflectionTokens + lineTokens > budget) break
