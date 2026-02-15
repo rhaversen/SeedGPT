@@ -331,33 +331,32 @@ function formatCoverageSummary(data: CoverageSummaryJson): string {
 	return parts.join('\n')
 }
 
-export async function extractCoverage(sha: string): Promise<string | null> {
+// This function can be used to fetch the latest main branch coverage. It does not run a new CI workflow, but looks for the most recent successful workflow run on main and extracts coverage from its logs.
+export async function getLatestMainCoverage(): Promise<string | null> {
 	try {
 		const { data: runs } = await octokit.actions.listWorkflowRunsForRepo({
-			owner, repo, head_sha: sha, status: 'completed',
+			owner, repo, branch: 'main', status: 'completed', per_page: 1,
 		})
 
-		for (const run of runs.workflow_runs.filter(r => r.conclusion === 'success')) {
-			const { data: jobs } = await octokit.actions.listJobsForWorkflowRun({
-				owner, repo, run_id: run.id,
-			})
+		const latestSuccess = runs.workflow_runs.find(r => r.conclusion === 'success')
+		if (!latestSuccess) return null
 
-			for (const job of jobs.jobs) {
-				try {
-					const { data: logData } = await octokit.actions.downloadJobLogsForWorkflowRun({
-						owner, repo, job_id: job.id,
-					})
-					const logText = typeof logData === 'string' ? logData : String(logData)
-					const coverage = extractCoverageFromLogs(logText)
-					if (coverage) {
-						logger.info('Extracted coverage data from CI logs')
-						return coverage
-					}
-				} catch { /* logs unavailable for this job */ }
-			}
+		const { data: jobs } = await octokit.actions.listJobsForWorkflowRun({
+			owner, repo, run_id: latestSuccess.id,
+		})
+
+		for (const job of jobs.jobs) {
+			try {
+				const { data: logData } = await octokit.actions.downloadJobLogsForWorkflowRun({
+					owner, repo, job_id: job.id,
+				})
+				const logText = typeof logData === 'string' ? logData : String(logData)
+				const coverage = extractCoverageFromLogs(logText)
+				if (coverage) return coverage
+			} catch { /* logs unavailable for this job */ }
 		}
 	} catch {
-		logger.warn('Failed to fetch coverage data from CI')
+		logger.warn('Failed to fetch latest main branch coverage')
 	}
 	return null
 }

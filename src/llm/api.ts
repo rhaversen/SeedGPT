@@ -8,6 +8,7 @@ import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT, SYSTEM_MEMORY, SYSTEM_SUMMAR
 import GeneratedModel, { computeCost, type ApiUsage } from '../models/Generated.js'
 import { getMemoryContext } from '../agents/memory.js'
 import { getRecentLog } from '../tools/git.js'
+import { getLatestMainCoverage } from '../tools/github.js'
 
 export type Phase = 'planner' | 'builder' | 'reflect' | 'memory' | 'summarizer'
 
@@ -48,6 +49,10 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 		system.push({ type: 'text', text: `\n\n${memoryContext}`, cache_control: { type: 'ephemeral' as const } })
 		const gitLog = await getRecentLog()
 		system.push({ type: 'text', text: `\n\nRecent git log:\n${gitLog}`, cache_control: { type: 'ephemeral' as const } })
+		const coverage = await getLatestMainCoverage()
+		if (coverage) {
+			system.push({ type: 'text', text: `\n\n## Code Coverage (last CI run on main)\n${coverage}`, cache_control: { type: 'ephemeral' as const } })
+		}
 	}
 
 	const allTools = [...(extras.tools ?? []), ...(tools ?? [])]

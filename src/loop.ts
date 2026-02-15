@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { cloneRepo, commitAndPush, createBranch, resetWorkspace } from './tools/git.js'
 import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
-import { awaitChecks, cleanupStalePRs, getCoverage } from './pipeline.js'
+import { awaitChecks, cleanupStalePRs } from './pipeline.js'
 import { storeReflection } from './agents/memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
@@ -99,13 +99,6 @@ async function iterate(): Promise<boolean> {
 		await mergePR(prNumber!)
 		await deleteRemoteBranch(branchName).catch(() => {})
 		logger.info(`PR #${prNumber} merged, branch deleted. Change is now on main.`)
-
-		const coverage = await getCoverage()
-		if (coverage) {
-			logger.info(`Coverage: ${coverage}`)
-		} else {
-			logger.warn('No coverage report found after merge')
-		}
 	}
 
 	await resetWorkspace()

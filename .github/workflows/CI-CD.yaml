@@ -24,6 +24,9 @@ jobs:
             -   name: Build
                 run: npm run build
 
+            -   name: Coverage
+                run: node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --coverageReporters=json-summary --passWithNoTests 2>/dev/null; cat coverage/coverage-summary.json
+
             -   name: Set up Docker Buildx
                 uses: docker/setup-buildx-action@v3
 
