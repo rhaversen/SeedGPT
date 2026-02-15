@@ -92,12 +92,6 @@ export async function commitAndPush(message: string, force = false): Promise<voi
 	logger.info(`Committed and pushed to ${branch}${force ? ' (force)' : ''}`)
 }
 
-export async function resetToMain(): Promise<void> {
-	const git = getClient()
-	await git.raw(['reset', '--hard', 'origin/main'])
-	logger.info('Reset branch to origin/main')
-}
-
 export async function getHeadSha(): Promise<string> {
 	return (await getClient().revparse(['HEAD'])).trim()
 }
