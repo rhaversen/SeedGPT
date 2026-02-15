@@ -126,9 +126,35 @@ export async function getDiff(): Promise<string> {
 }
 
 function truncateDiff(diff: string): string {
-	const lines = diff.split('\n')
+	const chunks = diff.split(/(?=^diff --git )/m)
+	const processed: string[] = []
+
+	for (const chunk of chunks) {
+		if (!chunk.startsWith('diff --git ')) {
+			processed.push(chunk)
+			continue
+		}
+
+		const isNewFile = /^new file mode/m.test(chunk)
+		const isDeleted = /^deleted file mode/m.test(chunk)
+
+		if (isNewFile || isDeleted) {
+			const nameMatch = chunk.match(/^diff --git a\/.+ b\/(.+)$/m)
+			const fileName = nameMatch?.[1] ?? 'unknown'
+			const contentLines = chunk.split('\n').filter(l => l.startsWith('+') || l.startsWith('-'))
+				.filter(l => !l.startsWith('+++') && !l.startsWith('---'))
+			const charCount = contentLines.reduce((s, l) => s + l.length - 1, 0)
+			const label = isNewFile ? 'new file' : 'deleted file'
+			processed.push(`diff --git a/${fileName} b/${fileName}\n  [${label}: ${fileName} — ${contentLines.length} lines, ${charCount} chars]\n`)
+		} else {
+			processed.push(chunk)
+		}
+	}
+
+	const result = processed.join('')
+	const lines = result.split('\n')
 	if (lines.length > 500) {
 		return lines.slice(0, 500).join('\n') + `\n\n(truncated — ${lines.length} total lines)`
 	}
-	return diff
+	return result
 }
