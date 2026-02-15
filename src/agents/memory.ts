@@ -9,27 +9,28 @@ async function summarizeMemory(content: string): Promise<string> {
 	return text.trim()
 }
 
-export async function storePastMemory(content: string): Promise<void> {
+export async function storeNote(content: string): Promise<string> {
 	const summary = await summarizeMemory(content)
-	await MemoryModel.create({ content, summary })
-	logger.debug(`Stored memory: ${summary.slice(0, 80)}`)
-}
-
-export async function storePinnedMemory(content: string): Promise<string> {
-	const summary = await summarizeMemory(content)
-	const memory = await MemoryModel.create({ content, summary, pinned: true })
-	logger.debug(`Pinned note: ${summary.slice(0, 80)}`)
+	const memory = await MemoryModel.create({ content, summary, category: 'note' })
+	logger.debug(`Saved note: ${summary.slice(0, 80)}`)
 	return `Note saved (${memory._id}): ${summary}`
 }
 
-export async function unpinMemory(id: string): Promise<string> {
+export async function dismissNote(id: string): Promise<string> {
 	const memory = await MemoryModel.findById(id)
 	if (!memory) return `No note found with id "${id}".`
-	if (!memory.pinned) return `That memory is not a note.`
-	memory.pinned = false
+	if (memory.category !== 'note') return `That memory is not a note.`
+	if (!memory.active) return `That note is already dismissed.`
+	memory.active = false
 	await memory.save()
 	logger.debug(`Dismissed note: ${memory.summary.slice(0, 80)}`)
 	return `Note dismissed: ${memory.summary}`
+}
+
+export async function storeReflection(content: string): Promise<void> {
+	const summary = await summarizeMemory(content)
+	await MemoryModel.create({ content, summary, category: 'reflection' })
+	logger.debug(`Stored reflection: ${summary.slice(0, 80)}`)
 }
 
 // Rough chars/4 approximation instead of actual tokenization — avoids a tokenizer
@@ -38,21 +39,16 @@ function estimateTokens(text: string): number {
 	return Math.ceil(text.length / 4)
 }
 
-// Builds a memory context string within a token budget. Pinned notes (goals, reminders)
-// are always included first since they represent active priorities. Remaining budget is
-// filled with past memories newest-first. Only summaries are included — full content
-// can be retrieved on-demand via recall/recallById.
-export async function getContext(): Promise<string> {
+export async function getMemoryContext(): Promise<string> {
 	const budget = config.memoryTokenBudget
 	let tokensUsed = 0
+	const sections: string[] = []
 
 	const notes = await MemoryModel
-		.find({ pinned: true })
+		.find({ category: 'note', active: true })
 		.sort({ createdAt: -1 })
 		.select('_id summary')
 		.lean()
-
-	const sections: string[] = []
 
 	if (notes.length > 0) {
 		const header = '## Notes to self\n'
@@ -62,34 +58,40 @@ export async function getContext(): Promise<string> {
 		sections.push(notesSection)
 	}
 
-	const remaining = budget - tokensUsed
-	if (remaining > 0) {
-		const recent = await MemoryModel
-			.find({ pinned: false })
-			.sort({ createdAt: -1 })
-			.select('_id summary createdAt')
-			.lean()
+	const FULL_REFLECTIONS = 5
+	const SUMMARIZED_REFLECTIONS = 20
 
-		const header = '## Past\n'
-		let pastTokens = estimateTokens(header)
+	const reflections = await MemoryModel
+		.find({ category: 'reflection' })
+		.sort({ createdAt: -1 })
+		.limit(FULL_REFLECTIONS + SUMMARIZED_REFLECTIONS)
+		.select('_id content summary createdAt')
+		.lean()
+
+	if (reflections.length > 0) {
+		const header = '## Recent Reflections\n'
+		let reflectionTokens = estimateTokens(header)
 		const lines: string[] = []
 
-		for (const m of recent) {
+		for (let i = 0; i < reflections.length; i++) {
+			const m = reflections[i]
 			const date = new Date(m.createdAt).toISOString().slice(0, 19).replace('T', ' ')
-			const line = `- (${m._id}) [${date}] ${m.summary}`
+			const text = i < FULL_REFLECTIONS ? m.content : m.summary
+			const line = `- (${m._id}) [${date}] ${text}`
 			const lineTokens = estimateTokens(line + '\n')
-			if (tokensUsed + pastTokens + lineTokens > budget) break
-			pastTokens += lineTokens
+			if (tokensUsed + reflectionTokens + lineTokens > budget) break
+			reflectionTokens += lineTokens
 			lines.push(line)
 		}
 
 		if (lines.length > 0) {
+			tokensUsed += reflectionTokens
 			sections.push(header + lines.join('\n'))
 		}
 	}
 
 	if (sections.length === 0) {
-		return 'No memories yet. This is your first run.'
+		return 'No memories yet.'
 	}
 
 	return sections.join('\n\n')

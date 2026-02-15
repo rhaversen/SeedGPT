@@ -1,9 +1,12 @@
 import mongoose, { type Document, type Model, Schema } from 'mongoose'
 
+export type MemoryCategory = 'note' | 'reflection'
+
 export interface IMemory extends Document {
 	content: string
 	summary: string
-	pinned: boolean
+	category: MemoryCategory
+	active: boolean
 	createdAt: Date
 	updatedAt: Date
 }
@@ -17,17 +20,22 @@ const memorySchema = new Schema<IMemory>({
 		type: String,
 		required: true,
 	},
-	pinned: {
+	category: {
+		type: String,
+		enum: ['note', 'reflection'],
+		required: true,
+	},
+	active: {
 		type: Boolean,
-		default: false,
+		default: true,
 	},
 }, {
 	timestamps: true,
 })
 
-memorySchema.index({ pinned: 1, createdAt: -1 }) // getContext: fetch pinned notes sorted by date
-memorySchema.index({ createdAt: -1 })              // getContext: fetch recent unpinned memories
-memorySchema.index({ content: 'text', summary: 'text' }) // recall: full-text search across memories
+memorySchema.index({ category: 1, active: 1, createdAt: -1 })
+memorySchema.index({ category: 1, createdAt: -1 })
+memorySchema.index({ content: 'text', summary: 'text' })
 
 const MemoryModel: Model<IMemory> = mongoose.model<IMemory>('Memory', memorySchema)
 

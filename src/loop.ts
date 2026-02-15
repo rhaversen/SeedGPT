@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { cloneRepo, commitAndPush, createBranch, resetWorkspace } from './tools/git.js'
 import { closePR, deleteRemoteBranch, mergePR, openPR } from './tools/github.js'
 import { awaitChecks, cleanupStalePRs, getCoverage } from './pipeline.js'
-import { storePastMemory } from './agents/memory.js'
+import { storeReflection } from './agents/memory.js'
 import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
 import { plan } from './agents/plan.js'
@@ -26,7 +26,7 @@ export async function run(): Promise<void> {
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
 		try {
-			await storePastMemory(`Iteration crashed with error: ${message}`)
+			await storeReflection(`Iteration crashed before reflection could run. Error: ${message}`)
 		} catch { /* Swallowed because the crash itself may have been caused by a DB failure */ }
 		throw error
 	} finally {
@@ -38,7 +38,7 @@ async function iterate(): Promise<boolean> {
 	setIterationId(randomUUID())
 
 	const { plan: iterationPlan, messages: plannerMessages } = await plan()
-	await storePastMemory(`Planned change "${iterationPlan.title}": ${iterationPlan.description}`)
+	logger.info(`Planned: "${iterationPlan.title}" — ${iterationPlan.description}`)
 
 	const session = new PatchSession(iterationPlan)
 	const branchName = await createBranch(iterationPlan.title)
@@ -50,53 +50,61 @@ async function iterate(): Promise<boolean> {
 
 	if (edits.length === 0) {
 		outcome = 'Builder produced no edits.'
+		logger.warn(outcome)
 	} else {
 		await commitAndPush(iterationPlan.title)
 		prNumber = await openPR(branchName, iterationPlan.title, iterationPlan.description)
+		logger.info(`Opened PR #${prNumber}.`)
 
+		let fixAttempt = 0
 		while (true) {
 			const result = await awaitChecks()
 			if (result.passed) {
 				merged = true
 				outcome = `PR #${prNumber} merged successfully.`
+				logger.info(outcome)
 				break
 			}
 
+			fixAttempt++
 			const error = result.error ?? 'CI checks failed with unknown error'
 			if (session.exhausted) {
-				outcome = `CI failed: ${error.slice(0, 10000)}`
+				outcome = `CI failed (attempt ${fixAttempt}, no budget left): ${error.slice(0, 10000)}`
+				logger.error(outcome)
 				break
 			}
 
-			logger.warn(`CI failed, attempting fix: ${error.slice(0, 200)}`)
-			await storePastMemory(`CI failed for "${iterationPlan.title}" (PR #${prNumber}): ${error.slice(0, 10000)}`)
+			logger.warn(`CI failed (attempt ${fixAttempt}), attempting fix: ${error.slice(0, 500)}`)
 
 			try {
 				edits = await session.fixPatch(error)
-			} catch {
-				outcome = `Builder failed to fix: ${error.slice(0, 500)}`
+			} catch (error) {
+				outcome = `Builder failed to fix: ${error instanceof Error ? error.message.slice(0, 500) : String(error)}`
+				logger.error(outcome)
 				break
 			}
 
 			if (edits.length === 0) {
 				outcome = 'Builder produced no fix edits.'
+				logger.warn(outcome)
 				break
 			}
 
 			await commitAndPush(`fix: ${iterationPlan.title}`)
+			logger.info(`Pushed fix commit (attempt ${fixAttempt}).`)
 		}
 	}
 
 	if (merged) {
 		await mergePR(prNumber!)
 		await deleteRemoteBranch(branchName).catch(() => {})
-		await storePastMemory(`Merged PR #${prNumber}: "${iterationPlan.title}" — CI passed and change is now on main.`)
-		logger.info(`PR #${prNumber} merged.`)
+		logger.info(`PR #${prNumber} merged, branch deleted. Change is now on main.`)
 
 		const coverage = await getCoverage()
 		if (coverage) {
-			await storePastMemory(`Post-merge coverage report:\n${coverage}`)
-			logger.info('Stored coverage report in memory')
+			logger.info(`Coverage: ${coverage}`)
+		} else {
+			logger.warn('No coverage report found after merge')
 		}
 	}
 
@@ -106,16 +114,16 @@ async function iterate(): Promise<boolean> {
 		if (prNumber !== null) {
 			await closePR(prNumber)
 			await deleteRemoteBranch(branchName).catch(() => {})
-			await storePastMemory(`Closed PR #${prNumber}: "${iterationPlan.title}" — ${outcome}`)
+			logger.error(`FAILED — PR #${prNumber} closed without merging, branch deleted.`)
 		} else {
-			await storePastMemory(`Gave up on "${iterationPlan.title}" — ${outcome}`)
+			logger.error('FAILED — No PR was opened. No changes were made.')
 		}
 		logger.error(`Plan "${iterationPlan.title}" failed — starting fresh plan.`)
 	}
 
 	const allMessages = [...plannerMessages, ...session.conversation]
 	const reflection = await reflect(outcome, allMessages)
-	await storePastMemory(`Self-reflection: ${reflection}`)
+	await storeReflection(reflection)
 	await writeIterationLog()
 
 	return merged
