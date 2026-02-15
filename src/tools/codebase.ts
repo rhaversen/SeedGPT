@@ -243,7 +243,7 @@ export async function findUnusedFunctions(rootPath: string): Promise<string | nu
 	const srcFiles = tsFiles.filter(f => !isTestFile(f))
 	const testFiles = tsFiles.filter(f => isTestFile(f))
 
-	const declared: Array<{ name: string; file: string }> = []
+	const declared: Array<{ name: string; file: string; exported: boolean }> = []
 	const srcContents = new Map<string, string>()
 
 	for (const relPath of srcFiles) {
@@ -256,39 +256,52 @@ export async function findUnusedFunctions(rootPath: string): Promise<string | nu
 		}
 	}
 
-	const megaSrc = [...srcContents.values()].join('\n\n')
 	const testContents = await Promise.all(testFiles.map(f => fsReadFile(join(rootPath, f), 'utf-8')))
 	const megaTest = testContents.join('\n\n')
 
 	const deadCode: string[] = []
 	const testOnly: string[] = []
+	const exportedForTests: string[] = []
 
 	for (const fn of declared) {
 		const re = new RegExp(`\\b${fn.name}\\b`, 'g')
-		const srcMatches = megaSrc.match(re)?.length ?? 0
-		if (srcMatches <= 1) {
-			const testMatches = megaTest.match(re)?.length ?? 0
+		const ownContent = srcContents.get(fn.file) ?? ''
+		const ownMatches = ownContent.match(re)?.length ?? 0
+
+		let otherSrcMatches = 0
+		for (const [file, content] of srcContents) {
+			if (file === fn.file) continue
+			otherSrcMatches += content.match(re)?.length ?? 0
+		}
+
+		const testMatches = megaTest.match(re)?.length ?? 0
+
+		if (ownMatches <= 1 && otherSrcMatches === 0) {
 			if (testMatches === 0) {
 				deadCode.push(`${fn.file}: ${fn.name}`)
 			} else {
 				testOnly.push(`${fn.file}: ${fn.name}`)
 			}
+		} else if (fn.exported && otherSrcMatches === 0 && testMatches > 0) {
+			exportedForTests.push(`${fn.file}: ${fn.name}`)
 		}
 	}
 
 	const sections: string[] = []
 	if (deadCode.length > 0) sections.push(`Not used anywhere:\n${deadCode.join('\n')}`)
 	if (testOnly.length > 0) sections.push(`Only used in tests:\n${testOnly.join('\n')}`)
+	if (exportedForTests.length > 0) sections.push(`Exported only for tests (used internally, consider testing through public API):\n${exportedForTests.join('\n')}`)
 	return sections.length > 0 ? sections.join('\n\n') : null
 }
 
-function collectFunctionNames(node: ts.Node, file: string, out: Array<{ name: string; file: string }>): void {
+function collectFunctionNames(node: ts.Node, file: string, out: Array<{ name: string; file: string; exported: boolean }>): void {
+	const exported = isExported(node)
 	if (ts.isFunctionDeclaration(node) && node.name) {
-		out.push({ name: node.name.text, file })
+		out.push({ name: node.name.text, file, exported })
 	} else if (ts.isClassDeclaration(node)) {
 		for (const member of node.members) {
 			if (ts.isMethodDeclaration(member) && ts.isIdentifier(member.name)) {
-				out.push({ name: member.name.text, file })
+				out.push({ name: member.name.text, file, exported })
 			}
 		}
 	}
