@@ -286,7 +286,7 @@ export async function findUnusedFunctions(rootPath: string): Promise<string | nu
 	const sections: string[] = []
 	if (deadCode.length > 0) sections.push(`Not used anywhere:\n${deadCode.join('\n')}`)
 	if (testOnly.length > 0) sections.push(`Only used in tests:\n${testOnly.join('\n')}`)
-	if (exportedForTests.length > 0) sections.push(`Exported only for tests (used internally, consider testing through public API):\n${exportedForTests.join('\n')}`)
+	if (exportedForTests.length > 0) sections.push(`Exported only for tests (used internally, consider testing through public API, or exporting the function from a utility file):\n${exportedForTests.join('\n')}`)
 	return sections.length > 0 ? sections.join('\n\n') : null
 }
 
