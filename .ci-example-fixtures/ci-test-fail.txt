@@ -1,0 +1,311 @@
+2026-02-16T13:49:42.2620083Z Current runner version: '2.331.0'
+2026-02-16T13:49:42.2645679Z ##[group]Runner Image Provisioner
+2026-02-16T13:49:42.2646651Z Hosted Compute Agent
+2026-02-16T13:49:42.2647198Z Version: 20260123.484
+2026-02-16T13:49:42.2647822Z Commit: 6bd6555ca37d84114959e1c76d2c01448ff61c5d
+2026-02-16T13:49:42.2648593Z Build Date: 2026-01-23T19:41:17Z
+2026-02-16T13:49:42.2649289Z Worker ID: {72ab2f65-da9c-499a-8255-5d5b507d5543}
+2026-02-16T13:49:42.2649968Z Azure Region: eastus2
+2026-02-16T13:49:42.2650601Z ##[endgroup]
+2026-02-16T13:49:42.2652111Z ##[group]Operating System
+2026-02-16T13:49:42.2652741Z Ubuntu
+2026-02-16T13:49:42.2653341Z 24.04.3
+2026-02-16T13:49:42.2653790Z LTS
+2026-02-16T13:49:42.2654288Z ##[endgroup]
+2026-02-16T13:49:42.2654801Z ##[group]Runner Image
+2026-02-16T13:49:42.2655439Z Image: ubuntu-24.04
+2026-02-16T13:49:42.2655940Z Version: 20260209.23.1
+2026-02-16T13:49:42.2657229Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260209.23/images/ubuntu/Ubuntu2404-Readme.md
+2026-02-16T13:49:42.2658675Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260209.23
+2026-02-16T13:49:42.2659695Z ##[endgroup]
+2026-02-16T13:49:42.2662632Z ##[group]GITHUB_TOKEN Permissions
+2026-02-16T13:49:42.2665007Z Actions: write
+2026-02-16T13:49:42.2665577Z ArtifactMetadata: write
+2026-02-16T13:49:42.2666163Z Attestations: write
+2026-02-16T13:49:42.2666639Z Checks: write
+2026-02-16T13:49:42.2667287Z Contents: write
+2026-02-16T13:49:42.2667774Z Deployments: write
+2026-02-16T13:49:42.2668303Z Discussions: write
+2026-02-16T13:49:42.2668919Z Issues: write
+2026-02-16T13:49:42.2669406Z Metadata: read
+2026-02-16T13:49:42.2669927Z Models: read
+2026-02-16T13:49:42.2670532Z Packages: write
+2026-02-16T13:49:42.2671084Z Pages: write
+2026-02-16T13:49:42.2671916Z PullRequests: write
+2026-02-16T13:49:42.2672634Z RepositoryProjects: write
+2026-02-16T13:49:42.2673240Z SecurityEvents: write
+2026-02-16T13:49:42.2673760Z Statuses: write
+2026-02-16T13:49:42.2674429Z ##[endgroup]
+2026-02-16T13:49:42.2676447Z Secret source: Actions
+2026-02-16T13:49:42.2677440Z Prepare workflow directory
+2026-02-16T13:49:42.2997021Z Prepare all required actions
+2026-02-16T13:49:42.3034803Z Getting action download info
+2026-02-16T13:49:42.6084411Z Download action repository 'actions/checkout@v6' (SHA:de0fac2e4500dabe0009e67214ff5f5447ce83dd)
+2026-02-16T13:49:42.7510643Z Download action repository 'actions/setup-node@v6' (SHA:6044e13b5dc448c55e2357c09f80417699197238)
+2026-02-16T13:49:42.9888439Z Complete job name: build-and-test
+2026-02-16T13:49:43.0561245Z ##[group]Run actions/checkout@v6
+2026-02-16T13:49:43.0562235Z with:
+2026-02-16T13:49:43.0562626Z   repository: SeedGPT/SeedGPT
+2026-02-16T13:49:43.0563258Z   token: ***
+2026-02-16T13:49:43.0563638Z   ssh-strict: true
+2026-02-16T13:49:43.0564010Z   ssh-user: git
+2026-02-16T13:49:43.0564405Z   persist-credentials: true
+2026-02-16T13:49:43.0564831Z   clean: true
+2026-02-16T13:49:43.0565228Z   sparse-checkout-cone-mode: true
+2026-02-16T13:49:43.0565690Z   fetch-depth: 1
+2026-02-16T13:49:43.0566098Z   fetch-tags: false
+2026-02-16T13:49:43.0566484Z   show-progress: true
+2026-02-16T13:49:43.0566877Z   lfs: false
+2026-02-16T13:49:43.0567234Z   submodules: false
+2026-02-16T13:49:43.0567623Z   set-safe-directory: true
+2026-02-16T13:49:43.0568246Z ##[endgroup]
+2026-02-16T13:49:43.1521888Z Syncing repository: SeedGPT/SeedGPT
+2026-02-16T13:49:43.1524278Z ##[group]Getting Git version info
+2026-02-16T13:49:43.1525039Z Working directory is '/home/runner/work/SeedGPT/SeedGPT'
+2026-02-16T13:49:43.1526048Z [command]/usr/bin/git version
+2026-02-16T13:49:43.1526787Z git version 2.52.0
+2026-02-16T13:49:43.1570839Z ##[endgroup]
+2026-02-16T13:49:43.1586499Z Temporarily overriding HOME='/home/runner/work/_temp/6a6e3b32-f4cd-40bc-921b-7576794195c6' before making global git config changes
+2026-02-16T13:49:43.1588649Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-16T13:49:43.1592511Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SeedGPT/SeedGPT
+2026-02-16T13:49:43.1637632Z Deleting the contents of '/home/runner/work/SeedGPT/SeedGPT'
+2026-02-16T13:49:43.1641970Z ##[group]Initializing the repository
+2026-02-16T13:49:43.1647148Z [command]/usr/bin/git init /home/runner/work/SeedGPT/SeedGPT
+2026-02-16T13:49:43.1740951Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-02-16T13:49:43.1742470Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-02-16T13:49:43.1743859Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-02-16T13:49:43.1744915Z hint: call:
+2026-02-16T13:49:43.1745440Z hint:
+2026-02-16T13:49:43.1746110Z hint: 	git config --global init.defaultBranch <name>
+2026-02-16T13:49:43.1746961Z hint:
+2026-02-16T13:49:43.1747669Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-02-16T13:49:43.1748916Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-02-16T13:49:43.1749602Z hint:
+2026-02-16T13:49:43.1749988Z hint: 	git branch -m <name>
+2026-02-16T13:49:43.1750421Z hint:
+2026-02-16T13:49:43.1750993Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-02-16T13:49:43.1752226Z Initialized empty Git repository in /home/runner/work/SeedGPT/SeedGPT/.git/
+2026-02-16T13:49:43.1756973Z [command]/usr/bin/git remote add origin https://github.com/SeedGPT/SeedGPT
+2026-02-16T13:49:43.1795459Z ##[endgroup]
+2026-02-16T13:49:43.1796170Z ##[group]Disabling automatic garbage collection
+2026-02-16T13:49:43.1798892Z [command]/usr/bin/git config --local gc.auto 0
+2026-02-16T13:49:43.1830772Z ##[endgroup]
+2026-02-16T13:49:43.1831499Z ##[group]Setting up auth
+2026-02-16T13:49:43.1832395Z Removing SSH command configuration
+2026-02-16T13:49:43.1837492Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-16T13:49:43.1873352Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-16T13:49:43.2218791Z Removing HTTP extra header
+2026-02-16T13:49:43.2223991Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-16T13:49:43.2258892Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-16T13:49:43.2520656Z Removing includeIf entries pointing to credentials config files
+2026-02-16T13:49:43.2527827Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-02-16T13:49:43.2563456Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-02-16T13:49:43.2840382Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-02-16T13:49:43.2881110Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git.path /home/runner/work/_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:49:43.2914632Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:49:43.2948166Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:49:43.2985780Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:49:43.3017409Z ##[endgroup]
+2026-02-16T13:49:43.3018489Z ##[group]Fetching the repository
+2026-02-16T13:49:43.3026206Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +ab5e2b223761df6b19bba32c8f6ca9b6c75ba223:refs/remotes/pull/20/merge
+2026-02-16T13:49:43.5288772Z From https://github.com/SeedGPT/SeedGPT
+2026-02-16T13:49:43.5290658Z  * [new ref]         ab5e2b223761df6b19bba32c8f6ca9b6c75ba223 -> pull/20/merge
+2026-02-16T13:49:43.5299698Z ##[endgroup]
+2026-02-16T13:49:43.5301257Z ##[group]Determining the checkout info
+2026-02-16T13:49:43.5302973Z ##[endgroup]
+2026-02-16T13:49:43.5307504Z [command]/usr/bin/git sparse-checkout disable
+2026-02-16T13:49:43.5356231Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-02-16T13:49:43.5393566Z ##[group]Checking out the ref
+2026-02-16T13:49:43.5398122Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/20/merge
+2026-02-16T13:49:43.5491950Z Note: switching to 'refs/remotes/pull/20/merge'.
+2026-02-16T13:49:43.5492697Z 
+2026-02-16T13:49:43.5493280Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-02-16T13:49:43.5494723Z changes and commit them, and you can discard any commits you make in this
+2026-02-16T13:49:43.5495901Z state without impacting any branches by switching back to a branch.
+2026-02-16T13:49:43.5496960Z 
+2026-02-16T13:49:43.5497650Z If you want to create a new branch to retain commits you create, you may
+2026-02-16T13:49:43.5499296Z do so (now or later) by using -c with the switch command. Example:
+2026-02-16T13:49:43.5500277Z 
+2026-02-16T13:49:43.5500636Z   git switch -c <new-branch-name>
+2026-02-16T13:49:43.5501247Z 
+2026-02-16T13:49:43.5501796Z Or undo this operation with:
+2026-02-16T13:49:43.5502372Z 
+2026-02-16T13:49:43.5502643Z   git switch -
+2026-02-16T13:49:43.5503055Z 
+2026-02-16T13:49:43.5503811Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-02-16T13:49:43.5505035Z 
+2026-02-16T13:49:43.5506360Z HEAD is now at ab5e2b2 Merge 78084970e52abcec5635eff640960a1eb36425a2 into 01aab5cf4ed492ebd6db9337fc7b0243c6ea0596
+2026-02-16T13:49:43.5509634Z ##[endgroup]
+2026-02-16T13:49:43.5542483Z [command]/usr/bin/git log -1 --format=%H
+2026-02-16T13:49:43.5569467Z ab5e2b223761df6b19bba32c8f6ca9b6c75ba223
+2026-02-16T13:49:43.5842203Z ##[group]Run actions/setup-node@v6
+2026-02-16T13:49:43.5842788Z with:
+2026-02-16T13:49:43.5843169Z   node-version: lts/*
+2026-02-16T13:49:43.5843605Z   cache: npm
+2026-02-16T13:49:43.5843981Z   check-latest: false
+2026-02-16T13:49:43.5844608Z   token: ***
+2026-02-16T13:49:43.5845012Z   package-manager-cache: true
+2026-02-16T13:49:43.5845558Z ##[endgroup]
+2026-02-16T13:49:43.7143680Z Attempt to resolve LTS alias from manifest...
+2026-02-16T13:49:44.1304698Z Found in cache @ /opt/hostedtoolcache/node/24.13.0/x64
+2026-02-16T13:49:44.1308409Z ##[group]Environment details
+2026-02-16T13:49:46.6557124Z node: v24.13.0
+2026-02-16T13:49:46.6557796Z npm: 11.6.2
+2026-02-16T13:49:46.6558160Z yarn: 1.22.22
+2026-02-16T13:49:46.6559040Z ##[endgroup]
+2026-02-16T13:49:46.6578286Z [command]/opt/hostedtoolcache/node/24.13.0/x64/bin/npm config get cache
+2026-02-16T13:49:46.9556252Z /home/runner/.npm
+2026-02-16T13:49:47.0246530Z Cache hit for: node-cache-Linux-x64-npm-ed1440487ac0d66118cf25e65e7970fb66c7768862980c8b4428aff3e7961a61
+2026-02-16T13:49:47.2406146Z Received 17562942 of 17562942 (100.0%), 94.6 MBs/sec
+2026-02-16T13:49:47.2406945Z Cache Size: ~17 MB (17562942 B)
+2026-02-16T13:49:47.2475530Z [command]/usr/bin/tar -xf /home/runner/work/_temp/85be62d5-6eec-4579-a5c0-e438898e7068/cache.tzst -P -C /home/runner/work/SeedGPT/SeedGPT --use-compress-program unzstd
+2026-02-16T13:49:47.3314301Z Cache restored successfully
+2026-02-16T13:49:47.3353935Z Cache restored from key: node-cache-Linux-x64-npm-ed1440487ac0d66118cf25e65e7970fb66c7768862980c8b4428aff3e7961a61
+2026-02-16T13:49:47.3600228Z ##[group]Run npm ci
+2026-02-16T13:49:47.3600594Z [36;1mnpm ci[0m
+2026-02-16T13:49:47.3667805Z shell: /usr/bin/bash -e {0}
+2026-02-16T13:49:47.3668084Z ##[endgroup]
+2026-02-16T13:49:52.4984548Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+2026-02-16T13:49:52.5780736Z npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-02-16T13:49:52.9937638Z npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-02-16T13:49:57.0763853Z 
+2026-02-16T13:49:57.0764965Z added 367 packages, and audited 368 packages in 10s
+2026-02-16T13:49:57.0765436Z 
+2026-02-16T13:49:57.0765710Z 50 packages are looking for funding
+2026-02-16T13:49:57.0766231Z   run `npm fund` for details
+2026-02-16T13:49:57.0777294Z 
+2026-02-16T13:49:57.0777610Z found 0 vulnerabilities
+2026-02-16T13:49:57.1417173Z ##[group]Run npm run build
+2026-02-16T13:49:57.1417590Z [36;1mnpm run build[0m
+2026-02-16T13:49:57.1474274Z shell: /usr/bin/bash -e {0}
+2026-02-16T13:49:57.1474545Z ##[endgroup]
+2026-02-16T13:49:57.2571337Z 
+2026-02-16T13:49:57.2571869Z > seedgpt@1.0.0 build
+2026-02-16T13:49:57.2572283Z > tsc
+2026-02-16T13:49:57.2572458Z 
+2026-02-16T13:50:00.5851454Z ##[group]Run npm test
+2026-02-16T13:50:00.5852027Z [36;1mnpm test[0m
+2026-02-16T13:50:00.5905253Z shell: /usr/bin/bash -e {0}
+2026-02-16T13:50:00.5905507Z ##[endgroup]
+2026-02-16T13:50:00.6974206Z 
+2026-02-16T13:50:00.6974810Z > seedgpt@1.0.0 test
+2026-02-16T13:50:00.6975789Z > npm run build && node --enable-source-maps --experimental-vm-modules node_modules/jest/bin/jest.js --passWithNoTests
+2026-02-16T13:50:00.6976250Z 
+2026-02-16T13:50:00.8018186Z 
+2026-02-16T13:50:00.8018774Z > seedgpt@1.0.0 build
+2026-02-16T13:50:00.8019244Z > tsc
+2026-02-16T13:50:00.8019413Z 
+2026-02-16T13:50:05.4073977Z (node:2396) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+2026-02-16T13:50:05.4075114Z (Use `node --trace-warnings ...` to show where the warning was created)
+2026-02-16T13:50:05.4091849Z PASS dist/agents/compression.test.js
+2026-02-16T13:50:05.4971998Z (node:2397) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+2026-02-16T13:50:05.4973824Z (Use `node --trace-warnings ...` to show where the warning was created)
+2026-02-16T13:50:05.4998704Z FAIL dist/tools/log-parsing.test.js
+2026-02-16T13:50:05.5005611Z   ● extractFailedStepOutput › extracts TypeScript errors from output
+2026-02-16T13:50:05.5006517Z 
+2026-02-16T13:50:05.5010822Z     expect(received).toContain(expected) // indexOf
+2026-02-16T13:50:05.5011413Z 
+2026-02-16T13:50:05.5012039Z     Expected substring: "Found 2 errors"
+2026-02-16T13:50:05.5012760Z     Received string:    "Step \"Run tests\":
+2026-02-16T13:50:05.5013918Z     src/agents/plan.ts:42:15 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+2026-02-16T13:50:05.5015289Z     src/agents/build.ts:100:5 - error TS2322: Type 'null' is not assignable to type 'string'.
+2026-02-16T13:50:05.5016196Z     "
+2026-02-16T13:50:05.5016495Z 
+2026-02-16T13:50:05.5017268Z     [0m [90m 136 |[39m 		expect(result)[33m.[39mtoContain([32m'error TS2345'[39m)
+2026-02-16T13:50:05.5018425Z      [90m 137 |[39m 		expect(result)[33m.[39mtoContain([32m'error TS2322'[39m)
+2026-02-16T13:50:05.5020843Z     [31m[1m>[22m[39m[90m 138 |[39m 		expect(result)[33m.[39mtoContain([32m'Found 2 errors'[39m)
+2026-02-16T13:50:05.5022474Z      [90m     |[39m 		               [31m[1m^[22m[39m
+2026-02-16T13:50:05.5024055Z      [90m 139 |[39m 	})
+2026-02-16T13:50:05.5024996Z      [90m 140 |[39m
+2026-02-16T13:50:05.5025923Z      [90m 141 |[39m 	it([32m'extracts JavaScript runtime errors'[39m[33m,[39m () [33m=>[39m {[0m
+2026-02-16T13:50:05.5026979Z 
+2026-02-16T13:50:05.5027366Z       at Object.<anonymous> (src/tools/log-parsing.test.ts:138:18)
+2026-02-16T13:50:05.5027799Z 
+2026-02-16T13:50:05.6263256Z PASS dist/tools/github.test.js
+2026-02-16T13:50:06.0016404Z (node:2398) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+2026-02-16T13:50:06.0017533Z (Use `node --trace-warnings ...` to show where the warning was created)
+2026-02-16T13:50:06.0681043Z PASS dist/llm/api.test.js
+2026-02-16T13:50:06.1221115Z PASS dist/tools/codebase.test.js
+2026-02-16T13:50:06.3871353Z PASS dist/loop.test.js
+2026-02-16T13:50:06.5213991Z PASS dist/logger.test.js
+2026-02-16T13:50:06.6224178Z PASS dist/tools/git.test.js
+2026-02-16T13:50:06.6408782Z   ● Console
+2026-02-16T13:50:06.6409358Z 
+2026-02-16T13:50:06.6409864Z     console.log
+2026-02-16T13:50:06.6410464Z       2026-02-16T13:50:06.557Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T13:50:06.6410867Z 
+2026-02-16T13:50:06.6411044Z       at log (src/logger.ts:28:11)
+2026-02-16T13:50:06.6411322Z 
+2026-02-16T13:50:06.6411444Z     console.log
+2026-02-16T13:50:06.6412186Z       2026-02-16T13:50:06.600Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T13:50:06.6412528Z 
+2026-02-16T13:50:06.6412683Z       at log (src/logger.ts:28:11)
+2026-02-16T13:50:06.6412931Z 
+2026-02-16T13:50:06.6413047Z     console.log
+2026-02-16T13:50:06.6413515Z       2026-02-16T13:50:06.603Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T13:50:06.6414555Z 
+2026-02-16T13:50:06.6414752Z       at log (src/logger.ts:28:11)
+2026-02-16T13:50:06.6414990Z 
+2026-02-16T13:50:06.6415119Z     console.log
+2026-02-16T13:50:06.6415553Z       2026-02-16T13:50:06.606Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T13:50:06.6415908Z 
+2026-02-16T13:50:06.6416074Z       at log (src/logger.ts:28:11)
+2026-02-16T13:50:06.6416323Z 
+2026-02-16T13:50:06.6416439Z     console.log
+2026-02-16T13:50:06.6416894Z       2026-02-16T13:50:06.609Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T13:50:06.6417235Z 
+2026-02-16T13:50:06.6417409Z       at log (src/logger.ts:28:11)
+2026-02-16T13:50:06.6417638Z 
+2026-02-16T13:50:06.6417750Z     console.log
+2026-02-16T13:50:06.6418198Z       2026-02-16T13:50:06.611Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T13:50:06.6418569Z 
+2026-02-16T13:50:06.6418730Z       at log (src/logger.ts:28:11)
+2026-02-16T13:50:06.6418964Z 
+2026-02-16T13:50:06.6419084Z     console.log
+2026-02-16T13:50:06.6419524Z       2026-02-16T13:50:06.615Z [INFO] Applied 2 edit(s) successfully
+2026-02-16T13:50:06.6419877Z 
+2026-02-16T13:50:06.6420149Z       at log (src/logger.ts:28:11)
+2026-02-16T13:50:06.6420387Z 
+2026-02-16T13:50:06.6434041Z PASS dist/agents/reflect.test.js
+2026-02-16T13:50:06.9060742Z PASS dist/models/Generated.test.js
+2026-02-16T13:50:06.9558580Z PASS dist/agents/memory.test.js
+2026-02-16T13:50:06.9911733Z 
+2026-02-16T13:50:06.9915495Z Test Suites: 1 failed, 10 passed, 11 total
+2026-02-16T13:50:06.9916138Z Tests:       1 failed, 179 passed, 180 total
+2026-02-16T13:50:06.9916619Z Snapshots:   0 total
+2026-02-16T13:50:06.9916850Z Time:        2.124 s
+2026-02-16T13:50:06.9917063Z Ran all test suites.
+2026-02-16T13:50:07.0771903Z ##[error]Process completed with exit code 1.
+2026-02-16T13:50:07.0881294Z Post job cleanup.
+2026-02-16T13:50:07.1690350Z [command]/usr/bin/git version
+2026-02-16T13:50:07.1727987Z git version 2.52.0
+2026-02-16T13:50:07.1767209Z Temporarily overriding HOME='/home/runner/work/_temp/f3b8355f-c0c5-4bc3-8983-2e26993b6829' before making global git config changes
+2026-02-16T13:50:07.1768582Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-16T13:50:07.1773202Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SeedGPT/SeedGPT
+2026-02-16T13:50:07.1806214Z Removing SSH command configuration
+2026-02-16T13:50:07.1812683Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-16T13:50:07.1850350Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-16T13:50:07.2119403Z Removing HTTP extra header
+2026-02-16T13:50:07.2125554Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-16T13:50:07.2164048Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-16T13:50:07.2423517Z Removing includeIf entries pointing to credentials config files
+2026-02-16T13:50:07.2430200Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-02-16T13:50:07.2457414Z includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git.path
+2026-02-16T13:50:07.2458323Z includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git/worktrees/*.path
+2026-02-16T13:50:07.2458828Z includeif.gitdir:/github/workspace/.git.path
+2026-02-16T13:50:07.2459430Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-02-16T13:50:07.2468981Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git.path
+2026-02-16T13:50:07.2494394Z /home/runner/work/_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:50:07.2505334Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git.path /home/runner/work/_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:50:07.2542129Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git/worktrees/*.path
+2026-02-16T13:50:07.2566431Z /home/runner/work/_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:50:07.2577108Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:50:07.2613099Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-02-16T13:50:07.2637845Z /github/runner_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:50:07.2646969Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:50:07.2681743Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-02-16T13:50:07.2705612Z /github/runner_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:50:07.2747832Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config
+2026-02-16T13:50:07.2784167Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-02-16T13:50:07.3039178Z Removing credentials config '/home/runner/work/_temp/git-credentials-86008ba8-027f-4c8c-9ae3-767d8492dcef.config'
+2026-02-16T13:50:07.3174476Z Cleaning up orphan processes

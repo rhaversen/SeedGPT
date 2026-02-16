@@ -1,0 +1,1538 @@
+2026-02-16T15:46:44.7832163Z Current runner version: '2.331.0'
+2026-02-16T15:46:44.7856273Z ##[group]Runner Image Provisioner
+2026-02-16T15:46:44.7857141Z Hosted Compute Agent
+2026-02-16T15:46:44.7857739Z Version: 20260123.484
+2026-02-16T15:46:44.7858528Z Commit: 6bd6555ca37d84114959e1c76d2c01448ff61c5d
+2026-02-16T15:46:44.7859220Z Build Date: 2026-01-23T19:41:17Z
+2026-02-16T15:46:44.7860102Z Worker ID: {cb95c044-cefc-423b-b953-945528882ed0}
+2026-02-16T15:46:44.7860946Z Azure Region: westus3
+2026-02-16T15:46:44.7861531Z ##[endgroup]
+2026-02-16T15:46:44.7862981Z ##[group]Operating System
+2026-02-16T15:46:44.7863791Z Ubuntu
+2026-02-16T15:46:44.7864341Z 24.04.3
+2026-02-16T15:46:44.7864872Z LTS
+2026-02-16T15:46:44.7865394Z ##[endgroup]
+2026-02-16T15:46:44.7865973Z ##[group]Runner Image
+2026-02-16T15:46:44.7866646Z Image: ubuntu-24.04
+2026-02-16T15:46:44.7867228Z Version: 20260209.23.1
+2026-02-16T15:46:44.7868447Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260209.23/images/ubuntu/Ubuntu2404-Readme.md
+2026-02-16T15:46:44.7870290Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260209.23
+2026-02-16T15:46:44.7871282Z ##[endgroup]
+2026-02-16T15:46:44.7874228Z ##[group]GITHUB_TOKEN Permissions
+2026-02-16T15:46:44.7876224Z Actions: write
+2026-02-16T15:46:44.7876940Z ArtifactMetadata: write
+2026-02-16T15:46:44.7877535Z Attestations: write
+2026-02-16T15:46:44.7878147Z Checks: write
+2026-02-16T15:46:44.7878776Z Contents: write
+2026-02-16T15:46:44.7879364Z Deployments: write
+2026-02-16T15:46:44.7880188Z Discussions: write
+2026-02-16T15:46:44.7880837Z Issues: write
+2026-02-16T15:46:44.7881409Z Metadata: read
+2026-02-16T15:46:44.7881961Z Models: read
+2026-02-16T15:46:44.7882570Z Packages: write
+2026-02-16T15:46:44.7883171Z Pages: write
+2026-02-16T15:46:44.7883810Z PullRequests: write
+2026-02-16T15:46:44.7884515Z RepositoryProjects: write
+2026-02-16T15:46:44.7885105Z SecurityEvents: write
+2026-02-16T15:46:44.7885702Z Statuses: write
+2026-02-16T15:46:44.7886333Z ##[endgroup]
+2026-02-16T15:46:44.7888395Z Secret source: Actions
+2026-02-16T15:46:44.7889094Z Prepare workflow directory
+2026-02-16T15:46:44.8218831Z Prepare all required actions
+2026-02-16T15:46:44.8258866Z Getting action download info
+2026-02-16T15:46:45.3063009Z Download action repository 'actions/checkout@v6' (SHA:de0fac2e4500dabe0009e67214ff5f5447ce83dd)
+2026-02-16T15:46:45.4521730Z Download action repository 'actions/setup-node@v6' (SHA:6044e13b5dc448c55e2357c09f80417699197238)
+2026-02-16T15:46:45.5411407Z Download action repository 'docker/setup-buildx-action@v3' (SHA:8d2750c68a42422c14e847fe6c8ac0403b4cbd6f)
+2026-02-16T15:46:46.5422352Z Download action repository 'docker/login-action@v3' (SHA:c94ce9fb468520275223c153574b00df6fe4bcc9)
+2026-02-16T15:46:47.7446965Z Complete job name: build-and-deploy
+2026-02-16T15:46:47.8304112Z ##[group]Run actions/checkout@v6
+2026-02-16T15:46:47.8305612Z with:
+2026-02-16T15:46:47.8306467Z   repository: SeedGPT/SeedGPT
+2026-02-16T15:46:47.8307694Z   token: ***
+2026-02-16T15:46:47.8308599Z   ssh-strict: true
+2026-02-16T15:46:47.8309504Z   ssh-user: git
+2026-02-16T15:46:47.8310560Z   persist-credentials: true
+2026-02-16T15:46:47.8311687Z   clean: true
+2026-02-16T15:46:47.8312486Z   sparse-checkout-cone-mode: true
+2026-02-16T15:46:47.8313494Z   fetch-depth: 1
+2026-02-16T15:46:47.8314407Z   fetch-tags: false
+2026-02-16T15:46:47.8315260Z   show-progress: true
+2026-02-16T15:46:47.8316109Z   lfs: false
+2026-02-16T15:46:47.8317017Z   submodules: false
+2026-02-16T15:46:47.8317883Z   set-safe-directory: true
+2026-02-16T15:46:47.8319200Z ##[endgroup]
+2026-02-16T15:46:47.9276690Z Syncing repository: SeedGPT/SeedGPT
+2026-02-16T15:46:47.9279502Z ##[group]Getting Git version info
+2026-02-16T15:46:47.9281204Z Working directory is '/home/runner/work/SeedGPT/SeedGPT'
+2026-02-16T15:46:47.9283328Z [command]/usr/bin/git version
+2026-02-16T15:46:47.9284343Z git version 2.52.0
+2026-02-16T15:46:47.9322424Z ##[endgroup]
+2026-02-16T15:46:47.9337130Z Temporarily overriding HOME='/home/runner/work/_temp/5924a661-91db-4405-aded-bd20a73ac547' before making global git config changes
+2026-02-16T15:46:47.9341497Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-16T15:46:47.9343665Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SeedGPT/SeedGPT
+2026-02-16T15:46:47.9385012Z Deleting the contents of '/home/runner/work/SeedGPT/SeedGPT'
+2026-02-16T15:46:47.9388895Z ##[group]Initializing the repository
+2026-02-16T15:46:47.9393378Z [command]/usr/bin/git init /home/runner/work/SeedGPT/SeedGPT
+2026-02-16T15:46:47.9536904Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-02-16T15:46:47.9540621Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-02-16T15:46:47.9543949Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-02-16T15:46:47.9545728Z hint: call:
+2026-02-16T15:46:47.9546575Z hint:
+2026-02-16T15:46:47.9548131Z hint: 	git config --global init.defaultBranch <name>
+2026-02-16T15:46:47.9549514Z hint:
+2026-02-16T15:46:47.9551162Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-02-16T15:46:47.9553440Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-02-16T15:46:47.9555009Z hint:
+2026-02-16T15:46:47.9555779Z hint: 	git branch -m <name>
+2026-02-16T15:46:47.9556688Z hint:
+2026-02-16T15:46:47.9558156Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-02-16T15:46:47.9560477Z Initialized empty Git repository in /home/runner/work/SeedGPT/SeedGPT/.git/
+2026-02-16T15:46:47.9563626Z [command]/usr/bin/git remote add origin https://github.com/SeedGPT/SeedGPT
+2026-02-16T15:46:47.9592557Z ##[endgroup]
+2026-02-16T15:46:47.9594180Z ##[group]Disabling automatic garbage collection
+2026-02-16T15:46:47.9596834Z [command]/usr/bin/git config --local gc.auto 0
+2026-02-16T15:46:47.9629928Z ##[endgroup]
+2026-02-16T15:46:47.9632265Z ##[group]Setting up auth
+2026-02-16T15:46:47.9633971Z Removing SSH command configuration
+2026-02-16T15:46:47.9637406Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-16T15:46:47.9674336Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-16T15:46:48.0048902Z Removing HTTP extra header
+2026-02-16T15:46:48.0055836Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-16T15:46:48.0090050Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-16T15:46:48.0320789Z Removing includeIf entries pointing to credentials config files
+2026-02-16T15:46:48.0325890Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-02-16T15:46:48.0360594Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-02-16T15:46:48.0602302Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-02-16T15:46:48.0642438Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git.path /home/runner/work/_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:46:48.0675477Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:46:48.0708059Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:46:48.0741377Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:46:48.0769163Z ##[endgroup]
+2026-02-16T15:46:48.0772108Z ##[group]Fetching the repository
+2026-02-16T15:46:48.0781193Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +39d6cfb6eef3aeca19892a07364023bdc0b2b904:refs/remotes/origin/main
+2026-02-16T15:46:48.6497272Z From https://github.com/SeedGPT/SeedGPT
+2026-02-16T15:46:48.6499040Z  * [new ref]         39d6cfb6eef3aeca19892a07364023bdc0b2b904 -> origin/main
+2026-02-16T15:46:48.6542780Z [command]/usr/bin/git branch --list --remote origin/main
+2026-02-16T15:46:48.6574752Z   origin/main
+2026-02-16T15:46:48.6583435Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-02-16T15:46:48.6607142Z 39d6cfb6eef3aeca19892a07364023bdc0b2b904
+2026-02-16T15:46:48.6612222Z ##[endgroup]
+2026-02-16T15:46:48.6613286Z ##[group]Determining the checkout info
+2026-02-16T15:46:48.6614507Z ##[endgroup]
+2026-02-16T15:46:48.6618643Z [command]/usr/bin/git sparse-checkout disable
+2026-02-16T15:46:48.6660741Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-02-16T15:46:48.6691163Z ##[group]Checking out the ref
+2026-02-16T15:46:48.6692017Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-02-16T15:46:48.6789051Z Switched to a new branch 'main'
+2026-02-16T15:46:48.6792272Z branch 'main' set up to track 'origin/main'.
+2026-02-16T15:46:48.6798093Z ##[endgroup]
+2026-02-16T15:46:48.6836294Z [command]/usr/bin/git log -1 --format=%H
+2026-02-16T15:46:48.6860974Z 39d6cfb6eef3aeca19892a07364023bdc0b2b904
+2026-02-16T15:46:48.7167617Z ##[group]Run actions/setup-node@v6
+2026-02-16T15:46:48.7167916Z with:
+2026-02-16T15:46:48.7168105Z   node-version: lts/*
+2026-02-16T15:46:48.7168311Z   cache: npm
+2026-02-16T15:46:48.7168538Z   cache-dependency-path: **/package-lock.json
+2026-02-16T15:46:48.7168833Z   check-latest: false
+2026-02-16T15:46:48.7169182Z   token: ***
+2026-02-16T15:46:48.7169391Z   package-manager-cache: true
+2026-02-16T15:46:48.7169633Z ##[endgroup]
+2026-02-16T15:46:48.8441641Z Attempt to resolve LTS alias from manifest...
+2026-02-16T15:46:49.7594197Z Found in cache @ /opt/hostedtoolcache/node/24.13.0/x64
+2026-02-16T15:46:49.7595824Z ##[group]Environment details
+2026-02-16T15:46:50.1568086Z node: v24.13.0
+2026-02-16T15:46:50.1568516Z npm: 11.6.2
+2026-02-16T15:46:50.1568875Z yarn: 1.22.22
+2026-02-16T15:46:50.1569632Z ##[endgroup]
+2026-02-16T15:46:50.1592612Z [command]/opt/hostedtoolcache/node/24.13.0/x64/bin/npm config get cache
+2026-02-16T15:46:50.2782471Z /home/runner/.npm
+2026-02-16T15:46:50.5390267Z Cache hit for: node-cache-Linux-x64-npm-ed1440487ac0d66118cf25e65e7970fb66c7768862980c8b4428aff3e7961a61
+2026-02-16T15:46:51.8056447Z Received 13368638 of 17562942 (76.1%), 12.7 MBs/sec
+2026-02-16T15:46:51.8203299Z Received 17562942 of 17562942 (100.0%), 16.5 MBs/sec
+2026-02-16T15:46:51.8203993Z Cache Size: ~17 MB (17562942 B)
+2026-02-16T15:46:51.8253143Z [command]/usr/bin/tar -xf /home/runner/work/_temp/9bd5229d-9a80-4300-acab-6f602e9b47e3/cache.tzst -P -C /home/runner/work/SeedGPT/SeedGPT --use-compress-program unzstd
+2026-02-16T15:46:51.9130408Z Cache restored successfully
+2026-02-16T15:46:51.9168307Z Cache restored from key: node-cache-Linux-x64-npm-ed1440487ac0d66118cf25e65e7970fb66c7768862980c8b4428aff3e7961a61
+2026-02-16T15:46:51.9319495Z ##[group]Run npm ci
+2026-02-16T15:46:51.9320071Z [36;1mnpm ci[0m
+2026-02-16T15:46:51.9382382Z shell: /usr/bin/bash -e {0}
+2026-02-16T15:46:51.9382657Z ##[endgroup]
+2026-02-16T15:46:53.6113158Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+2026-02-16T15:46:53.6981877Z npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-02-16T15:46:54.1748965Z npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-02-16T15:46:59.6922799Z 
+2026-02-16T15:46:59.6923754Z added 367 packages, and audited 368 packages in 8s
+2026-02-16T15:46:59.6924254Z 
+2026-02-16T15:46:59.6924720Z 50 packages are looking for funding
+2026-02-16T15:46:59.6926902Z   run `npm fund` for details
+2026-02-16T15:46:59.6937819Z 
+2026-02-16T15:46:59.6938506Z found 0 vulnerabilities
+2026-02-16T15:46:59.7554681Z ##[group]Run npm run build
+2026-02-16T15:46:59.7554981Z [36;1mnpm run build[0m
+2026-02-16T15:46:59.7608330Z shell: /usr/bin/bash -e {0}
+2026-02-16T15:46:59.7608591Z ##[endgroup]
+2026-02-16T15:46:59.8628615Z 
+2026-02-16T15:46:59.8629363Z > ***@1.0.0 build
+2026-02-16T15:46:59.8629869Z > tsc
+2026-02-16T15:46:59.8630015Z 
+2026-02-16T15:47:03.5324464Z ##[group]Run npm test -- --coverage --coverageProvider=v8 --coverageReporters=text --passWithNoTests
+2026-02-16T15:47:03.5325682Z [36;1mnpm test -- --coverage --coverageProvider=v8 --coverageReporters=text --passWithNoTests[0m
+2026-02-16T15:47:03.5390998Z shell: /usr/bin/bash -e {0}
+2026-02-16T15:47:03.5391392Z ##[endgroup]
+2026-02-16T15:47:03.6741769Z 
+2026-02-16T15:47:03.6742425Z > ***@1.0.0 test
+2026-02-16T15:47:03.6744392Z > npm run build && node --enable-source-maps --experimental-vm-modules node_modules/jest/bin/jest.js --passWithNoTests --coverage --coverageProvider=v8 --coverageReporters=text --passWithNoTests
+2026-02-16T15:47:03.6745825Z 
+2026-02-16T15:47:03.7721395Z 
+2026-02-16T15:47:03.7722205Z > ***@1.0.0 build
+2026-02-16T15:47:03.7722871Z > tsc
+2026-02-16T15:47:03.7724429Z 
+2026-02-16T15:47:08.4447845Z (node:2408) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+2026-02-16T15:47:08.4449282Z (Use `node --trace-warnings ...` to show where the warning was created)
+2026-02-16T15:47:08.4488694Z PASS dist/agents/compression.test.js
+2026-02-16T15:47:08.6920213Z PASS dist/tools/log-parsing.test.js
+2026-02-16T15:47:08.7653056Z (node:2410) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+2026-02-16T15:47:08.7654521Z (Use `node --trace-warnings ...` to show where the warning was created)
+2026-02-16T15:47:09.0047758Z PASS dist/llm/api.test.js
+2026-02-16T15:47:09.6261264Z PASS dist/loop.test.js
+2026-02-16T15:47:09.6542613Z (node:2409) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+2026-02-16T15:47:09.6547993Z (Use `node --trace-warnings ...` to show where the warning was created)
+2026-02-16T15:47:09.9133750Z PASS dist/tools/codebase.test.js
+2026-02-16T15:47:10.1320805Z PASS dist/logger.test.js
+2026-02-16T15:47:10.2916103Z PASS dist/tools/git.test.js
+2026-02-16T15:47:10.3130261Z   ● Console
+2026-02-16T15:47:10.3131023Z 
+2026-02-16T15:47:10.3131308Z     console.log
+2026-02-16T15:47:10.3132117Z       2026-02-16T15:47:10.146Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T15:47:10.3132596Z 
+2026-02-16T15:47:10.3132828Z       at log (src/logger.ts:28:11)
+2026-02-16T15:47:10.3133148Z 
+2026-02-16T15:47:10.3133311Z     console.log
+2026-02-16T15:47:10.3133962Z       2026-02-16T15:47:10.201Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T15:47:10.3134458Z 
+2026-02-16T15:47:10.3135096Z       at log (src/logger.ts:28:11)
+2026-02-16T15:47:10.3135443Z 
+2026-02-16T15:47:10.3135600Z     console.log
+2026-02-16T15:47:10.3136208Z       2026-02-16T15:47:10.204Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T15:47:10.3136705Z 
+2026-02-16T15:47:10.3136934Z       at log (src/logger.ts:28:11)
+2026-02-16T15:47:10.3137256Z 
+2026-02-16T15:47:10.3137404Z     console.log
+2026-02-16T15:47:10.3137966Z       2026-02-16T15:47:10.206Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T15:47:10.3138870Z 
+2026-02-16T15:47:10.3139105Z       at log (src/logger.ts:28:11)
+2026-02-16T15:47:10.3139430Z 
+2026-02-16T15:47:10.3139607Z     console.log
+2026-02-16T15:47:10.3140490Z       2026-02-16T15:47:10.209Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T15:47:10.3140980Z 
+2026-02-16T15:47:10.3141211Z       at log (src/logger.ts:28:11)
+2026-02-16T15:47:10.3141535Z 
+2026-02-16T15:47:10.3141695Z     console.log
+2026-02-16T15:47:10.3142291Z       2026-02-16T15:47:10.212Z [INFO] Applied 1 edit(s) successfully
+2026-02-16T15:47:10.3142756Z 
+2026-02-16T15:47:10.3142988Z       at log (src/logger.ts:28:11)
+2026-02-16T15:47:10.3143366Z 
+2026-02-16T15:47:10.3143539Z     console.log
+2026-02-16T15:47:10.3144124Z       2026-02-16T15:47:10.218Z [INFO] Applied 2 edit(s) successfully
+2026-02-16T15:47:10.3144599Z 
+2026-02-16T15:47:10.3144836Z       at log (src/logger.ts:28:11)
+2026-02-16T15:47:10.3145159Z 
+2026-02-16T15:47:10.3709004Z PASS dist/agents/memory.test.js
+2026-02-16T15:47:10.3855115Z PASS dist/agents/reflect.test.js
+2026-02-16T15:47:10.7921751Z PASS dist/models/Generated.test.js
+2026-02-16T15:47:10.9665218Z ------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------
+2026-02-16T15:47:10.9666962Z File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                  
+2026-02-16T15:47:10.9668579Z ------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------
+2026-02-16T15:47:10.9674458Z All files         |   66.61 |    86.03 |   63.82 |   66.61 |                                                                                    
+2026-02-16T15:47:10.9675673Z  src              |   57.25 |    84.05 |   76.92 |   57.25 |                                                                                    
+2026-02-16T15:47:10.9677083Z   config.ts       |       0 |        0 |       0 |       0 | 1-79                                                                               
+2026-02-16T15:47:10.9678324Z   database.ts     |       0 |        0 |       0 |       0 | 1-46                                                                               
+2026-02-16T15:47:10.9679495Z   env.ts          |       0 |        0 |       0 |       0 | 1-35                                                                               
+2026-02-16T15:47:10.9680868Z   logger.ts       |     100 |    92.68 |     100 |     100 | 64,68-69                                                                           
+2026-02-16T15:47:10.9682123Z   loop.ts         |   94.11 |       80 |     100 |   94.11 | 95-98,101-104                                                                      
+2026-02-16T15:47:10.9684748Z  src/agents       |   63.44 |    83.51 |   88.46 |   63.44 |                                                                                    
+2026-02-16T15:47:10.9686053Z   build.ts        |       0 |        0 |       0 |       0 | 1-122                                                                              
+2026-02-16T15:47:10.9687740Z   compression.ts  |   95.61 |     86.5 |     100 |   95.61 | 172-173,266-267,358-360,389-390,392-393,395-398,417-420                            
+2026-02-16T15:47:10.9689388Z   fix.ts          |       0 |        0 |       0 |       0 | 1-127                                                                              
+2026-02-16T15:47:10.9690834Z   memory.ts       |     100 |     93.1 |     100 |     100 | 8,23                                                                               
+2026-02-16T15:47:10.9691988Z   plan.ts         |       0 |        0 |       0 |       0 | 1-80                                                                               
+2026-02-16T15:47:10.9693169Z   reflect.ts      |   90.24 |       70 |     100 |   90.24 | 11-13,15,17,19,22,24                                                               
+2026-02-16T15:47:10.9694362Z  src/llm          |   95.05 |    77.08 |     100 |   95.05 |                                                                                    
+2026-02-16T15:47:10.9695930Z   api.ts          |   91.51 |    77.08 |     100 |   91.51 | 50-62,108-109,130-133                                                              
+2026-02-16T15:47:10.9697156Z   prompts.ts      |     100 |      100 |     100 |     100 |                                                                                    
+2026-02-16T15:47:10.9698329Z  src/models       |     100 |      100 |     100 |     100 |                                                                                    
+2026-02-16T15:47:10.9699576Z   Generated.ts    |     100 |      100 |     100 |     100 |                                                                                    
+2026-02-16T15:47:10.9701049Z   IterationLog.ts |     100 |      100 |     100 |     100 |                                                                                    
+2026-02-16T15:47:10.9702481Z   Memory.ts       |     100 |      100 |     100 |     100 |                                                                                    
+2026-02-16T15:47:10.9703762Z  src/tools        |   58.48 |    91.11 |   42.85 |   58.48 |                                                                                    
+2026-02-16T15:47:10.9705106Z   codebase.ts     |   71.61 |    90.38 |   73.68 |   71.61 | 171-172,175-231,233-244,271-273,283-289,292-298                                    
+2026-02-16T15:47:10.9706528Z   definitions.ts  |   62.64 |      100 |       0 |   62.64 | 269-415,418-431                                                                    
+2026-02-16T15:47:10.9707864Z   git.ts          |   45.16 |    92.85 |      10 |   45.16 | 11-14,17-26,29-34,82-94,97-98,101-103,106-111,114-121,123-155                      
+2026-02-16T15:47:10.9709223Z   github.ts       |   18.71 |      100 |       0 |   18.71 | 18-28,31-66,68-118,121-128,131-137,140-142,147-155,158-160,163-169,173-199,201-203 
+2026-02-16T15:47:10.9710862Z   log-parsing.ts  |   92.12 |    91.93 |   85.71 |   92.12 | 7-12,52-55                                                                         
+2026-02-16T15:47:10.9712354Z ------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------
+2026-02-16T15:47:10.9713124Z 
+2026-02-16T15:47:10.9717116Z Test Suites: 10 passed, 10 total
+2026-02-16T15:47:10.9717872Z Tests:       157 passed, 157 total
+2026-02-16T15:47:10.9719621Z Snapshots:   0 total
+2026-02-16T15:47:10.9720232Z Time:        3.278 s
+2026-02-16T15:47:10.9720630Z Ran all test suites.
+2026-02-16T15:47:11.0000013Z ##[group]Run docker/setup-buildx-action@v3
+2026-02-16T15:47:11.0000350Z with:
+2026-02-16T15:47:11.0000554Z   driver: docker-container
+2026-02-16T15:47:11.0000786Z   use: true
+2026-02-16T15:47:11.0000977Z   keep-state: false
+2026-02-16T15:47:11.0001190Z   cache-binary: true
+2026-02-16T15:47:11.0001393Z   cleanup: true
+2026-02-16T15:47:11.0001599Z   install: false
+2026-02-16T15:47:11.0001786Z ##[endgroup]
+2026-02-16T15:47:11.2573878Z ##[group]Docker info
+2026-02-16T15:47:11.2600585Z [command]/usr/bin/docker version
+2026-02-16T15:47:11.3859161Z Client: Docker Engine - Community
+2026-02-16T15:47:11.3860385Z  Version:           29.1.5
+2026-02-16T15:47:11.3863598Z  API version:       1.52
+2026-02-16T15:47:11.3866513Z  Go version:        go1.25.6
+2026-02-16T15:47:11.3867040Z  Git commit:        0e6fee6
+2026-02-16T15:47:11.3867584Z  Built:             Fri Jan 16 12:48:47 2026
+2026-02-16T15:47:11.3868161Z  OS/Arch:           linux/amd64
+2026-02-16T15:47:11.3868714Z  Context:           default
+2026-02-16T15:47:11.3868990Z 
+2026-02-16T15:47:11.3869256Z Server: Docker Engine - Community
+2026-02-16T15:47:11.3869905Z  Engine:
+2026-02-16T15:47:11.3870265Z   Version:          29.1.5
+2026-02-16T15:47:11.3870884Z   API version:      1.52 (minimum version 1.44)
+2026-02-16T15:47:11.3871442Z   Go version:       go1.25.6
+2026-02-16T15:47:11.3894048Z   Git commit:       3b01d64
+2026-02-16T15:47:11.3894956Z   Built:            Fri Jan 16 12:48:47 2026
+2026-02-16T15:47:11.3895489Z   OS/Arch:          linux/amd64
+2026-02-16T15:47:11.3895962Z   Experimental:     false
+2026-02-16T15:47:11.3896416Z  containerd:
+2026-02-16T15:47:11.3896796Z   Version:          v2.2.1
+2026-02-16T15:47:11.3897413Z   GitCommit:        dea7da592f5d1d2b7755e3a161be07f43fad8f75
+2026-02-16T15:47:11.3897991Z  runc:
+2026-02-16T15:47:11.3898358Z   Version:          1.3.4
+2026-02-16T15:47:11.3898841Z   GitCommit:        v1.3.4-0-gd6d73eb8
+2026-02-16T15:47:11.3899325Z  docker-init:
+2026-02-16T15:47:11.3900128Z   Version:          0.19.0
+2026-02-16T15:47:11.3900586Z   GitCommit:        de40ad0
+2026-02-16T15:47:11.3923719Z [command]/usr/bin/docker info
+2026-02-16T15:47:11.7084785Z Client: Docker Engine - Community
+2026-02-16T15:47:11.7085330Z  Version:    29.1.5
+2026-02-16T15:47:11.7085740Z  Context:    default
+2026-02-16T15:47:11.7086125Z  Debug Mode: false
+2026-02-16T15:47:11.7086468Z  Plugins:
+2026-02-16T15:47:11.7086953Z   buildx: Docker Buildx (Docker Inc.)
+2026-02-16T15:47:11.7087388Z     Version:  v0.31.1
+2026-02-16T15:47:11.7087740Z     Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+2026-02-16T15:47:11.7088104Z   compose: Docker Compose (Docker Inc.)
+2026-02-16T15:47:11.7088375Z     Version:  v2.40.3
+2026-02-16T15:47:11.7088685Z     Path:     /usr/libexec/docker/cli-plugins/docker-compose
+2026-02-16T15:47:11.7088917Z 
+2026-02-16T15:47:11.7089003Z Server:
+2026-02-16T15:47:11.7089188Z  Containers: 0
+2026-02-16T15:47:11.7089387Z   Running: 0
+2026-02-16T15:47:11.7089573Z   Paused: 0
+2026-02-16T15:47:11.7090028Z   Stopped: 0
+2026-02-16T15:47:11.7090375Z  Images: 1
+2026-02-16T15:47:11.7090652Z  Server Version: 29.1.5
+2026-02-16T15:47:11.7090894Z  Storage Driver: overlayfs
+2026-02-16T15:47:11.7091189Z   driver-type: io.containerd.snapshotter.v1
+2026-02-16T15:47:11.7091492Z  Logging Driver: json-file
+2026-02-16T15:47:11.7091732Z  Cgroup Driver: systemd
+2026-02-16T15:47:11.7091949Z  Cgroup Version: 2
+2026-02-16T15:47:11.7092168Z  Plugins:
+2026-02-16T15:47:11.7092356Z   Volume: local
+2026-02-16T15:47:11.7092635Z   Network: bridge host ipvlan macvlan null overlay
+2026-02-16T15:47:11.7093089Z   Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog
+2026-02-16T15:47:11.7093470Z  CDI spec directories:
+2026-02-16T15:47:11.7093685Z   /etc/cdi
+2026-02-16T15:47:11.7093870Z   /var/run/cdi
+2026-02-16T15:47:11.7094065Z  Swarm: inactive
+2026-02-16T15:47:11.7094311Z  Runtimes: io.containerd.runc.v2 runc
+2026-02-16T15:47:11.7094583Z  Default Runtime: runc
+2026-02-16T15:47:11.7094808Z  Init Binary: docker-init
+2026-02-16T15:47:11.7095495Z  containerd version: dea7da592f5d1d2b7755e3a161be07f43fad8f75
+2026-02-16T15:47:11.7095877Z  runc version: v1.3.4-0-gd6d73eb8
+2026-02-16T15:47:11.7096127Z  init version: de40ad0
+2026-02-16T15:47:11.7096343Z  Security Options:
+2026-02-16T15:47:11.7096544Z   apparmor
+2026-02-16T15:47:11.7096723Z   seccomp
+2026-02-16T15:47:11.7096906Z    Profile: builtin
+2026-02-16T15:47:11.7097111Z   cgroupns
+2026-02-16T15:47:11.7097368Z  Kernel Version: 6.14.0-1017-azure
+2026-02-16T15:47:11.7097660Z  Operating System: Ubuntu 24.04.3 LTS
+2026-02-16T15:47:11.7097913Z  OSType: linux
+2026-02-16T15:47:11.7098113Z  Architecture: x86_64
+2026-02-16T15:47:11.7098323Z  CPUs: 4
+2026-02-16T15:47:11.7098506Z  Total Memory: 15.62GiB
+2026-02-16T15:47:11.7098727Z  Name: runnervmjduv7
+2026-02-16T15:47:11.7098975Z  ID: 169aa517-19ec-4d49-bd61-4bb79f5886f6
+2026-02-16T15:47:11.7099271Z  Docker Root Dir: /var/lib/docker
+2026-02-16T15:47:11.7099512Z  Debug Mode: false
+2026-02-16T15:47:11.7100165Z  Username: githubactions
+2026-02-16T15:47:11.7100565Z  Experimental: false
+2026-02-16T15:47:11.7100981Z  Insecure Registries:
+2026-02-16T15:47:11.7101475Z   ::1/128
+2026-02-16T15:47:11.7101748Z   127.0.0.0/8
+2026-02-16T15:47:11.7101960Z  Live Restore Enabled: false
+2026-02-16T15:47:11.7102215Z  Firewall Backend: iptables
+2026-02-16T15:47:11.7102379Z 
+2026-02-16T15:47:11.7106814Z ##[endgroup]
+2026-02-16T15:47:11.7866473Z ##[group]Buildx version
+2026-02-16T15:47:11.7896639Z [command]/usr/bin/docker buildx version
+2026-02-16T15:47:11.8460899Z github.com/docker/buildx v0.31.1 a2675950d46b2cb171b23c2015ca44fb88607531
+2026-02-16T15:47:11.8497439Z ##[endgroup]
+2026-02-16T15:47:11.8660890Z ##[group]Inspecting default docker context
+2026-02-16T15:47:11.8798346Z [
+2026-02-16T15:47:11.8798746Z   {
+2026-02-16T15:47:11.8798965Z     "Name": "default",
+2026-02-16T15:47:11.8799225Z     "Metadata": {},
+2026-02-16T15:47:11.8799453Z     "Endpoints": {
+2026-02-16T15:47:11.8799666Z       "docker": {
+2026-02-16T15:47:11.8800232Z         "Host": "unix:///var/run/docker.sock",
+2026-02-16T15:47:11.8800587Z         "SkipTLSVerify": false
+2026-02-16T15:47:11.8800827Z       }
+2026-02-16T15:47:11.8801001Z     },
+2026-02-16T15:47:11.8801193Z     "TLSMaterial": {},
+2026-02-16T15:47:11.8801418Z     "Storage": {
+2026-02-16T15:47:11.8801656Z       "MetadataPath": "<IN MEMORY>",
+2026-02-16T15:47:11.8801939Z       "TLSPath": "<IN MEMORY>"
+2026-02-16T15:47:11.8802186Z     }
+2026-02-16T15:47:11.8802599Z   }
+2026-02-16T15:47:11.8802863Z ]
+2026-02-16T15:47:11.8803413Z ##[endgroup]
+2026-02-16T15:47:11.8803981Z ##[group]Creating a new builder instance
+2026-02-16T15:47:12.0245563Z [command]/usr/bin/docker buildx create --name builder-142fa642-1d96-4f71-8ec6-265b26471cb2 --driver docker-container --buildkitd-flags --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host --use
+2026-02-16T15:47:12.0880166Z builder-142fa642-1d96-4f71-8ec6-265b26471cb2
+2026-02-16T15:47:12.0920933Z ##[endgroup]
+2026-02-16T15:47:12.0921380Z ##[group]Booting builder
+2026-02-16T15:47:12.0958476Z [command]/usr/bin/docker buildx inspect --bootstrap --builder builder-142fa642-1d96-4f71-8ec6-265b26471cb2
+2026-02-16T15:47:12.1556089Z #1 [internal] booting buildkit
+2026-02-16T15:47:12.3062322Z #1 pulling image moby/buildkit:buildx-stable-1
+2026-02-16T15:47:14.8046883Z #1 pulling image moby/buildkit:buildx-stable-1 2.6s done
+2026-02-16T15:47:14.9549861Z #1 creating container buildx_buildkit_builder-142fa642-1d96-4f71-8ec6-265b26471cb20
+2026-02-16T15:47:15.9615304Z #1 creating container buildx_buildkit_builder-142fa642-1d96-4f71-8ec6-265b26471cb20 1.2s done
+2026-02-16T15:47:15.9646463Z #1 DONE 3.8s
+2026-02-16T15:47:15.9928837Z Name:          builder-142fa642-1d96-4f71-8ec6-265b26471cb2
+2026-02-16T15:47:15.9930212Z Driver:        docker-container
+2026-02-16T15:47:15.9931644Z Last Activity: 2026-02-16 15:47:12 +0000 UTC
+2026-02-16T15:47:15.9931989Z 
+2026-02-16T15:47:15.9932123Z Nodes:
+2026-02-16T15:47:15.9932686Z Name:                  builder-142fa642-1d96-4f71-8ec6-265b26471cb20
+2026-02-16T15:47:15.9933752Z Endpoint:              unix:///var/run/docker.sock
+2026-02-16T15:47:15.9934271Z Status:                running
+2026-02-16T15:47:15.9934905Z BuildKit daemon flags: --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host
+2026-02-16T15:47:15.9935475Z BuildKit version:      v0.27.1
+2026-02-16T15:47:15.9935898Z Platforms:             linux/amd64, linux/amd64/v2, linux/amd64/v3, linux/386
+2026-02-16T15:47:15.9936265Z Labels:
+2026-02-16T15:47:15.9936558Z  org.mobyproject.buildkit.worker.executor:         oci
+2026-02-16T15:47:15.9936999Z  org.mobyproject.buildkit.worker.hostname:         2a26ecd0eff5
+2026-02-16T15:47:15.9937440Z  org.mobyproject.buildkit.worker.network:          host
+2026-02-16T15:47:15.9937875Z  org.mobyproject.buildkit.worker.oci.process-mode: sandbox
+2026-02-16T15:47:15.9938313Z  org.mobyproject.buildkit.worker.selinux.enabled:  false
+2026-02-16T15:47:15.9938750Z  org.mobyproject.buildkit.worker.snapshotter:      overlayfs
+2026-02-16T15:47:15.9939116Z GC Policy rule#0:
+2026-02-16T15:47:15.9939329Z  All:            false
+2026-02-16T15:47:15.9939957Z  Filters:        type==source.local,type==exec.cachemount,type==source.git.checkout
+2026-02-16T15:47:15.9940388Z  Keep Duration:  48h0m0s
+2026-02-16T15:47:15.9940623Z  Max Used Space: 488.3MiB
+2026-02-16T15:47:15.9940857Z GC Policy rule#1:
+2026-02-16T15:47:15.9941056Z  All:            false
+2026-02-16T15:47:15.9941471Z  Keep Duration:  1440h0m0s
+2026-02-16T15:47:15.9941703Z  Reserved Space: 9.313GiB
+2026-02-16T15:47:15.9941923Z  Max Used Space: 93.13GiB
+2026-02-16T15:47:15.9942139Z  Min Free Space: 27.01GiB
+2026-02-16T15:47:15.9942359Z GC Policy rule#2:
+2026-02-16T15:47:15.9942554Z  All:            false
+2026-02-16T15:47:15.9942762Z  Reserved Space: 9.313GiB
+2026-02-16T15:47:15.9942983Z  Max Used Space: 93.13GiB
+2026-02-16T15:47:15.9943200Z  Min Free Space: 27.01GiB
+2026-02-16T15:47:15.9943420Z GC Policy rule#3:
+2026-02-16T15:47:15.9943614Z  All:            true
+2026-02-16T15:47:15.9943815Z  Reserved Space: 9.313GiB
+2026-02-16T15:47:15.9944038Z  Max Used Space: 93.13GiB
+2026-02-16T15:47:15.9944257Z  Min Free Space: 27.01GiB
+2026-02-16T15:47:15.9990232Z ##[endgroup]
+2026-02-16T15:47:16.0948781Z ##[group]Inspect builder
+2026-02-16T15:47:16.0951989Z {
+2026-02-16T15:47:16.0952343Z   "nodes": [
+2026-02-16T15:47:16.0952684Z     {
+2026-02-16T15:47:16.0953422Z       "name": "builder-142fa642-1d96-4f71-8ec6-265b26471cb20",
+2026-02-16T15:47:16.0954338Z       "endpoint": "unix:///var/run/docker.sock",
+2026-02-16T15:47:16.0954702Z       "status": "running",
+2026-02-16T15:47:16.0955328Z       "buildkitd-flags": "--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host",
+2026-02-16T15:47:16.0955895Z       "buildkit": "v0.27.1",
+2026-02-16T15:47:16.0956392Z       "platforms": "linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/386",
+2026-02-16T15:47:16.0956751Z       "features": {
+2026-02-16T15:47:16.0957107Z         "Automatically load images to the Docker Engine image store": true,
+2026-02-16T15:47:16.0957631Z         "Cache export": true,
+2026-02-16T15:47:16.0957885Z         "Direct push": true,
+2026-02-16T15:47:16.0958139Z         "Docker exporter": true,
+2026-02-16T15:47:16.0958426Z         "Multi-platform build": true,
+2026-02-16T15:47:16.0958691Z         "OCI exporter": true
+2026-02-16T15:47:16.0958910Z       },
+2026-02-16T15:47:16.0959090Z       "labels": {
+2026-02-16T15:47:16.0959487Z         "org.mobyproject.buildkit.worker.executor": "oci",
+2026-02-16T15:47:16.0960313Z         "org.mobyproject.buildkit.worker.hostname": "2a26ecd0eff5",
+2026-02-16T15:47:16.0960758Z         "org.mobyproject.buildkit.worker.network": "host",
+2026-02-16T15:47:16.0961210Z         "org.mobyproject.buildkit.worker.oci.process-mode": "sandbox",
+2026-02-16T15:47:16.0961694Z         "org.mobyproject.buildkit.worker.selinux.enabled": "false",
+2026-02-16T15:47:16.0962156Z         "org.mobyproject.buildkit.worker.snapshotter": "overlayfs"
+2026-02-16T15:47:16.0962486Z       },
+2026-02-16T15:47:16.0962671Z       "gcPolicy": [
+2026-02-16T15:47:16.0963109Z         {
+2026-02-16T15:47:16.0963306Z           "all": false,
+2026-02-16T15:47:16.0963523Z           "filter": [
+2026-02-16T15:47:16.0963761Z             "type==source.local",
+2026-02-16T15:47:16.0964039Z             "type==exec.cachemount",
+2026-02-16T15:47:16.0964330Z             "type==source.git.checkout"
+2026-02-16T15:47:16.0964627Z           ],
+2026-02-16T15:47:16.0964880Z           "keepDuration": "48h0m0s",
+2026-02-16T15:47:16.0965190Z           "maxUsedSpace": "488.3MiB"
+2026-02-16T15:47:16.0965429Z         },
+2026-02-16T15:47:16.0965606Z         {
+2026-02-16T15:47:16.0965782Z           "all": false,
+2026-02-16T15:47:16.0966032Z           "keepDuration": "1440h0m0s",
+2026-02-16T15:47:16.0966316Z           "reservedSpace": "9.313GiB",
+2026-02-16T15:47:16.0966594Z           "maxUsedSpace": "93.13GiB",
+2026-02-16T15:47:16.0966870Z           "minFreeSpace": "27.01GiB"
+2026-02-16T15:47:16.0967117Z         },
+2026-02-16T15:47:16.0967294Z         {
+2026-02-16T15:47:16.0967478Z           "all": false,
+2026-02-16T15:47:16.0967725Z           "reservedSpace": "9.313GiB",
+2026-02-16T15:47:16.0968008Z           "maxUsedSpace": "93.13GiB",
+2026-02-16T15:47:16.0968282Z           "minFreeSpace": "27.01GiB"
+2026-02-16T15:47:16.0968514Z         },
+2026-02-16T15:47:16.0968681Z         {
+2026-02-16T15:47:16.0968858Z           "all": true,
+2026-02-16T15:47:16.0969250Z           "reservedSpace": "9.313GiB",
+2026-02-16T15:47:16.0969523Z           "maxUsedSpace": "93.13GiB",
+2026-02-16T15:47:16.0970597Z           "minFreeSpace": "27.01GiB"
+2026-02-16T15:47:16.0970873Z         }
+2026-02-16T15:47:16.0971049Z       ]
+2026-02-16T15:47:16.0971223Z     }
+2026-02-16T15:47:16.0971393Z   ],
+2026-02-16T15:47:16.0971673Z   "name": "builder-142fa642-1d96-4f71-8ec6-265b26471cb2",
+2026-02-16T15:47:16.0972021Z   "driver": "docker-container",
+2026-02-16T15:47:16.0972319Z   "lastActivity": "2026-02-16T15:47:12.000Z"
+2026-02-16T15:47:16.0972616Z }
+2026-02-16T15:47:16.0973148Z ##[endgroup]
+2026-02-16T15:47:16.0973683Z ##[group]BuildKit version
+2026-02-16T15:47:16.0974224Z builder-142fa642-1d96-4f71-8ec6-265b26471cb20: v0.27.1
+2026-02-16T15:47:16.0974958Z ##[endgroup]
+2026-02-16T15:47:16.1103743Z ##[group]Run docker/login-action@v3
+2026-02-16T15:47:16.1104018Z with:
+2026-02-16T15:47:16.1104499Z   username: ***
+2026-02-16T15:47:16.1104745Z   password: ***
+2026-02-16T15:47:16.1104939Z   logout: true
+2026-02-16T15:47:16.1105137Z ##[endgroup]
+2026-02-16T15:47:16.4149393Z Logging into docker.io...
+2026-02-16T15:47:16.9226341Z Login Succeeded!
+2026-02-16T15:47:16.9352916Z ##[group]Run docker buildx create --use
+2026-02-16T15:47:16.9353275Z [36;1mdocker buildx create --use[0m
+2026-02-16T15:47:16.9353688Z [36;1mdocker buildx build --file Dockerfile --platform linux/arm64,linux/amd64 \[0m
+2026-02-16T15:47:16.9354368Z [36;1m  --push --tag ***/***:39d6cfb6eef3aeca19892a07364023bdc0b2b904 \[0m
+2026-02-16T15:47:16.9354766Z [36;1m  --tag ***/***:latest .[0m
+2026-02-16T15:47:16.9403208Z shell: /usr/bin/bash -e {0}
+2026-02-16T15:47:16.9403470Z ##[endgroup]
+2026-02-16T15:47:17.0056561Z practical_euler
+2026-02-16T15:47:17.0702880Z #0 building with "practical_euler" instance using docker-container driver
+2026-02-16T15:47:17.0703462Z 
+2026-02-16T15:47:17.0703765Z #1 [internal] booting buildkit
+2026-02-16T15:47:17.2208998Z #1 pulling image moby/buildkit:buildx-stable-1
+2026-02-16T15:47:17.8915484Z #1 pulling image moby/buildkit:buildx-stable-1 0.8s done
+2026-02-16T15:47:18.0427061Z #1 creating container buildx_buildkit_practical_euler0
+2026-02-16T15:47:18.1500536Z #1 creating container buildx_buildkit_practical_euler0 0.3s done
+2026-02-16T15:47:18.3710729Z #1 DONE 1.1s
+2026-02-16T15:47:18.3711008Z 
+2026-02-16T15:47:18.3711287Z #2 [internal] load build definition from Dockerfile
+2026-02-16T15:47:18.3711788Z #2 transferring dockerfile: 596B done
+2026-02-16T15:47:18.3712134Z #2 DONE 0.0s
+2026-02-16T15:47:18.3712276Z 
+2026-02-16T15:47:18.3712695Z #3 [linux/amd64 internal] load metadata for docker.io/library/node:lts-bookworm-slim
+2026-02-16T15:47:18.5529325Z #3 ...
+2026-02-16T15:47:18.5529491Z 
+2026-02-16T15:47:18.5529929Z #4 [auth] library/node:pull token for registry-1.docker.io
+2026-02-16T15:47:18.5530310Z #4 DONE 0.0s
+2026-02-16T15:47:18.7032045Z 
+2026-02-16T15:47:18.7032682Z #5 [linux/arm64 internal] load metadata for docker.io/library/node:lts-bookworm-slim
+2026-02-16T15:47:19.1452322Z #5 DONE 0.9s
+2026-02-16T15:47:19.1452616Z 
+2026-02-16T15:47:19.1453228Z #3 [linux/amd64 internal] load metadata for docker.io/library/node:lts-bookworm-slim
+2026-02-16T15:47:19.3151050Z #3 DONE 0.9s
+2026-02-16T15:47:19.3151334Z 
+2026-02-16T15:47:19.3151759Z #6 [internal] load .dockerignore
+2026-02-16T15:47:19.3152535Z #6 transferring context: 2B done
+2026-02-16T15:47:19.3153142Z #6 DONE 0.0s
+2026-02-16T15:47:19.3153411Z 
+2026-02-16T15:47:19.3162464Z #7 [linux/arm64 1/9] FROM docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2
+2026-02-16T15:47:19.3166242Z #7 resolve docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2 done
+2026-02-16T15:47:19.4495589Z #7 ...
+2026-02-16T15:47:19.4496002Z 
+2026-02-16T15:47:19.4498173Z #8 [internal] load build context
+2026-02-16T15:47:19.4499104Z #8 transferring context: 691.24kB 0.1s done
+2026-02-16T15:47:19.4500399Z #8 DONE 0.1s
+2026-02-16T15:47:19.4500557Z 
+2026-02-16T15:47:19.4501570Z #7 [linux/arm64 1/9] FROM docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2
+2026-02-16T15:47:19.4502789Z #7 sha256:fd7301eb434a35eabcedbbbd5a9ffb77ab36941e6d608be46498eae54c976a79 450B / 450B 0.2s done
+2026-02-16T15:47:19.4503765Z #7 sha256:98695bc3b48088f384742249126d357486d07b0599d64d91242578ee6a6e9e49 0B / 1.71MB 0.2s
+2026-02-16T15:47:19.4504813Z #7 sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 0B / 49.22MB 0.2s
+2026-02-16T15:47:19.4505914Z #7 sha256:118ada1cac5250a6e6e5a88944d662c6ee09efd7148995dfab63376f6a9a58d5 0B / 3.32kB 0.2s
+2026-02-16T15:47:19.6006749Z #7 sha256:98695bc3b48088f384742249126d357486d07b0599d64d91242578ee6a6e9e49 1.71MB / 1.71MB 0.3s done
+2026-02-16T15:47:19.6008584Z #7 sha256:118ada1cac5250a6e6e5a88944d662c6ee09efd7148995dfab63376f6a9a58d5 3.32kB / 3.32kB 0.3s done
+2026-02-16T15:47:19.6010042Z #7 sha256:d3d5d8ab26d25b9040a3c2160d7ddfe3911ae81035d5b1b0904f3ebda32476b6 0B / 28.11MB 0.2s
+2026-02-16T15:47:19.7374497Z #7 sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 7.34MB / 49.22MB 0.5s
+2026-02-16T15:47:19.8431765Z #7 sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 12.58MB / 49.22MB 0.6s
+2026-02-16T15:47:19.8433501Z #7 sha256:d3d5d8ab26d25b9040a3c2160d7ddfe3911ae81035d5b1b0904f3ebda32476b6 8.39MB / 28.11MB 0.3s
+2026-02-16T15:47:19.9463385Z #7 sha256:d3d5d8ab26d25b9040a3c2160d7ddfe3911ae81035d5b1b0904f3ebda32476b6 28.11MB / 28.11MB 0.5s done
+2026-02-16T15:47:20.0739311Z #7 sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 15.73MB / 49.22MB 0.8s
+2026-02-16T15:47:20.0740904Z #7 extracting sha256:d3d5d8ab26d25b9040a3c2160d7ddfe3911ae81035d5b1b0904f3ebda32476b6
+2026-02-16T15:47:20.1879515Z #7 sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 24.12MB / 49.22MB 0.9s
+2026-02-16T15:47:20.2937149Z #7 sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 31.46MB / 49.22MB 1.1s
+2026-02-16T15:47:20.4425513Z #7 sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 38.80MB / 49.22MB 1.2s
+2026-02-16T15:47:20.5931142Z #7 sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 47.19MB / 49.22MB 1.4s
+2026-02-16T15:47:20.7439076Z #7 sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 49.22MB / 49.22MB 1.4s done
+2026-02-16T15:47:21.0102444Z #7 extracting sha256:d3d5d8ab26d25b9040a3c2160d7ddfe3911ae81035d5b1b0904f3ebda32476b6 1.1s done
+2026-02-16T15:47:21.0103432Z #7 DONE 1.8s
+2026-02-16T15:47:21.0103658Z 
+2026-02-16T15:47:21.0104703Z #9 [linux/amd64 1/9] FROM docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2
+2026-02-16T15:47:21.0106632Z #9 resolve docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2 done
+2026-02-16T15:47:21.0108283Z #9 sha256:f8ac02a4f59a856c388a3c3062950801a51db8abd97a8cfbb9c9ba876dab6022 1.71MB / 1.71MB 0.2s done
+2026-02-16T15:47:21.0110008Z #9 sha256:fd677171db79236dbfe1dd322e24f8681b76c120f1858bf6a088bfdc8937631e 447B / 447B 0.2s done
+2026-02-16T15:47:21.0110986Z #9 sha256:8b729e7a5bf404556dd0514f11dec15e7e4205337a4ba9ac0e13efa05fe6fa51 49.20MB / 49.20MB 1.0s done
+2026-02-16T15:47:21.0112012Z #9 sha256:4831516dd0cb86845f5f902cb9b9d25b5c853152c337eb57e4737a9b7e2a2eb9 28.23MB / 28.23MB 0.6s done
+2026-02-16T15:47:21.0113512Z #9 sha256:ddfd89810a56d7ca7d930792196df7815a8bd71351009607258a6ce82b056dbe 3.32kB / 3.32kB 0.2s done
+2026-02-16T15:47:21.0114869Z #9 extracting sha256:4831516dd0cb86845f5f902cb9b9d25b5c853152c337eb57e4737a9b7e2a2eb9
+2026-02-16T15:47:21.3445259Z #9 extracting sha256:4831516dd0cb86845f5f902cb9b9d25b5c853152c337eb57e4737a9b7e2a2eb9 1.0s done
+2026-02-16T15:47:21.3446187Z #9 DONE 2.2s
+2026-02-16T15:47:21.3446404Z 
+2026-02-16T15:47:21.3447430Z #7 [linux/arm64 1/9] FROM docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2
+2026-02-16T15:47:21.3449227Z #7 extracting sha256:118ada1cac5250a6e6e5a88944d662c6ee09efd7148995dfab63376f6a9a58d5 done
+2026-02-16T15:47:21.3451213Z #7 extracting sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e
+2026-02-16T15:47:22.1627811Z #7 extracting sha256:a5e801b2f6366d10363044f2826c60a7741d790ea39b7fd80a26a6ba3c3e3f3e 1.1s done
+2026-02-16T15:47:22.1628712Z #7 DONE 3.0s
+2026-02-16T15:47:22.1628930Z 
+2026-02-16T15:47:22.1630149Z #9 [linux/amd64 1/9] FROM docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2
+2026-02-16T15:47:22.1631804Z #9 extracting sha256:ddfd89810a56d7ca7d930792196df7815a8bd71351009607258a6ce82b056dbe 0.0s done
+2026-02-16T15:47:22.1634380Z #9 extracting sha256:8b729e7a5bf404556dd0514f11dec15e7e4205337a4ba9ac0e13efa05fe6fa51
+2026-02-16T15:47:22.3568642Z #9 ...
+2026-02-16T15:47:22.3568823Z 
+2026-02-16T15:47:22.3569576Z #7 [linux/arm64 1/9] FROM docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2
+2026-02-16T15:47:22.3570855Z #7 extracting sha256:98695bc3b48088f384742249126d357486d07b0599d64d91242578ee6a6e9e49 0.0s done
+2026-02-16T15:47:22.3572411Z #7 extracting sha256:fd7301eb434a35eabcedbbbd5a9ffb77ab36941e6d608be46498eae54c976a79 done
+2026-02-16T15:47:22.3573285Z #7 DONE 3.0s
+2026-02-16T15:47:22.4978364Z 
+2026-02-16T15:47:22.4981558Z #9 [linux/amd64 1/9] FROM docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2
+2026-02-16T15:47:22.4983964Z #9 extracting sha256:8b729e7a5bf404556dd0514f11dec15e7e4205337a4ba9ac0e13efa05fe6fa51 1.1s done
+2026-02-16T15:47:22.4986164Z #9 DONE 3.3s
+2026-02-16T15:47:22.4986391Z 
+2026-02-16T15:47:22.4987245Z #10 [linux/arm64 2/9] RUN apt-get update &&     apt-get install -y git &&     apt-get clean &&     rm -rf /var/lib/apt/lists/*
+2026-02-16T15:47:22.6416383Z #10 ...
+2026-02-16T15:47:22.6416630Z 
+2026-02-16T15:47:22.6417705Z #9 [linux/amd64 1/9] FROM docker.io/library/node:lts-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4bf06e7a739e25e18bce45af2
+2026-02-16T15:47:22.6419387Z #9 extracting sha256:f8ac02a4f59a856c388a3c3062950801a51db8abd97a8cfbb9c9ba876dab6022 0.0s done
+2026-02-16T15:47:22.6421010Z #9 extracting sha256:fd677171db79236dbfe1dd322e24f8681b76c120f1858bf6a088bfdc8937631e done
+2026-02-16T15:47:22.6421802Z #9 DONE 3.4s
+2026-02-16T15:47:22.8097141Z 
+2026-02-16T15:47:22.8106083Z #11 [linux/amd64 2/9] RUN apt-get update &&     apt-get install -y git &&     apt-get clean &&     rm -rf /var/lib/apt/lists/*
+2026-02-16T15:47:22.8107961Z #11 0.095 Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
+2026-02-16T15:47:22.8110095Z #11 0.119 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+2026-02-16T15:47:22.8113341Z #11 0.129 Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [48.0 kB]
+2026-02-16T15:47:22.8114843Z #11 0.188 Get:4 http://deb.debian.org/debian bookworm/main amd64 Packages [8792 kB]
+2026-02-16T15:47:22.8116080Z #11 0.262 Get:5 http://deb.debian.org/debian bookworm-updates/main amd64 Packages [6924 B]
+2026-02-16T15:47:23.0263746Z #11 0.303 Get:6 http://deb.debian.org/debian-security bookworm-security/main amd64 Packages [297 kB]
+2026-02-16T15:47:23.5757157Z #11 1.029 Fetched 9350 kB in 1s (9745 kB/s)
+2026-02-16T15:47:23.9773001Z #11 1.029 Reading package lists...
+2026-02-16T15:47:24.5781557Z #11 1.450 Reading package lists...
+2026-02-16T15:47:24.7718013Z #11 2.042 Building dependency tree...
+2026-02-16T15:47:24.7719897Z #11 2.129 Reading state information...
+2026-02-16T15:47:24.7720659Z #11 2.225 The following additional packages will be installed:
+2026-02-16T15:47:24.9246613Z #11 2.225   ca-certificates git-man krb5-locales less libbrotli1 libbsd0 libcbor0.8
+2026-02-16T15:47:24.9248289Z #11 2.225   libcurl3-gnutls libedit2 liberror-perl libexpat1 libfido2-1 libgdbm-compat4
+2026-02-16T15:47:24.9250828Z #11 2.225   libgdbm6 libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3
+2026-02-16T15:47:24.9251981Z #11 2.225   libkrb5support0 libldap-2.5-0 libldap-common libnghttp2-14 libperl5.36
+2026-02-16T15:47:24.9253565Z #11 2.225   libpsl5 librtmp1 libsasl2-2 libsasl2-modules libsasl2-modules-db libssh2-1
+2026-02-16T15:47:24.9254691Z #11 2.226   libssl3 libx11-6 libx11-data libxau6 libxcb1 libxdmcp6 libxext6 libxmuu1
+2026-02-16T15:47:24.9255809Z #11 2.226   netbase openssh-client openssl patch perl perl-modules-5.36 publicsuffix
+2026-02-16T15:47:24.9256537Z #11 2.226   xauth
+2026-02-16T15:47:24.9256934Z #11 2.227 Suggested packages:
+2026-02-16T15:47:24.9257783Z #11 2.227   gettext-base git-daemon-run | git-daemon-sysvinit git-doc git-email git-gui
+2026-02-16T15:47:24.9259029Z #11 2.227   gitk gitweb git-cvs git-mediawiki git-svn gdbm-l10n krb5-doc krb5-user
+2026-02-16T15:47:24.9260397Z #11 2.227   sensible-utils libsasl2-modules-gssapi-mit | libsasl2-modules-gssapi-heimdal
+2026-02-16T15:47:24.9261594Z #11 2.227   libsasl2-modules-ldap libsasl2-modules-otp libsasl2-modules-sql keychain
+2026-02-16T15:47:24.9262652Z #11 2.227   libpam-ssh monkeysphere ssh-askpass ed diffutils-doc perl-doc
+2026-02-16T15:47:24.9263843Z #11 2.227   libterm-readline-gnu-perl | libterm-readline-perl-perl make
+2026-02-16T15:47:24.9264632Z #11 2.227   libtap-harness-archive-perl
+2026-02-16T15:47:25.0433690Z #11 2.496 The following NEW packages will be installed:
+2026-02-16T15:47:25.1434355Z #11 2.497   ca-certificates git git-man krb5-locales less libbrotli1 libbsd0 libcbor0.8
+2026-02-16T15:47:25.1436199Z #11 2.497   libcurl3-gnutls libedit2 liberror-perl libexpat1 libfido2-1 libgdbm-compat4
+2026-02-16T15:47:25.1438980Z #11 2.497   libgdbm6 libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3
+2026-02-16T15:47:25.1440320Z #11 2.497   libkrb5support0 libldap-2.5-0 libldap-common libnghttp2-14 libperl5.36
+2026-02-16T15:47:25.1441598Z #11 2.497   libpsl5 librtmp1 libsasl2-2 libsasl2-modules libsasl2-modules-db libssh2-1
+2026-02-16T15:47:25.1442781Z #11 2.497   libssl3 libx11-6 libx11-data libxau6 libxcb1 libxdmcp6 libxext6 libxmuu1
+2026-02-16T15:47:25.1443986Z #11 2.497   netbase openssh-client openssl patch perl perl-modules-5.36 publicsuffix
+2026-02-16T15:47:25.1444780Z #11 2.497   xauth
+2026-02-16T15:47:25.1445508Z #11 2.535 0 upgraded, 46 newly installed, 0 to remove and 0 not upgraded.
+2026-02-16T15:47:25.1446285Z #11 2.535 Need to get 25.5 MB of archives.
+2026-02-16T15:47:25.1447154Z #11 2.535 After this operation, 124 MB of additional disk space will be used.
+2026-02-16T15:47:25.1448522Z #11 2.535 Get:1 http://deb.debian.org/debian bookworm/main amd64 perl-modules-5.36 all 5.36.0-7+deb12u3 [2815 kB]
+2026-02-16T15:47:25.1450085Z #11 2.595 Get:2 http://deb.debian.org/debian bookworm/main amd64 libgdbm6 amd64 1.23-3 [72.2 kB]
+2026-02-16T15:47:25.2788544Z #11 2.596 Get:3 http://deb.debian.org/debian bookworm/main amd64 libgdbm-compat4 amd64 1.23-3 [48.2 kB]
+2026-02-16T15:47:25.2797627Z #11 2.600 Get:4 http://deb.debian.org/debian bookworm/main amd64 libperl5.36 amd64 5.36.0-7+deb12u3 [4196 kB]
+2026-02-16T15:47:25.2799129Z #11 2.615 Get:5 http://deb.debian.org/debian bookworm/main amd64 perl amd64 5.36.0-7+deb12u3 [239 kB]
+2026-02-16T15:47:25.2803396Z #11 2.617 Get:6 http://deb.debian.org/debian bookworm/main amd64 less amd64 590-2.1~deb12u2 [132 kB]
+2026-02-16T15:47:25.2804688Z #11 2.618 Get:7 http://deb.debian.org/debian bookworm/main amd64 netbase all 6.4 [12.8 kB]
+2026-02-16T15:47:25.2806200Z #11 2.619 Get:8 http://deb.debian.org/debian-security bookworm-security/main amd64 libssl3 amd64 3.0.18-1~deb12u2 [2030 kB]
+2026-02-16T15:47:25.2807898Z #11 2.624 Get:9 http://deb.debian.org/debian-security bookworm-security/main amd64 openssl amd64 3.0.18-1~deb12u2 [1433 kB]
+2026-02-16T15:47:25.2809501Z #11 2.627 Get:10 http://deb.debian.org/debian bookworm/main amd64 ca-certificates all 20230311+deb12u1 [155 kB]
+2026-02-16T15:47:25.2827821Z #11 2.628 Get:11 http://deb.debian.org/debian bookworm/main amd64 krb5-locales all 1.20.1-2+deb12u4 [63.4 kB]
+2026-02-16T15:47:25.2830140Z #11 2.629 Get:12 http://deb.debian.org/debian bookworm/main amd64 libbsd0 amd64 0.11.7-2 [117 kB]
+2026-02-16T15:47:25.2832758Z #11 2.630 Get:13 http://deb.debian.org/debian bookworm/main amd64 libedit2 amd64 3.1-20221030-2 [93.0 kB]
+2026-02-16T15:47:25.2834719Z #11 2.631 Get:14 http://deb.debian.org/debian bookworm/main amd64 libcbor0.8 amd64 0.8.0-2+b1 [27.4 kB]
+2026-02-16T15:47:25.2836998Z #11 2.633 Get:15 http://deb.debian.org/debian bookworm/main amd64 libfido2-1 amd64 1.12.0-2+b1 [77.2 kB]
+2026-02-16T15:47:25.2839043Z #11 2.634 Get:16 http://deb.debian.org/debian bookworm/main amd64 libkrb5support0 amd64 1.20.1-2+deb12u4 [33.2 kB]
+2026-02-16T15:47:25.2849037Z #11 2.635 Get:17 http://deb.debian.org/debian bookworm/main amd64 libk5crypto3 amd64 1.20.1-2+deb12u4 [79.8 kB]
+2026-02-16T15:47:25.2850981Z #11 2.636 Get:18 http://deb.debian.org/debian bookworm/main amd64 libkeyutils1 amd64 1.6.3-2 [8808 B]
+2026-02-16T15:47:25.2852834Z #11 2.641 Get:19 http://deb.debian.org/debian bookworm/main amd64 libkrb5-3 amd64 1.20.1-2+deb12u4 [334 kB]
+2026-02-16T15:47:25.2854309Z #11 2.643 Get:20 http://deb.debian.org/debian bookworm/main amd64 libgssapi-krb5-2 amd64 1.20.1-2+deb12u4 [135 kB]
+2026-02-16T15:47:25.2856263Z #11 2.654 Get:21 http://deb.debian.org/debian bookworm/main amd64 openssh-client amd64 1:9.2p1-2+deb12u7 [992 kB]
+2026-02-16T15:47:25.2857649Z #11 2.657 Get:22 http://deb.debian.org/debian bookworm/main amd64 libbrotli1 amd64 1.0.9-2+b6 [275 kB]
+2026-02-16T15:47:25.2859144Z #11 2.659 Get:23 http://deb.debian.org/debian bookworm/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg-10 [20.3 kB]
+2026-02-16T15:47:25.2861096Z #11 2.660 Get:24 http://deb.debian.org/debian bookworm/main amd64 libsasl2-2 amd64 2.1.28+dfsg-10 [59.7 kB]
+2026-02-16T15:47:25.2862734Z #11 2.660 Get:25 http://deb.debian.org/debian bookworm/main amd64 libldap-2.5-0 amd64 2.5.13+dfsg-5 [183 kB]
+2026-02-16T15:47:25.2864237Z #11 2.662 Get:26 http://deb.debian.org/debian bookworm/main amd64 libnghttp2-14 amd64 1.52.0-1+deb12u2 [73.0 kB]
+2026-02-16T15:47:25.2865650Z #11 2.662 Get:27 http://deb.debian.org/debian bookworm/main amd64 libpsl5 amd64 0.21.2-1 [58.7 kB]
+2026-02-16T15:47:25.2867379Z #11 2.663 Get:28 http://deb.debian.org/debian bookworm/main amd64 librtmp1 amd64 2.4+20151223.gitfa8646d.1-2+b2 [60.8 kB]
+2026-02-16T15:47:25.2868803Z #11 2.667 Get:29 http://deb.debian.org/debian bookworm/main amd64 libssh2-1 amd64 1.10.0-3+b1 [179 kB]
+2026-02-16T15:47:25.2870408Z #11 2.670 Get:30 http://deb.debian.org/debian bookworm/main amd64 libcurl3-gnutls amd64 7.88.1-10+deb12u14 [386 kB]
+2026-02-16T15:47:25.2871852Z #11 2.672 Get:31 http://deb.debian.org/debian bookworm/main amd64 libexpat1 amd64 2.5.0-1+deb12u2 [99.9 kB]
+2026-02-16T15:47:25.2873212Z #11 2.675 Get:32 http://deb.debian.org/debian bookworm/main amd64 liberror-perl all 0.17029-2 [29.0 kB]
+2026-02-16T15:47:25.2874556Z #11 2.677 Get:33 http://deb.debian.org/debian bookworm/main amd64 git-man all 1:2.39.5-0+deb12u3 [2053 kB]
+2026-02-16T15:47:25.2875897Z #11 2.692 Get:34 http://deb.debian.org/debian bookworm/main amd64 git amd64 1:2.39.5-0+deb12u3 [7264 kB]
+2026-02-16T15:47:25.2877555Z #11 2.730 Get:35 http://deb.debian.org/debian bookworm/main amd64 libldap-common all 2.5.13+dfsg-5 [29.3 kB]
+2026-02-16T15:47:25.4289616Z #11 2.731 Get:36 http://deb.debian.org/debian bookworm/main amd64 libsasl2-modules amd64 2.1.28+dfsg-10 [66.6 kB]
+2026-02-16T15:47:25.4291666Z #11 2.733 Get:37 http://deb.debian.org/debian bookworm/main amd64 libxau6 amd64 1:1.0.9-1 [19.7 kB]
+2026-02-16T15:47:25.4294075Z #11 2.734 Get:38 http://deb.debian.org/debian bookworm/main amd64 libxdmcp6 amd64 1:1.1.2-3 [26.3 kB]
+2026-02-16T15:47:25.4295500Z #11 2.735 Get:39 http://deb.debian.org/debian bookworm/main amd64 libxcb1 amd64 1.15-1 [144 kB]
+2026-02-16T15:47:25.4297819Z #11 2.736 Get:40 http://deb.debian.org/debian bookworm/main amd64 libx11-data all 2:1.8.4-2+deb12u2 [292 kB]
+2026-02-16T15:47:25.4299224Z #11 2.738 Get:41 http://deb.debian.org/debian bookworm/main amd64 libx11-6 amd64 2:1.8.4-2+deb12u2 [760 kB]
+2026-02-16T15:47:25.4300734Z #11 2.742 Get:42 http://deb.debian.org/debian bookworm/main amd64 libxext6 amd64 2:1.3.4-1+b1 [52.9 kB]
+2026-02-16T15:47:25.4302381Z #11 2.743 Get:43 http://deb.debian.org/debian bookworm/main amd64 libxmuu1 amd64 2:1.1.3-3 [23.9 kB]
+2026-02-16T15:47:25.4303627Z #11 2.744 Get:44 http://deb.debian.org/debian bookworm/main amd64 patch amd64 2.7.6-7 [128 kB]
+2026-02-16T15:47:25.4304994Z #11 2.748 Get:45 http://deb.debian.org/debian bookworm/main amd64 publicsuffix all 20230209.2326-1 [126 kB]
+2026-02-16T15:47:25.4306327Z #11 2.750 Get:46 http://deb.debian.org/debian bookworm/main amd64 xauth amd64 1:1.1.2-1 [36.0 kB]
+2026-02-16T15:47:25.4307495Z #11 2.882 debconf: delaying package configuration, since apt-utils is not installed
+2026-02-16T15:47:25.6294597Z #11 2.917 Fetched 25.5 MB in 0s (104 MB/s)
+2026-02-16T15:47:25.6304999Z #11 2.935 Selecting previously unselected package perl-modules-5.36.
+2026-02-16T15:47:25.6305773Z #11 2.936 (Reading database ... 
+2026-02-16T15:47:25.6306266Z (Reading database ... 5%
+2026-02-16T15:47:25.6306707Z (Reading database ... 10%
+2026-02-16T15:47:25.6307161Z (Reading database ... 15%
+2026-02-16T15:47:25.6307643Z (Reading database ... 20%
+2026-02-16T15:47:25.6308074Z (Reading database ... 25%
+2026-02-16T15:47:25.6308822Z (Reading database ... 30%
+2026-02-16T15:47:25.6309317Z (Reading database ... 35%
+2026-02-16T15:47:25.6310075Z (Reading database ... 40%
+2026-02-16T15:47:25.6310539Z (Reading database ... 45%
+2026-02-16T15:47:25.6310976Z (Reading database ... 50%
+2026-02-16T15:47:25.6311412Z (Reading database ... 55%
+2026-02-16T15:47:25.6311834Z (Reading database ... 60%
+2026-02-16T15:47:25.6312253Z (Reading database ... 65%
+2026-02-16T15:47:25.6312686Z (Reading database ... 70%
+2026-02-16T15:47:25.6313114Z (Reading database ... 75%
+2026-02-16T15:47:25.6313538Z (Reading database ... 80%
+2026-02-16T15:47:25.6313969Z (Reading database ... 85%
+2026-02-16T15:47:25.6314397Z (Reading database ... 90%
+2026-02-16T15:47:25.6314816Z (Reading database ... 95%
+2026-02-16T15:47:25.6315243Z (Reading database ... 100%
+2026-02-16T15:47:25.6315965Z (Reading database ... 6096 files and directories currently installed.)
+2026-02-16T15:47:25.6317023Z #11 2.948 Preparing to unpack .../00-perl-modules-5.36_5.36.0-7+deb12u3_all.deb ...
+2026-02-16T15:47:25.6317972Z #11 2.949 Unpacking perl-modules-5.36 (5.36.0-7+deb12u3) ...
+2026-02-16T15:47:25.8680107Z #11 3.321 Selecting previously unselected package libgdbm6:amd64.
+2026-02-16T15:47:26.0954168Z #11 3.326 Preparing to unpack .../01-libgdbm6_1.23-3_amd64.deb ...
+2026-02-16T15:47:26.0957674Z #11 3.330 Unpacking libgdbm6:amd64 (1.23-3) ...
+2026-02-16T15:47:26.0958540Z #11 3.362 Selecting previously unselected package libgdbm-compat4:amd64.
+2026-02-16T15:47:26.0959537Z #11 3.363 Preparing to unpack .../02-libgdbm-compat4_1.23-3_amd64.deb ...
+2026-02-16T15:47:26.0960573Z #11 3.364 Unpacking libgdbm-compat4:amd64 (1.23-3) ...
+2026-02-16T15:47:26.0961428Z #11 3.392 Selecting previously unselected package libperl5.36:amd64.
+2026-02-16T15:47:26.0962402Z #11 3.396 Preparing to unpack .../03-libperl5.36_5.36.0-7+deb12u3_amd64.deb ...
+2026-02-16T15:47:26.0963298Z #11 3.399 Unpacking libperl5.36:amd64 (5.36.0-7+deb12u3) ...
+2026-02-16T15:47:26.4968627Z #11 3.950 Selecting previously unselected package perl.
+2026-02-16T15:47:26.6074592Z #11 3.953 Preparing to unpack .../04-perl_5.36.0-7+deb12u3_amd64.deb ...
+2026-02-16T15:47:26.6077487Z #11 3.961 Unpacking perl (5.36.0-7+deb12u3) ...
+2026-02-16T15:47:26.6100665Z #11 4.013 Selecting previously unselected package less.
+2026-02-16T15:47:26.6101567Z #11 4.018 Preparing to unpack .../05-less_590-2.1~deb12u2_amd64.deb ...
+2026-02-16T15:47:26.6102336Z #11 4.023 Unpacking less (590-2.1~deb12u2) ...
+2026-02-16T15:47:26.6103047Z #11 4.061 Selecting previously unselected package netbase.
+2026-02-16T15:47:26.7950797Z #11 4.062 Preparing to unpack .../06-netbase_6.4_all.deb ...
+2026-02-16T15:47:26.7952982Z #11 4.066 Unpacking netbase (6.4) ...
+2026-02-16T15:47:26.7953996Z #11 4.092 Selecting previously unselected package libssl3:amd64.
+2026-02-16T15:47:26.7957852Z #11 4.095 Preparing to unpack .../07-libssl3_3.0.18-1~deb12u2_amd64.deb ...
+2026-02-16T15:47:26.7959490Z #11 4.097 Unpacking libssl3:amd64 (3.0.18-1~deb12u2) ...
+2026-02-16T15:47:26.8300807Z #11 4.282 Selecting previously unselected package openssl.
+2026-02-16T15:47:26.9806729Z #11 4.285 Preparing to unpack .../08-openssl_3.0.18-1~deb12u2_amd64.deb ...
+2026-02-16T15:47:26.9809145Z #11 4.286 Unpacking openssl (3.0.18-1~deb12u2) ...
+2026-02-16T15:47:27.0807369Z #11 4.433 Selecting previously unselected package ca-certificates.
+2026-02-16T15:47:27.0808924Z #11 4.438 Preparing to unpack .../09-ca-certificates_20230311+deb12u1_all.deb ...
+2026-02-16T15:47:27.0811828Z #11 4.441 Unpacking ca-certificates (20230311+deb12u1) ...
+2026-02-16T15:47:27.0815664Z #11 4.503 Selecting previously unselected package krb5-locales.
+2026-02-16T15:47:27.0816606Z #11 4.506 Preparing to unpack .../10-krb5-locales_1.20.1-2+deb12u4_all.deb ...
+2026-02-16T15:47:27.0817478Z #11 4.508 Unpacking krb5-locales (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:27.0818282Z #11 4.533 Selecting previously unselected package libbsd0:amd64.
+2026-02-16T15:47:27.1864778Z #11 4.537 Preparing to unpack .../11-libbsd0_0.11.7-2_amd64.deb ...
+2026-02-16T15:47:27.1869005Z #11 4.538 Unpacking libbsd0:amd64 (0.11.7-2) ...
+2026-02-16T15:47:27.1876884Z #11 4.571 Selecting previously unselected package libedit2:amd64.
+2026-02-16T15:47:27.1878222Z #11 4.572 Preparing to unpack .../12-libedit2_3.1-20221030-2_amd64.deb ...
+2026-02-16T15:47:27.1879646Z #11 4.574 Unpacking libedit2:amd64 (3.1-20221030-2) ...
+2026-02-16T15:47:27.1881113Z #11 4.610 Selecting previously unselected package libcbor0.8:amd64.
+2026-02-16T15:47:27.1883575Z #11 4.611 Preparing to unpack .../13-libcbor0.8_0.8.0-2+b1_amd64.deb ...
+2026-02-16T15:47:27.1884645Z #11 4.613 Unpacking libcbor0.8:amd64 (0.8.0-2+b1) ...
+2026-02-16T15:47:27.1886593Z #11 4.639 Selecting previously unselected package libfido2-1:amd64.
+2026-02-16T15:47:27.2878131Z #11 4.641 Preparing to unpack .../14-libfido2-1_1.12.0-2+b1_amd64.deb ...
+2026-02-16T15:47:27.2885252Z #11 4.643 Unpacking libfido2-1:amd64 (1.12.0-2+b1) ...
+2026-02-16T15:47:27.2891734Z #11 4.673 Selecting previously unselected package libkrb5support0:amd64.
+2026-02-16T15:47:27.2892811Z #11 4.675 Preparing to unpack .../15-libkrb5support0_1.20.1-2+deb12u4_amd64.deb ...
+2026-02-16T15:47:27.2893758Z #11 4.678 Unpacking libkrb5support0:amd64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:27.2894633Z #11 4.706 Selecting previously unselected package libk5crypto3:amd64.
+2026-02-16T15:47:27.2895596Z #11 4.708 Preparing to unpack .../16-libk5crypto3_1.20.1-2+deb12u4_amd64.deb ...
+2026-02-16T15:47:27.2896466Z #11 4.711 Unpacking libk5crypto3:amd64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:27.2897306Z #11 4.741 Selecting previously unselected package libkeyutils1:amd64.
+2026-02-16T15:47:27.2898198Z #11 4.741 Preparing to unpack .../17-libkeyutils1_1.6.3-2_amd64.deb ...
+2026-02-16T15:47:27.4137368Z #11 4.743 Unpacking libkeyutils1:amd64 (1.6.3-2) ...
+2026-02-16T15:47:27.4147380Z #11 4.764 Selecting previously unselected package libkrb5-3:amd64.
+2026-02-16T15:47:27.4148442Z #11 4.767 Preparing to unpack .../18-libkrb5-3_1.20.1-2+deb12u4_amd64.deb ...
+2026-02-16T15:47:27.4149343Z #11 4.769 Unpacking libkrb5-3:amd64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:27.4157823Z #11 4.829 Selecting previously unselected package libgssapi-krb5-2:amd64.
+2026-02-16T15:47:27.4159169Z #11 4.832 Preparing to unpack .../19-libgssapi-krb5-2_1.20.1-2+deb12u4_amd64.deb ...
+2026-02-16T15:47:27.4160316Z #11 4.833 Unpacking libgssapi-krb5-2:amd64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:27.4161174Z #11 4.866 Selecting previously unselected package openssh-client.
+2026-02-16T15:47:27.5204594Z #11 4.869 Preparing to unpack .../20-openssh-client_1%3a9.2p1-2+deb12u7_amd64.deb ...
+2026-02-16T15:47:27.5207394Z #11 4.876 Unpacking openssh-client (1:9.2p1-2+deb12u7) ...
+2026-02-16T15:47:27.5208251Z #11 4.973 Selecting previously unselected package libbrotli1:amd64.
+2026-02-16T15:47:27.6213083Z #11 4.977 Preparing to unpack .../21-libbrotli1_1.0.9-2+b6_amd64.deb ...
+2026-02-16T15:47:27.6214210Z #11 4.978 Unpacking libbrotli1:amd64 (1.0.9-2+b6) ...
+2026-02-16T15:47:27.6215896Z #11 5.019 Selecting previously unselected package libsasl2-modules-db:amd64.
+2026-02-16T15:47:27.6217409Z #11 5.022 Preparing to unpack .../22-libsasl2-modules-db_2.1.28+dfsg-10_amd64.deb ...
+2026-02-16T15:47:27.6218607Z #11 5.023 Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg-10) ...
+2026-02-16T15:47:27.6220019Z #11 5.045 Selecting previously unselected package libsasl2-2:amd64.
+2026-02-16T15:47:27.6221651Z #11 5.048 Preparing to unpack .../23-libsasl2-2_2.1.28+dfsg-10_amd64.deb ...
+2026-02-16T15:47:27.6223140Z #11 5.050 Unpacking libsasl2-2:amd64 (2.1.28+dfsg-10) ...
+2026-02-16T15:47:27.6224170Z #11 5.075 Selecting previously unselected package libldap-2.5-0:amd64.
+2026-02-16T15:47:27.7251766Z #11 5.077 Preparing to unpack .../24-libldap-2.5-0_2.5.13+dfsg-5_amd64.deb ...
+2026-02-16T15:47:27.7254837Z #11 5.079 Unpacking libldap-2.5-0:amd64 (2.5.13+dfsg-5) ...
+2026-02-16T15:47:27.7255725Z #11 5.116 Selecting previously unselected package libnghttp2-14:amd64.
+2026-02-16T15:47:27.7256741Z #11 5.119 Preparing to unpack .../25-libnghttp2-14_1.52.0-1+deb12u2_amd64.deb ...
+2026-02-16T15:47:27.7257941Z #11 5.120 Unpacking libnghttp2-14:amd64 (1.52.0-1+deb12u2) ...
+2026-02-16T15:47:27.7258792Z #11 5.152 Selecting previously unselected package libpsl5:amd64.
+2026-02-16T15:47:27.7259646Z #11 5.153 Preparing to unpack .../26-libpsl5_0.21.2-1_amd64.deb ...
+2026-02-16T15:47:27.7260571Z #11 5.154 Unpacking libpsl5:amd64 (0.21.2-1) ...
+2026-02-16T15:47:27.7261340Z #11 5.178 Selecting previously unselected package librtmp1:amd64.
+2026-02-16T15:47:27.8454676Z #11 5.182 Preparing to unpack .../27-librtmp1_2.4+20151223.gitfa8646d.1-2+b2_amd64.deb ...
+2026-02-16T15:47:27.8457006Z #11 5.183 Unpacking librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2+b2) ...
+2026-02-16T15:47:27.8457912Z #11 5.209 Selecting previously unselected package libssh2-1:amd64.
+2026-02-16T15:47:27.8458801Z #11 5.211 Preparing to unpack .../28-libssh2-1_1.10.0-3+b1_amd64.deb ...
+2026-02-16T15:47:27.8459567Z #11 5.213 Unpacking libssh2-1:amd64 (1.10.0-3+b1) ...
+2026-02-16T15:47:27.8460679Z #11 5.246 Selecting previously unselected package libcurl3-gnutls:amd64.
+2026-02-16T15:47:27.8461697Z #11 5.249 Preparing to unpack .../29-libcurl3-gnutls_7.88.1-10+deb12u14_amd64.deb ...
+2026-02-16T15:47:27.8462637Z #11 5.252 Unpacking libcurl3-gnutls:amd64 (7.88.1-10+deb12u14) ...
+2026-02-16T15:47:27.8463474Z #11 5.299 Selecting previously unselected package libexpat1:amd64.
+2026-02-16T15:47:28.0016204Z #11 5.302 Preparing to unpack .../30-libexpat1_2.5.0-1+deb12u2_amd64.deb ...
+2026-02-16T15:47:28.0020017Z #11 5.303 Unpacking libexpat1:amd64 (2.5.0-1+deb12u2) ...
+2026-02-16T15:47:28.0021243Z #11 5.325 Selecting previously unselected package liberror-perl.
+2026-02-16T15:47:28.0022191Z #11 5.328 Preparing to unpack .../31-liberror-perl_0.17029-2_all.deb ...
+2026-02-16T15:47:28.0022969Z #11 5.329 Unpacking liberror-perl (0.17029-2) ...
+2026-02-16T15:47:28.0023716Z #11 5.349 Selecting previously unselected package git-man.
+2026-02-16T15:47:28.0024629Z #11 5.351 Preparing to unpack .../32-git-man_1%3a2.39.5-0+deb12u3_all.deb ...
+2026-02-16T15:47:28.0025462Z #11 5.353 Unpacking git-man (1:2.39.5-0+deb12u3) ...
+2026-02-16T15:47:28.0026198Z #11 5.455 Selecting previously unselected package git.
+2026-02-16T15:47:28.1631956Z #11 5.459 Preparing to unpack .../33-git_1%3a2.39.5-0+deb12u3_amd64.deb ...
+2026-02-16T15:47:28.1634349Z #11 5.466 Unpacking git (1:2.39.5-0+deb12u3) ...
+2026-02-16T15:47:28.4794532Z #11 5.933 Selecting previously unselected package libldap-common.
+2026-02-16T15:47:28.5970095Z #11 5.936 Preparing to unpack .../34-libldap-common_2.5.13+dfsg-5_all.deb ...
+2026-02-16T15:47:28.5970999Z #11 5.937 Unpacking libldap-common (2.5.13+dfsg-5) ...
+2026-02-16T15:47:28.5971866Z #11 5.960 Selecting previously unselected package libsasl2-modules:amd64.
+2026-02-16T15:47:28.5972877Z #11 5.962 Preparing to unpack .../35-libsasl2-modules_2.1.28+dfsg-10_amd64.deb ...
+2026-02-16T15:47:28.5973781Z #11 5.969 Unpacking libsasl2-modules:amd64 (2.1.28+dfsg-10) ...
+2026-02-16T15:47:28.5974926Z #11 5.996 Selecting previously unselected package libxau6:amd64.
+2026-02-16T15:47:28.5975802Z #11 5.998 Preparing to unpack .../36-libxau6_1%3a1.0.9-1_amd64.deb ...
+2026-02-16T15:47:28.5976545Z #11 6.000 Unpacking libxau6:amd64 (1:1.0.9-1) ...
+2026-02-16T15:47:28.5977304Z #11 6.021 Selecting previously unselected package libxdmcp6:amd64.
+2026-02-16T15:47:28.5978175Z #11 6.024 Preparing to unpack .../37-libxdmcp6_1%3a1.1.2-3_amd64.deb ...
+2026-02-16T15:47:28.5978938Z #11 6.026 Unpacking libxdmcp6:amd64 (1:1.1.2-3) ...
+2026-02-16T15:47:28.5979836Z #11 6.049 Selecting previously unselected package libxcb1:amd64.
+2026-02-16T15:47:28.6988591Z #11 6.053 Preparing to unpack .../38-libxcb1_1.15-1_amd64.deb ...
+2026-02-16T15:47:28.6999650Z #11 6.055 Unpacking libxcb1:amd64 (1.15-1) ...
+2026-02-16T15:47:28.7001719Z #11 6.080 Selecting previously unselected package libx11-data.
+2026-02-16T15:47:28.7002598Z #11 6.083 Preparing to unpack .../39-libx11-data_2%3a1.8.4-2+deb12u2_all.deb ...
+2026-02-16T15:47:28.7003406Z #11 6.084 Unpacking libx11-data (2:1.8.4-2+deb12u2) ...
+2026-02-16T15:47:28.7004385Z #11 6.152 Selecting previously unselected package libx11-6:amd64.
+2026-02-16T15:47:28.8184681Z #11 6.155 Preparing to unpack .../40-libx11-6_2%3a1.8.4-2+deb12u2_amd64.deb ...
+2026-02-16T15:47:28.8186777Z #11 6.156 Unpacking libx11-6:amd64 (2:1.8.4-2+deb12u2) ...
+2026-02-16T15:47:28.8187593Z #11 6.218 Selecting previously unselected package libxext6:amd64.
+2026-02-16T15:47:28.8188502Z #11 6.220 Preparing to unpack .../41-libxext6_2%3a1.3.4-1+b1_amd64.deb ...
+2026-02-16T15:47:28.8189285Z #11 6.222 Unpacking libxext6:amd64 (2:1.3.4-1+b1) ...
+2026-02-16T15:47:28.8190315Z #11 6.244 Selecting previously unselected package libxmuu1:amd64.
+2026-02-16T15:47:28.8191176Z #11 6.246 Preparing to unpack .../42-libxmuu1_2%3a1.1.3-3_amd64.deb ...
+2026-02-16T15:47:28.8191925Z #11 6.248 Unpacking libxmuu1:amd64 (2:1.1.3-3) ...
+2026-02-16T15:47:28.8192629Z #11 6.271 Selecting previously unselected package patch.
+2026-02-16T15:47:28.9315425Z #11 6.275 Preparing to unpack .../43-patch_2.7.6-7_amd64.deb ...
+2026-02-16T15:47:28.9316174Z #11 6.277 Unpacking patch (2.7.6-7) ...
+2026-02-16T15:47:28.9316889Z #11 6.305 Selecting previously unselected package publicsuffix.
+2026-02-16T15:47:28.9317800Z #11 6.308 Preparing to unpack .../44-publicsuffix_20230209.2326-1_all.deb ...
+2026-02-16T15:47:28.9318617Z #11 6.310 Unpacking publicsuffix (20230209.2326-1) ...
+2026-02-16T15:47:28.9319328Z #11 6.337 Selecting previously unselected package xauth.
+2026-02-16T15:47:28.9320293Z #11 6.340 Preparing to unpack .../45-xauth_1%3a1.1.2-1_amd64.deb ...
+2026-02-16T15:47:28.9320987Z #11 6.343 Unpacking xauth (1:1.1.2-1) ...
+2026-02-16T15:47:28.9321644Z #11 6.384 Setting up libexpat1:amd64 (2.5.0-1+deb12u2) ...
+2026-02-16T15:47:29.0398200Z #11 6.390 Setting up libxau6:amd64 (1:1.0.9-1) ...
+2026-02-16T15:47:29.0400869Z #11 6.393 Setting up libkeyutils1:amd64 (1.6.3-2) ...
+2026-02-16T15:47:29.0402856Z #11 6.397 Setting up libpsl5:amd64 (0.21.2-1) ...
+2026-02-16T15:47:29.0403822Z #11 6.400 Setting up libcbor0.8:amd64 (0.8.0-2+b1) ...
+2026-02-16T15:47:29.0406179Z #11 6.404 Setting up libbrotli1:amd64 (1.0.9-2+b6) ...
+2026-02-16T15:47:29.0407306Z #11 6.408 Setting up libssl3:amd64 (3.0.18-1~deb12u2) ...
+2026-02-16T15:47:29.0408090Z #11 6.412 Setting up libnghttp2-14:amd64 (1.52.0-1+deb12u2) ...
+2026-02-16T15:47:29.0408871Z #11 6.415 Setting up less (590-2.1~deb12u2) ...
+2026-02-16T15:47:29.0409542Z #11 6.423 Setting up krb5-locales (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:29.0410398Z #11 6.428 Setting up libldap-common (2.5.13+dfsg-5) ...
+2026-02-16T15:47:29.0411193Z #11 6.433 Setting up libkrb5support0:amd64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:29.0412044Z #11 6.438 Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg-10) ...
+2026-02-16T15:47:29.0412853Z #11 6.441 Setting up perl-modules-5.36 (5.36.0-7+deb12u3) ...
+2026-02-16T15:47:29.0413832Z #11 6.447 Setting up libx11-data (2:1.8.4-2+deb12u2) ...
+2026-02-16T15:47:29.0414637Z #11 6.450 Setting up librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2+b2) ...
+2026-02-16T15:47:29.0418260Z #11 6.456 Setting up patch (2.7.6-7) ...
+2026-02-16T15:47:29.0418962Z #11 6.460 Setting up libk5crypto3:amd64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:29.0420134Z #11 6.464 Setting up libsasl2-2:amd64 (2.1.28+dfsg-10) ...
+2026-02-16T15:47:29.0420996Z #11 6.468 Setting up git-man (1:2.39.5-0+deb12u3) ...
+2026-02-16T15:47:29.0421681Z #11 6.472 Setting up libssh2-1:amd64 (1.10.0-3+b1) ...
+2026-02-16T15:47:29.0422272Z #11 6.478 Setting up netbase (6.4) ...
+2026-02-16T15:47:29.0423065Z #11 6.493 Setting up libkrb5-3:amd64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:29.2480627Z #11 6.498 Setting up libfido2-1:amd64 (1.12.0-2+b1) ...
+2026-02-16T15:47:29.2483016Z #11 6.503 Setting up openssl (3.0.18-1~deb12u2) ...
+2026-02-16T15:47:29.2483688Z #11 6.509 Setting up libbsd0:amd64 (0.11.7-2) ...
+2026-02-16T15:47:29.2484365Z #11 6.513 Setting up publicsuffix (20230209.2326-1) ...
+2026-02-16T15:47:29.2485011Z #11 6.518 Setting up libgdbm6:amd64 (1.23-3) ...
+2026-02-16T15:47:29.2485693Z #11 6.526 Setting up libxdmcp6:amd64 (1:1.1.2-3) ...
+2026-02-16T15:47:29.2491865Z #11 6.530 Setting up libxcb1:amd64 (1.15-1) ...
+2026-02-16T15:47:29.2492583Z #11 6.534 Setting up libedit2:amd64 (3.1-20221030-2) ...
+2026-02-16T15:47:29.2493340Z #11 6.537 Setting up libsasl2-modules:amd64 (2.1.28+dfsg-10) ...
+2026-02-16T15:47:29.2494102Z #11 6.547 Setting up libldap-2.5-0:amd64 (2.5.13+dfsg-5) ...
+2026-02-16T15:47:29.2494835Z #11 6.550 Setting up ca-certificates (20230311+deb12u1) ...
+2026-02-16T15:47:29.6093316Z #11 7.063 Updating certificates in /etc/ssl/certs...
+2026-02-16T15:47:30.2260258Z #11 7.679 142 added, 0 removed; done.
+2026-02-16T15:47:30.3266502Z #11 7.698 Setting up libgssapi-krb5-2:amd64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:30.3267548Z #11 7.706 Setting up libgdbm-compat4:amd64 (1.23-3) ...
+2026-02-16T15:47:30.3268307Z #11 7.710 Setting up libx11-6:amd64 (2:1.8.4-2+deb12u2) ...
+2026-02-16T15:47:30.3269055Z #11 7.714 Setting up libperl5.36:amd64 (5.36.0-7+deb12u3) ...
+2026-02-16T15:47:30.3270100Z #11 7.719 Setting up libxmuu1:amd64 (2:1.1.3-3) ...
+2026-02-16T15:47:30.3270840Z #11 7.724 Setting up openssh-client (1:9.2p1-2+deb12u7) ...
+2026-02-16T15:47:30.3271564Z #11 7.776 Setting up libxext6:amd64 (2:1.3.4-1+b1) ...
+2026-02-16T15:47:30.3272338Z #11 7.780 Setting up libcurl3-gnutls:amd64 (7.88.1-10+deb12u14) ...
+2026-02-16T15:47:30.5360814Z #11 7.784 Setting up perl (5.36.0-7+deb12u3) ...
+2026-02-16T15:47:30.5361713Z #11 7.801 Setting up xauth (1:1.1.2-1) ...
+2026-02-16T15:47:30.5369868Z #11 7.805 Setting up liberror-perl (0.17029-2) ...
+2026-02-16T15:47:30.5370586Z #11 7.809 Setting up git (1:2.39.5-0+deb12u3) ...
+2026-02-16T15:47:30.5371341Z #11 7.820 Processing triggers for libc-bin (2.36-9+deb12u13) ...
+2026-02-16T15:47:30.5372219Z #11 7.834 Processing triggers for ca-certificates (20230311+deb12u1) ...
+2026-02-16T15:47:30.5373014Z #11 7.839 Updating certificates in /etc/ssl/certs...
+2026-02-16T15:47:30.8902912Z #11 8.344 0 added, 0 removed; done.
+2026-02-16T15:47:30.8908625Z #11 8.344 Running hooks in /etc/ca-certificates/update.d...
+2026-02-16T15:47:31.0427681Z #11 8.345 done.
+2026-02-16T15:47:32.3696358Z #11 DONE 9.8s
+2026-02-16T15:47:32.3697066Z 
+2026-02-16T15:47:32.3698698Z #10 [linux/arm64 2/9] RUN apt-get update &&     apt-get install -y git &&     apt-get clean &&     rm -rf /var/lib/apt/lists/*
+2026-02-16T15:47:32.3700277Z #10 0.529 Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
+2026-02-16T15:47:32.3701305Z #10 0.667 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+2026-02-16T15:47:32.3702482Z #10 0.669 Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [48.0 kB]
+2026-02-16T15:47:32.3704781Z #10 1.859 Get:4 http://deb.debian.org/debian bookworm/main arm64 Packages [8691 kB]
+2026-02-16T15:47:32.3706532Z #10 3.422 Get:5 http://deb.debian.org/debian bookworm-updates/main arm64 Packages [6936 B]
+2026-02-16T15:47:32.3708435Z #10 5.157 Get:6 http://deb.debian.org/debian-security bookworm-security/main arm64 Packages [293 kB]
+2026-02-16T15:47:32.3710088Z #10 7.778 Fetched 9245 kB in 7s (1262 kB/s)
+2026-02-16T15:47:32.4997168Z #10 7.778 Reading package lists...
+2026-02-16T15:47:32.4997728Z #10 ...
+2026-02-16T15:47:32.4997932Z 
+2026-02-16T15:47:32.4998225Z #12 [linux/amd64 3/9] WORKDIR /app
+2026-02-16T15:47:32.4998728Z #12 DONE 0.0s
+2026-02-16T15:47:32.4998941Z 
+2026-02-16T15:47:32.4999599Z #13 [linux/amd64 4/9] RUN useradd -m ***_user
+2026-02-16T15:47:32.5007000Z #13 DONE 0.1s
+2026-02-16T15:47:32.6901539Z 
+2026-02-16T15:47:32.6907717Z #14 [linux/amd64 5/9] COPY dist/ ./
+2026-02-16T15:47:32.6908281Z #14 DONE 0.0s
+2026-02-16T15:47:32.6908503Z 
+2026-02-16T15:47:32.6908810Z #15 [linux/amd64 6/9] COPY package*.json ./
+2026-02-16T15:47:32.6909294Z #15 DONE 0.0s
+2026-02-16T15:47:32.6909507Z 
+2026-02-16T15:47:32.6914985Z #16 [linux/amd64 7/9] RUN mkdir -p workspace &&     chown -R ***_user:***_user /app
+2026-02-16T15:47:32.6915718Z #16 DONE 0.1s
+2026-02-16T15:47:32.6916339Z 
+2026-02-16T15:47:32.6917209Z #10 [linux/arm64 2/9] RUN apt-get update &&     apt-get install -y git &&     apt-get clean &&     rm -rf /var/lib/apt/lists/*
+2026-02-16T15:47:32.8430874Z #10 7.778 Reading package lists...
+2026-02-16T15:47:32.8431797Z #10 ...
+2026-02-16T15:47:32.8432116Z 
+2026-02-16T15:47:32.8432534Z #17 [linux/amd64 8/9] RUN npm ci --omit=dev
+2026-02-16T15:47:34.6254535Z #17 1.933 
+2026-02-16T15:47:34.6255588Z #17 1.933 added 42 packages, and audited 43 packages in 2s
+2026-02-16T15:47:34.6258171Z #17 1.933 
+2026-02-16T15:47:34.7791265Z #17 1.933 3 packages are looking for funding
+2026-02-16T15:47:34.7794799Z #17 1.934   run `npm fund` for details
+2026-02-16T15:47:34.7795428Z #17 1.935 
+2026-02-16T15:47:34.7795819Z #17 1.935 found 0 vulnerabilities
+2026-02-16T15:47:34.7796311Z #17 1.937 npm notice
+2026-02-16T15:47:34.7796990Z #17 1.937 npm notice New minor version of npm available! 11.8.0 -> 11.10.0
+2026-02-16T15:47:34.7798452Z #17 1.937 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.10.0
+2026-02-16T15:47:34.7799520Z #17 1.937 npm notice To update run: npm install -g npm@11.10.0
+2026-02-16T15:47:34.7807523Z #17 1.937 npm notice
+2026-02-16T15:47:34.7845010Z #17 DONE 2.1s
+2026-02-16T15:47:34.7845241Z 
+2026-02-16T15:47:34.7846333Z #10 [linux/arm64 2/9] RUN apt-get update &&     apt-get install -y git &&     apt-get clean &&     rm -rf /var/lib/apt/lists/*
+2026-02-16T15:47:35.0347868Z #10 7.778 Reading package lists...
+2026-02-16T15:47:35.0348373Z #10 ...
+2026-02-16T15:47:35.0348565Z 
+2026-02-16T15:47:35.0350386Z #18 [linux/amd64 9/9] RUN git config --global user.email "agent.***@gmail.com" &&     git config --global user.name "SeedGPT" &&     git config --global init.defaultBranch main
+2026-02-16T15:47:35.0351603Z #18 DONE 0.1s
+2026-02-16T15:47:35.1839333Z 
+2026-02-16T15:47:35.1840550Z #10 [linux/arm64 2/9] RUN apt-get update &&     apt-get install -y git &&     apt-get clean &&     rm -rf /var/lib/apt/lists/*
+2026-02-16T15:47:35.2299157Z #10 7.778 Reading package lists...
+2026-02-16T15:47:39.6027376Z #10 13.27 Reading package lists...
+2026-02-16T15:47:40.4200898Z #10 17.50 Building dependency tree...
+2026-02-16T15:47:40.5723210Z #10 18.21 Reading state information...
+2026-02-16T15:47:40.9886609Z #10 18.78 The following additional packages will be installed:
+2026-02-16T15:47:41.1468896Z #10 18.78   ca-certificates git-man krb5-locales less libbrotli1 libbsd0 libcbor0.8
+2026-02-16T15:47:41.1470356Z #10 18.78   libcurl3-gnutls libedit2 liberror-perl libexpat1 libfido2-1 libgdbm-compat4
+2026-02-16T15:47:41.1471442Z #10 18.78   libgdbm6 libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3
+2026-02-16T15:47:41.1472500Z #10 18.78   libkrb5support0 libldap-2.5-0 libldap-common libnghttp2-14 libperl5.36
+2026-02-16T15:47:41.1473644Z #10 18.78   libpsl5 librtmp1 libsasl2-2 libsasl2-modules libsasl2-modules-db libssh2-1
+2026-02-16T15:47:41.1474762Z #10 18.78   libssl3 libx11-6 libx11-data libxau6 libxcb1 libxdmcp6 libxext6 libxmuu1
+2026-02-16T15:47:41.1475866Z #10 18.79   netbase openssh-client openssl patch perl perl-modules-5.36 publicsuffix
+2026-02-16T15:47:41.1477045Z #10 18.79   xauth
+2026-02-16T15:47:41.1477447Z #10 18.79 Suggested packages:
+2026-02-16T15:47:41.1478293Z #10 18.79   gettext-base git-daemon-run | git-daemon-sysvinit git-doc git-email git-gui
+2026-02-16T15:47:41.1479381Z #10 18.79   gitk gitweb git-cvs git-mediawiki git-svn gdbm-l10n krb5-doc krb5-user
+2026-02-16T15:47:41.1480708Z #10 18.79   sensible-utils libsasl2-modules-gssapi-mit | libsasl2-modules-gssapi-heimdal
+2026-02-16T15:47:41.1481925Z #10 18.79   libsasl2-modules-ldap libsasl2-modules-otp libsasl2-modules-sql keychain
+2026-02-16T15:47:41.1482983Z #10 18.79   libpam-ssh monkeysphere ssh-askpass ed diffutils-doc perl-doc
+2026-02-16T15:47:41.1483959Z #10 18.79   libterm-readline-gnu-perl | libterm-readline-perl-perl make
+2026-02-16T15:47:41.1484725Z #10 18.79   libtap-harness-archive-perl
+2026-02-16T15:47:42.1192811Z #10 19.91 The following NEW packages will be installed:
+2026-02-16T15:47:42.2730308Z #10 19.91   ca-certificates git git-man krb5-locales less libbrotli1 libbsd0 libcbor0.8
+2026-02-16T15:47:42.2732097Z #10 19.91   libcurl3-gnutls libedit2 liberror-perl libexpat1 libfido2-1 libgdbm-compat4
+2026-02-16T15:47:42.2733389Z #10 19.91   libgdbm6 libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3
+2026-02-16T15:47:42.2734402Z #10 19.91   libkrb5support0 libldap-2.5-0 libldap-common libnghttp2-14 libperl5.36
+2026-02-16T15:47:42.2735235Z #10 19.91   libpsl5 librtmp1 libsasl2-2 libsasl2-modules libsasl2-modules-db libssh2-1
+2026-02-16T15:47:42.2736058Z #10 19.92   libssl3 libx11-6 libx11-data libxau6 libxcb1 libxdmcp6 libxext6 libxmuu1
+2026-02-16T15:47:42.2736875Z #10 19.92   netbase openssh-client openssl patch perl perl-modules-5.36 publicsuffix
+2026-02-16T15:47:42.2737406Z #10 19.92   xauth
+2026-02-16T15:47:42.2980566Z #10 20.09 0 upgraded, 46 newly installed, 0 to remove and 0 not upgraded.
+2026-02-16T15:47:42.2981776Z #10 20.09 Need to get 24.8 MB of archives.
+2026-02-16T15:47:42.2983586Z #10 20.09 After this operation, 128 MB of additional disk space will be used.
+2026-02-16T15:47:42.2984739Z #10 20.09 Get:1 http://deb.debian.org/debian bookworm/main arm64 perl-modules-5.36 all 5.36.0-7+deb12u3 [2815 kB]
+2026-02-16T15:47:42.4535809Z #10 20.18 Get:2 http://deb.debian.org/debian bookworm/main arm64 libgdbm6 arm64 1.23-3 [70.9 kB]
+2026-02-16T15:47:42.4537651Z #10 20.18 Get:3 http://deb.debian.org/debian bookworm/main arm64 libgdbm-compat4 arm64 1.23-3 [48.0 kB]
+2026-02-16T15:47:42.4538785Z #10 20.18 Get:4 http://deb.debian.org/debian bookworm/main arm64 libperl5.36 arm64 5.36.0-7+deb12u3 [4009 kB]
+2026-02-16T15:47:42.4539881Z #10 20.25 Get:5 http://deb.debian.org/debian bookworm/main arm64 perl arm64 5.36.0-7+deb12u3 [239 kB]
+2026-02-16T15:47:42.5547203Z #10 20.25 Get:6 http://deb.debian.org/debian bookworm/main arm64 less arm64 590-2.1~deb12u2 [128 kB]
+2026-02-16T15:47:42.5548705Z #10 20.26 Get:7 http://deb.debian.org/debian bookworm/main arm64 netbase all 6.4 [12.8 kB]
+2026-02-16T15:47:42.5550054Z #10 20.26 Get:8 http://deb.debian.org/debian-security bookworm-security/main arm64 libssl3 arm64 3.0.18-1~deb12u2 [1818 kB]
+2026-02-16T15:47:42.5551139Z #10 20.28 Get:9 http://deb.debian.org/debian-security bookworm-security/main arm64 openssl arm64 3.0.18-1~deb12u2 [1399 kB]
+2026-02-16T15:47:42.5552043Z #10 20.30 Get:10 http://deb.debian.org/debian bookworm/main arm64 ca-certificates all 20230311+deb12u1 [155 kB]
+2026-02-16T15:47:42.5552842Z #10 20.31 Get:11 http://deb.debian.org/debian bookworm/main arm64 krb5-locales all 1.20.1-2+deb12u4 [63.4 kB]
+2026-02-16T15:47:42.5553559Z #10 20.31 Get:12 http://deb.debian.org/debian bookworm/main arm64 libbsd0 arm64 0.11.7-2 [115 kB]
+2026-02-16T15:47:42.5554264Z #10 20.31 Get:13 http://deb.debian.org/debian bookworm/main arm64 libedit2 arm64 3.1-20221030-2 [88.1 kB]
+2026-02-16T15:47:42.5554983Z #10 20.31 Get:14 http://deb.debian.org/debian bookworm/main arm64 libcbor0.8 arm64 0.8.0-2+b1 [26.0 kB]
+2026-02-16T15:47:42.5555704Z #10 20.31 Get:15 http://deb.debian.org/debian bookworm/main arm64 libfido2-1 arm64 1.12.0-2+b1 [72.6 kB]
+2026-02-16T15:47:42.5556725Z #10 20.32 Get:16 http://deb.debian.org/debian bookworm/main arm64 libkrb5support0 arm64 1.20.1-2+deb12u4 [32.5 kB]
+2026-02-16T15:47:42.5557530Z #10 20.32 Get:17 http://deb.debian.org/debian bookworm/main arm64 libk5crypto3 arm64 1.20.1-2+deb12u4 [80.2 kB]
+2026-02-16T15:47:42.5558281Z #10 20.32 Get:18 http://deb.debian.org/debian bookworm/main arm64 libkeyutils1 arm64 1.6.3-2 [8844 B]
+2026-02-16T15:47:42.5559016Z #10 20.32 Get:19 http://deb.debian.org/debian bookworm/main arm64 libkrb5-3 arm64 1.20.1-2+deb12u4 [314 kB]
+2026-02-16T15:47:42.5559908Z #10 20.33 Get:20 http://deb.debian.org/debian bookworm/main arm64 libgssapi-krb5-2 arm64 1.20.1-2+deb12u4 [124 kB]
+2026-02-16T15:47:42.5560722Z #10 20.33 Get:21 http://deb.debian.org/debian bookworm/main arm64 openssh-client arm64 1:9.2p1-2+deb12u7 [934 kB]
+2026-02-16T15:47:42.5561467Z #10 20.35 Get:22 http://deb.debian.org/debian bookworm/main arm64 libbrotli1 arm64 1.0.9-2+b6 [269 kB]
+2026-02-16T15:47:42.7395004Z #10 20.35 Get:23 http://deb.debian.org/debian bookworm/main arm64 libsasl2-modules-db arm64 2.1.28+dfsg-10 [20.8 kB]
+2026-02-16T15:47:42.7398717Z #10 20.36 Get:24 http://deb.debian.org/debian bookworm/main arm64 libsasl2-2 arm64 2.1.28+dfsg-10 [58.0 kB]
+2026-02-16T15:47:42.7399959Z #10 20.36 Get:25 http://deb.debian.org/debian bookworm/main arm64 libldap-2.5-0 arm64 2.5.13+dfsg-5 [171 kB]
+2026-02-16T15:47:42.7400912Z #10 20.36 Get:26 http://deb.debian.org/debian bookworm/main arm64 libnghttp2-14 arm64 1.52.0-1+deb12u2 [68.6 kB]
+2026-02-16T15:47:42.7401780Z #10 20.36 Get:27 http://deb.debian.org/debian bookworm/main arm64 libpsl5 arm64 0.21.2-1 [58.6 kB]
+2026-02-16T15:47:42.7402763Z #10 20.37 Get:28 http://deb.debian.org/debian bookworm/main arm64 librtmp1 arm64 2.4+20151223.gitfa8646d.1-2+b2 [59.4 kB]
+2026-02-16T15:47:42.7403846Z #10 20.37 Get:29 http://deb.debian.org/debian bookworm/main arm64 libssh2-1 arm64 1.10.0-3+b1 [172 kB]
+2026-02-16T15:47:42.7404902Z #10 20.37 Get:30 http://deb.debian.org/debian bookworm/main arm64 libcurl3-gnutls arm64 7.88.1-10+deb12u14 [362 kB]
+2026-02-16T15:47:42.7405872Z #10 20.38 Get:31 http://deb.debian.org/debian bookworm/main arm64 libexpat1 arm64 2.5.0-1+deb12u2 [86.3 kB]
+2026-02-16T15:47:42.7406764Z #10 20.38 Get:32 http://deb.debian.org/debian bookworm/main arm64 liberror-perl all 0.17029-2 [29.0 kB]
+2026-02-16T15:47:42.7407644Z #10 20.38 Get:33 http://deb.debian.org/debian bookworm/main arm64 git-man all 1:2.39.5-0+deb12u3 [2053 kB]
+2026-02-16T15:47:42.7408615Z #10 20.42 Get:34 http://deb.debian.org/debian bookworm/main arm64 git arm64 1:2.39.5-0+deb12u3 [7153 kB]
+2026-02-16T15:47:42.7409626Z #10 20.53 Get:35 http://deb.debian.org/debian bookworm/main arm64 libldap-common all 2.5.13+dfsg-5 [29.3 kB]
+2026-02-16T15:47:42.9271293Z #10 20.54 Get:36 http://deb.debian.org/debian bookworm/main arm64 libsasl2-modules arm64 2.1.28+dfsg-10 [63.1 kB]
+2026-02-16T15:47:42.9272718Z #10 20.54 Get:37 http://deb.debian.org/debian bookworm/main arm64 libxau6 arm64 1:1.0.9-1 [19.7 kB]
+2026-02-16T15:47:42.9274022Z #10 20.54 Get:38 http://deb.debian.org/debian bookworm/main arm64 libxdmcp6 arm64 1:1.1.2-3 [25.4 kB]
+2026-02-16T15:47:42.9275275Z #10 20.54 Get:39 http://deb.debian.org/debian bookworm/main arm64 libxcb1 arm64 1.15-1 [143 kB]
+2026-02-16T15:47:42.9276583Z #10 20.54 Get:40 http://deb.debian.org/debian bookworm/main arm64 libx11-data all 2:1.8.4-2+deb12u2 [292 kB]
+2026-02-16T15:47:42.9277934Z #10 20.55 Get:41 http://deb.debian.org/debian bookworm/main arm64 libx11-6 arm64 2:1.8.4-2+deb12u2 [735 kB]
+2026-02-16T15:47:42.9279239Z #10 20.56 Get:42 http://deb.debian.org/debian bookworm/main arm64 libxext6 arm64 2:1.3.4-1+b1 [51.7 kB]
+2026-02-16T15:47:42.9280729Z #10 20.56 Get:43 http://deb.debian.org/debian bookworm/main arm64 libxmuu1 arm64 2:1.1.3-3 [24.0 kB]
+2026-02-16T15:47:42.9281941Z #10 20.56 Get:44 http://deb.debian.org/debian bookworm/main arm64 patch arm64 2.7.6-7 [121 kB]
+2026-02-16T15:47:42.9283228Z #10 20.57 Get:45 http://deb.debian.org/debian bookworm/main arm64 publicsuffix all 20230209.2326-1 [126 kB]
+2026-02-16T15:47:42.9284826Z #10 20.57 Get:46 http://deb.debian.org/debian bookworm/main arm64 xauth arm64 1:1.1.2-1 [35.5 kB]
+2026-02-16T15:47:43.6531431Z #10 21.45 debconf: delaying package configuration, since apt-utils is not installed
+2026-02-16T15:47:43.8092395Z #10 21.60 Fetched 24.8 MB in 1s (39.5 MB/s)
+2026-02-16T15:47:43.9905504Z #10 21.78 Selecting previously unselected package perl-modules-5.36.
+2026-02-16T15:47:44.1684623Z #10 21.79 (Reading database ... 
+2026-02-16T15:47:44.1685172Z (Reading database ... 5%
+2026-02-16T15:47:44.1685601Z (Reading database ... 10%
+2026-02-16T15:47:44.1686030Z (Reading database ... 15%
+2026-02-16T15:47:44.1686467Z (Reading database ... 20%
+2026-02-16T15:47:44.1686893Z (Reading database ... 25%
+2026-02-16T15:47:44.1687325Z (Reading database ... 30%
+2026-02-16T15:47:44.1687769Z (Reading database ... 35%
+2026-02-16T15:47:44.1688223Z (Reading database ... 40%
+2026-02-16T15:47:44.1688673Z (Reading database ... 45%
+2026-02-16T15:47:44.1689112Z (Reading database ... 50%
+2026-02-16T15:47:44.1689589Z (Reading database ... 55%
+2026-02-16T15:47:44.1690329Z (Reading database ... 60%
+2026-02-16T15:47:44.1691042Z (Reading database ... 65%
+2026-02-16T15:47:44.1691466Z (Reading database ... 70%
+2026-02-16T15:47:44.1691905Z (Reading database ... 75%
+2026-02-16T15:47:44.1692327Z (Reading database ... 80%
+2026-02-16T15:47:44.1692768Z (Reading database ... 85%
+2026-02-16T15:47:44.1693210Z (Reading database ... 90%
+2026-02-16T15:47:44.1693663Z (Reading database ... 95%
+2026-02-16T15:47:44.1694114Z (Reading database ... 100%
+2026-02-16T15:47:44.1694857Z (Reading database ... 6090 files and directories currently installed.)
+2026-02-16T15:47:44.1695750Z #10 21.81 Preparing to unpack .../00-perl-modules-5.36_5.36.0-7+deb12u3_all.deb ...
+2026-02-16T15:47:44.1696279Z #10 21.81 Unpacking perl-modules-5.36 (5.36.0-7+deb12u3) ...
+2026-02-16T15:47:45.3871241Z #10 23.18 Selecting previously unselected package libgdbm6:arm64.
+2026-02-16T15:47:45.5470527Z #10 23.18 Preparing to unpack .../01-libgdbm6_1.23-3_arm64.deb ...
+2026-02-16T15:47:45.5471290Z #10 23.19 Unpacking libgdbm6:arm64 (1.23-3) ...
+2026-02-16T15:47:45.6258951Z #10 23.42 Selecting previously unselected package libgdbm-compat4:arm64.
+2026-02-16T15:47:45.7812543Z #10 23.42 Preparing to unpack .../02-libgdbm-compat4_1.23-3_arm64.deb ...
+2026-02-16T15:47:45.7813483Z #10 23.42 Unpacking libgdbm-compat4:arm64 (1.23-3) ...
+2026-02-16T15:47:45.8573867Z #10 23.65 Selecting previously unselected package libperl5.36:arm64.
+2026-02-16T15:47:46.0131581Z #10 23.65 Preparing to unpack .../03-libperl5.36_5.36.0-7+deb12u3_arm64.deb ...
+2026-02-16T15:47:46.0132534Z #10 23.66 Unpacking libperl5.36:arm64 (5.36.0-7+deb12u3) ...
+2026-02-16T15:47:47.5168967Z #10 25.31 Selecting previously unselected package perl.
+2026-02-16T15:47:47.6643065Z #10 25.31 Preparing to unpack .../04-perl_5.36.0-7+deb12u3_arm64.deb ...
+2026-02-16T15:47:47.6644000Z #10 25.46 Unpacking perl (5.36.0-7+deb12u3) ...
+2026-02-16T15:47:47.9517634Z #10 25.75 Selecting previously unselected package less.
+2026-02-16T15:47:48.1403129Z #10 25.75 Preparing to unpack .../05-less_590-2.1~deb12u2_arm64.deb ...
+2026-02-16T15:47:48.1403982Z #10 25.78 Unpacking less (590-2.1~deb12u2) ...
+2026-02-16T15:47:48.2494479Z #10 26.04 Selecting previously unselected package netbase.
+2026-02-16T15:47:48.4046059Z #10 26.05 Preparing to unpack .../06-netbase_6.4_all.deb ...
+2026-02-16T15:47:48.4046608Z #10 26.05 Unpacking netbase (6.4) ...
+2026-02-16T15:47:48.4687633Z #10 26.26 Selecting previously unselected package libssl3:arm64.
+2026-02-16T15:47:48.6240762Z #10 26.27 Preparing to unpack .../07-libssl3_3.0.18-1~deb12u2_arm64.deb ...
+2026-02-16T15:47:48.6241462Z #10 26.27 Unpacking libssl3:arm64 (3.0.18-1~deb12u2) ...
+2026-02-16T15:47:49.2075311Z #10 27.00 Selecting previously unselected package openssl.
+2026-02-16T15:47:49.3631821Z #10 27.00 Preparing to unpack .../08-openssl_3.0.18-1~deb12u2_arm64.deb ...
+2026-02-16T15:47:49.3632497Z #10 27.01 Unpacking openssl (3.0.18-1~deb12u2) ...
+2026-02-16T15:47:49.7623919Z #10 27.56 Selecting previously unselected package ca-certificates.
+2026-02-16T15:47:49.9195895Z #10 27.56 Preparing to unpack .../09-ca-certificates_20230311+deb12u1_all.deb ...
+2026-02-16T15:47:49.9196578Z #10 27.56 Unpacking ca-certificates (20230311+deb12u1) ...
+2026-02-16T15:47:50.0341254Z #10 27.83 Selecting previously unselected package krb5-locales.
+2026-02-16T15:47:50.1896292Z #10 27.83 Preparing to unpack .../10-krb5-locales_1.20.1-2+deb12u4_all.deb ...
+2026-02-16T15:47:50.1897079Z #10 27.83 Unpacking krb5-locales (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:50.2808058Z #10 28.07 Selecting previously unselected package libbsd0:arm64.
+2026-02-16T15:47:50.4365667Z #10 28.08 Preparing to unpack .../11-libbsd0_0.11.7-2_arm64.deb ...
+2026-02-16T15:47:50.4366421Z #10 28.08 Unpacking libbsd0:arm64 (0.11.7-2) ...
+2026-02-16T15:47:50.5302824Z #10 28.32 Selecting previously unselected package libedit2:arm64.
+2026-02-16T15:47:50.6859653Z #10 28.33 Preparing to unpack .../12-libedit2_3.1-20221030-2_arm64.deb ...
+2026-02-16T15:47:50.6860790Z #10 28.33 Unpacking libedit2:arm64 (3.1-20221030-2) ...
+2026-02-16T15:47:50.7781318Z #10 28.57 Selecting previously unselected package libcbor0.8:arm64.
+2026-02-16T15:47:50.9342446Z #10 28.58 Preparing to unpack .../13-libcbor0.8_0.8.0-2+b1_arm64.deb ...
+2026-02-16T15:47:50.9344081Z #10 28.58 Unpacking libcbor0.8:arm64 (0.8.0-2+b1) ...
+2026-02-16T15:47:51.0015000Z #10 28.80 Selecting previously unselected package libfido2-1:arm64.
+2026-02-16T15:47:51.1573123Z #10 28.80 Preparing to unpack .../14-libfido2-1_1.12.0-2+b1_arm64.deb ...
+2026-02-16T15:47:51.1574021Z #10 28.80 Unpacking libfido2-1:arm64 (1.12.0-2+b1) ...
+2026-02-16T15:47:51.2427391Z #10 29.04 Selecting previously unselected package libkrb5support0:arm64.
+2026-02-16T15:47:51.3982861Z #10 29.04 Preparing to unpack .../15-libkrb5support0_1.20.1-2+deb12u4_arm64.deb ...
+2026-02-16T15:47:51.3983662Z #10 29.04 Unpacking libkrb5support0:arm64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:51.4685246Z #10 29.26 Selecting previously unselected package libk5crypto3:arm64.
+2026-02-16T15:47:51.6245270Z #10 29.27 Preparing to unpack .../16-libk5crypto3_1.20.1-2+deb12u4_arm64.deb ...
+2026-02-16T15:47:51.6246304Z #10 29.27 Unpacking libk5crypto3:arm64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:51.7156152Z #10 29.51 Selecting previously unselected package libkeyutils1:arm64.
+2026-02-16T15:47:51.8712022Z #10 29.51 Preparing to unpack .../17-libkeyutils1_1.6.3-2_arm64.deb ...
+2026-02-16T15:47:51.8712917Z #10 29.51 Unpacking libkeyutils1:arm64 (1.6.3-2) ...
+2026-02-16T15:47:51.9328840Z #10 29.73 Selecting previously unselected package libkrb5-3:arm64.
+2026-02-16T15:47:52.0891020Z #10 29.73 Preparing to unpack .../18-libkrb5-3_1.20.1-2+deb12u4_arm64.deb ...
+2026-02-16T15:47:52.0891747Z #10 29.73 Unpacking libkrb5-3:arm64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:52.2741973Z #10 30.07 Selecting previously unselected package libgssapi-krb5-2:arm64.
+2026-02-16T15:47:52.4300276Z #10 30.07 Preparing to unpack .../19-libgssapi-krb5-2_1.20.1-2+deb12u4_arm64.deb ...
+2026-02-16T15:47:52.4301373Z #10 30.07 Unpacking libgssapi-krb5-2:arm64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:47:52.5437525Z #10 30.34 Selecting previously unselected package openssh-client.
+2026-02-16T15:47:52.6906118Z #10 30.34 Preparing to unpack .../20-openssh-client_1%3a9.2p1-2+deb12u7_arm64.deb ...
+2026-02-16T15:47:52.6907233Z #10 30.48 Unpacking openssh-client (1:9.2p1-2+deb12u7) ...
+2026-02-16T15:47:53.2175672Z #10 31.01 Selecting previously unselected package libbrotli1:arm64.
+2026-02-16T15:47:53.3733659Z #10 31.01 Preparing to unpack .../21-libbrotli1_1.0.9-2+b6_arm64.deb ...
+2026-02-16T15:47:53.3734597Z #10 31.02 Unpacking libbrotli1:arm64 (1.0.9-2+b6) ...
+2026-02-16T15:47:53.5301731Z #10 31.32 Selecting previously unselected package libsasl2-modules-db:arm64.
+2026-02-16T15:47:53.6856351Z #10 31.33 Preparing to unpack .../22-libsasl2-modules-db_2.1.28+dfsg-10_arm64.deb ...
+2026-02-16T15:47:53.6857257Z #10 31.33 Unpacking libsasl2-modules-db:arm64 (2.1.28+dfsg-10) ...
+2026-02-16T15:47:53.7625936Z #10 31.56 Selecting previously unselected package libsasl2-2:arm64.
+2026-02-16T15:47:53.9183208Z #10 31.56 Preparing to unpack .../23-libsasl2-2_2.1.28+dfsg-10_arm64.deb ...
+2026-02-16T15:47:53.9183777Z #10 31.56 Unpacking libsasl2-2:arm64 (2.1.28+dfsg-10) ...
+2026-02-16T15:47:53.9995489Z #10 31.79 Selecting previously unselected package libldap-2.5-0:arm64.
+2026-02-16T15:47:54.1552958Z #10 31.80 Preparing to unpack .../24-libldap-2.5-0_2.5.13+dfsg-5_arm64.deb ...
+2026-02-16T15:47:54.1553843Z #10 31.80 Unpacking libldap-2.5-0:arm64 (2.5.13+dfsg-5) ...
+2026-02-16T15:47:54.2777969Z #10 32.07 Selecting previously unselected package libnghttp2-14:arm64.
+2026-02-16T15:47:54.4336035Z #10 32.07 Preparing to unpack .../25-libnghttp2-14_1.52.0-1+deb12u2_arm64.deb ...
+2026-02-16T15:47:54.4336746Z #10 32.08 Unpacking libnghttp2-14:arm64 (1.52.0-1+deb12u2) ...
+2026-02-16T15:47:54.5193015Z #10 32.31 Selecting previously unselected package libpsl5:arm64.
+2026-02-16T15:47:54.6752285Z #10 32.32 Preparing to unpack .../26-libpsl5_0.21.2-1_arm64.deb ...
+2026-02-16T15:47:54.6752841Z #10 32.32 Unpacking libpsl5:arm64 (0.21.2-1) ...
+2026-02-16T15:47:54.7636749Z #10 32.56 Selecting previously unselected package librtmp1:arm64.
+2026-02-16T15:47:54.9191654Z #10 32.56 Preparing to unpack .../27-librtmp1_2.4+20151223.gitfa8646d.1-2+b2_arm64.deb ...
+2026-02-16T15:47:54.9192764Z #10 32.56 Unpacking librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b2) ...
+2026-02-16T15:47:55.0076331Z #10 32.80 Selecting previously unselected package libssh2-1:arm64.
+2026-02-16T15:47:55.1642696Z #10 32.80 Preparing to unpack .../28-libssh2-1_1.10.0-3+b1_arm64.deb ...
+2026-02-16T15:47:55.1643575Z #10 32.81 Unpacking libssh2-1:arm64 (1.10.0-3+b1) ...
+2026-02-16T15:47:55.2752310Z #10 33.07 Selecting previously unselected package libcurl3-gnutls:arm64.
+2026-02-16T15:47:55.4307699Z #10 33.07 Preparing to unpack .../29-libcurl3-gnutls_7.88.1-10+deb12u14_arm64.deb ...
+2026-02-16T15:47:55.4308453Z #10 33.07 Unpacking libcurl3-gnutls:arm64 (7.88.1-10+deb12u14) ...
+2026-02-16T15:47:55.6001267Z #10 33.39 Selecting previously unselected package libexpat1:arm64.
+2026-02-16T15:47:55.7556332Z #10 33.40 Preparing to unpack .../30-libexpat1_2.5.0-1+deb12u2_arm64.deb ...
+2026-02-16T15:47:55.7556976Z #10 33.40 Unpacking libexpat1:arm64 (2.5.0-1+deb12u2) ...
+2026-02-16T15:47:55.8488267Z #10 33.64 Selecting previously unselected package liberror-perl.
+2026-02-16T15:47:56.0038460Z #10 33.65 Preparing to unpack .../31-liberror-perl_0.17029-2_all.deb ...
+2026-02-16T15:47:56.0039053Z #10 33.65 Unpacking liberror-perl (0.17029-2) ...
+2026-02-16T15:47:56.0691713Z #10 33.86 Selecting previously unselected package git-man.
+2026-02-16T15:47:56.2248602Z #10 33.87 Preparing to unpack .../32-git-man_1%3a2.39.5-0+deb12u3_all.deb ...
+2026-02-16T15:47:56.2249517Z #10 33.87 Unpacking git-man (1:2.39.5-0+deb12u3) ...
+2026-02-16T15:47:56.5354956Z #10 34.33 Selecting previously unselected package git.
+2026-02-16T15:47:56.6843203Z #10 34.33 Preparing to unpack .../33-git_1%3a2.39.5-0+deb12u3_arm64.deb ...
+2026-02-16T15:47:56.6844150Z #10 34.48 Unpacking git (1:2.39.5-0+deb12u3) ...
+2026-02-16T15:47:58.3035055Z #10 36.10 Selecting previously unselected package libldap-common.
+2026-02-16T15:47:58.4595256Z #10 36.10 Preparing to unpack .../34-libldap-common_2.5.13+dfsg-5_all.deb ...
+2026-02-16T15:47:58.4596003Z #10 36.10 Unpacking libldap-common (2.5.13+dfsg-5) ...
+2026-02-16T15:47:58.5332194Z #10 36.33 Selecting previously unselected package libsasl2-modules:arm64.
+2026-02-16T15:47:58.6797929Z #10 36.33 Preparing to unpack .../35-libsasl2-modules_2.1.28+dfsg-10_arm64.deb ...
+2026-02-16T15:47:58.6799219Z #10 36.47 Unpacking libsasl2-modules:arm64 (2.1.28+dfsg-10) ...
+2026-02-16T15:47:58.9200231Z #10 36.71 Selecting previously unselected package libxau6:arm64.
+2026-02-16T15:47:59.0761382Z #10 36.72 Preparing to unpack .../36-libxau6_1%3a1.0.9-1_arm64.deb ...
+2026-02-16T15:47:59.0762249Z #10 36.72 Unpacking libxau6:arm64 (1:1.0.9-1) ...
+2026-02-16T15:47:59.1431544Z #10 36.94 Selecting previously unselected package libxdmcp6:arm64.
+2026-02-16T15:47:59.2987572Z #10 36.94 Preparing to unpack .../37-libxdmcp6_1%3a1.1.2-3_arm64.deb ...
+2026-02-16T15:47:59.2988211Z #10 36.94 Unpacking libxdmcp6:arm64 (1:1.1.2-3) ...
+2026-02-16T15:47:59.3684622Z #10 37.16 Selecting previously unselected package libxcb1:arm64.
+2026-02-16T15:47:59.5245502Z #10 37.17 Preparing to unpack .../38-libxcb1_1.15-1_arm64.deb ...
+2026-02-16T15:47:59.5246320Z #10 37.17 Unpacking libxcb1:arm64 (1.15-1) ...
+2026-02-16T15:47:59.6093983Z #10 37.40 Selecting previously unselected package libx11-data.
+2026-02-16T15:47:59.7647776Z #10 37.41 Preparing to unpack .../39-libx11-data_2%3a1.8.4-2+deb12u2_all.deb ...
+2026-02-16T15:47:59.7648701Z #10 37.41 Unpacking libx11-data (2:1.8.4-2+deb12u2) ...
+2026-02-16T15:47:59.9152374Z #10 37.71 Selecting previously unselected package libx11-6:arm64.
+2026-02-16T15:48:00.0707691Z #10 37.71 Preparing to unpack .../40-libx11-6_2%3a1.8.4-2+deb12u2_arm64.deb ...
+2026-02-16T15:48:00.0708474Z #10 37.71 Unpacking libx11-6:arm64 (2:1.8.4-2+deb12u2) ...
+2026-02-16T15:48:00.3247880Z #10 38.12 Selecting previously unselected package libxext6:arm64.
+2026-02-16T15:48:00.4803803Z #10 38.12 Preparing to unpack .../41-libxext6_2%3a1.3.4-1+b1_arm64.deb ...
+2026-02-16T15:48:00.4804484Z #10 38.12 Unpacking libxext6:arm64 (2:1.3.4-1+b1) ...
+2026-02-16T15:48:00.5616729Z #10 38.36 Selecting previously unselected package libxmuu1:arm64.
+2026-02-16T15:48:00.7176366Z #10 38.36 Preparing to unpack .../42-libxmuu1_2%3a1.1.3-3_arm64.deb ...
+2026-02-16T15:48:00.7177241Z #10 38.36 Unpacking libxmuu1:arm64 (2:1.1.3-3) ...
+2026-02-16T15:48:00.7795269Z #10 38.57 Selecting previously unselected package patch.
+2026-02-16T15:48:00.9353768Z #10 38.58 Preparing to unpack .../43-patch_2.7.6-7_arm64.deb ...
+2026-02-16T15:48:00.9354489Z #10 38.58 Unpacking patch (2.7.6-7) ...
+2026-02-16T15:48:01.0375171Z #10 38.83 Selecting previously unselected package publicsuffix.
+2026-02-16T15:48:01.1950402Z #10 38.83 Preparing to unpack .../44-publicsuffix_20230209.2326-1_all.deb ...
+2026-02-16T15:48:01.1951059Z #10 38.84 Unpacking publicsuffix (20230209.2326-1) ...
+2026-02-16T15:48:01.2995610Z #10 39.09 Selecting previously unselected package xauth.
+2026-02-16T15:48:01.4555633Z #10 39.10 Preparing to unpack .../45-xauth_1%3a1.1.2-1_arm64.deb ...
+2026-02-16T15:48:01.4556373Z #10 39.10 Unpacking xauth (1:1.1.2-1) ...
+2026-02-16T15:48:01.4972861Z #10 39.29 Setting up libexpat1:arm64 (2.5.0-1+deb12u2) ...
+2026-02-16T15:48:01.6191486Z #10 39.30 Setting up libxau6:arm64 (1:1.0.9-1) ...
+2026-02-16T15:48:01.6192320Z #10 39.30 Setting up libkeyutils1:arm64 (1.6.3-2) ...
+2026-02-16T15:48:01.6193047Z #10 39.31 Setting up libpsl5:arm64 (0.21.2-1) ...
+2026-02-16T15:48:01.6193777Z #10 39.31 Setting up libcbor0.8:arm64 (0.8.0-2+b1) ...
+2026-02-16T15:48:01.6194517Z #10 39.32 Setting up libbrotli1:arm64 (1.0.9-2+b6) ...
+2026-02-16T15:48:01.6195283Z #10 39.32 Setting up libssl3:arm64 (3.0.18-1~deb12u2) ...
+2026-02-16T15:48:01.6196080Z #10 39.33 Setting up libnghttp2-14:arm64 (1.52.0-1+deb12u2) ...
+2026-02-16T15:48:01.6196829Z #10 39.33 Setting up less (590-2.1~deb12u2) ...
+2026-02-16T15:48:01.6197392Z #10 39.41 Setting up krb5-locales (1.20.1-2+deb12u4) ...
+2026-02-16T15:48:01.7488672Z #10 39.42 Setting up libldap-common (2.5.13+dfsg-5) ...
+2026-02-16T15:48:01.7489965Z #10 39.43 Setting up libkrb5support0:arm64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:48:01.7490849Z #10 39.43 Setting up libsasl2-modules-db:arm64 (2.1.28+dfsg-10) ...
+2026-02-16T15:48:01.7491574Z #10 39.44 Setting up perl-modules-5.36 (5.36.0-7+deb12u3) ...
+2026-02-16T15:48:01.7492092Z #10 39.44 Setting up libx11-data (2:1.8.4-2+deb12u2) ...
+2026-02-16T15:48:01.7492648Z #10 39.44 Setting up librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b2) ...
+2026-02-16T15:48:01.7493136Z #10 39.45 Setting up patch (2.7.6-7) ...
+2026-02-16T15:48:01.7493599Z #10 39.45 Setting up libk5crypto3:arm64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:48:01.7494108Z #10 39.46 Setting up libsasl2-2:arm64 (2.1.28+dfsg-10) ...
+2026-02-16T15:48:01.7494615Z #10 39.46 Setting up git-man (1:2.39.5-0+deb12u3) ...
+2026-02-16T15:48:01.7495485Z #10 39.47 Setting up libssh2-1:arm64 (1.10.0-3+b1) ...
+2026-02-16T15:48:01.7495961Z #10 39.47 Setting up netbase (6.4) ...
+2026-02-16T15:48:01.7496589Z #10 39.54 Setting up libkrb5-3:arm64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:48:01.9677450Z #10 39.55 Setting up libfido2-1:arm64 (1.12.0-2+b1) ...
+2026-02-16T15:48:01.9678216Z #10 39.55 Setting up openssl (3.0.18-1~deb12u2) ...
+2026-02-16T15:48:01.9678894Z #10 39.59 Setting up libbsd0:arm64 (0.11.7-2) ...
+2026-02-16T15:48:01.9679590Z #10 39.59 Setting up publicsuffix (20230209.2326-1) ...
+2026-02-16T15:48:01.9680509Z #10 39.60 Setting up libgdbm6:arm64 (1.23-3) ...
+2026-02-16T15:48:01.9681159Z #10 39.60 Setting up libxdmcp6:arm64 (1:1.1.2-3) ...
+2026-02-16T15:48:01.9681644Z #10 39.61 Setting up libxcb1:arm64 (1.15-1) ...
+2026-02-16T15:48:01.9682046Z #10 39.61 Setting up libedit2:arm64 (3.1-20221030-2) ...
+2026-02-16T15:48:01.9682498Z #10 39.62 Setting up libsasl2-modules:arm64 (2.1.28+dfsg-10) ...
+2026-02-16T15:48:01.9682993Z #10 39.76 Setting up libldap-2.5-0:arm64 (2.5.13+dfsg-5) ...
+2026-02-16T15:48:02.1229909Z #10 39.77 Setting up ca-certificates (20230311+deb12u1) ...
+2026-02-16T15:48:13.9850400Z #10 51.78 Updating certificates in /etc/ssl/certs...
+2026-02-16T15:48:32.6442526Z #10 70.44 142 added, 0 removed; done.
+2026-02-16T15:48:32.8128278Z #10 70.61 Setting up libgssapi-krb5-2:arm64 (1.20.1-2+deb12u4) ...
+2026-02-16T15:48:33.0187669Z #10 70.64 Setting up libgdbm-compat4:arm64 (1.23-3) ...
+2026-02-16T15:48:33.0188494Z #10 70.65 Setting up libx11-6:arm64 (2:1.8.4-2+deb12u2) ...
+2026-02-16T15:48:33.0189296Z #10 70.65 Setting up libperl5.36:arm64 (5.36.0-7+deb12u3) ...
+2026-02-16T15:48:33.0190299Z #10 70.66 Setting up libxmuu1:arm64 (2:1.1.3-3) ...
+2026-02-16T15:48:33.0191041Z #10 70.66 Setting up openssh-client (1:9.2p1-2+deb12u7) ...
+2026-02-16T15:48:33.7795441Z #10 71.57 Setting up libxext6:arm64 (2:1.3.4-1+b1) ...
+2026-02-16T15:48:33.9460557Z #10 71.58 Setting up libcurl3-gnutls:arm64 (7.88.1-10+deb12u14) ...
+2026-02-16T15:48:33.9461445Z #10 71.59 Setting up perl (5.36.0-7+deb12u3) ...
+2026-02-16T15:48:34.0145090Z #10 71.81 Setting up xauth (1:1.1.2-1) ...
+2026-02-16T15:48:34.1726988Z #10 71.81 Setting up liberror-perl (0.17029-2) ...
+2026-02-16T15:48:34.1729147Z #10 71.82 Setting up git (1:2.39.5-0+deb12u3) ...
+2026-02-16T15:48:34.1730423Z #10 71.97 Processing triggers for libc-bin (2.36-9+deb12u13) ...
+2026-02-16T15:48:34.3881053Z #10 72.05 Processing triggers for ca-certificates (20230311+deb12u1) ...
+2026-02-16T15:48:34.3882883Z #10 72.18 Updating certificates in /etc/ssl/certs...
+2026-02-16T15:48:49.0254947Z #10 86.82 0 added, 0 removed; done.
+2026-02-16T15:48:49.2110636Z #10 86.82 Running hooks in /etc/ca-certificates/update.d...
+2026-02-16T15:48:49.2111199Z #10 86.85 done.
+2026-02-16T15:48:49.3937414Z #10 DONE 87.2s
+2026-02-16T15:48:49.5816300Z 
+2026-02-16T15:48:49.5817114Z #19 [linux/arm64 3/9] WORKDIR /app
+2026-02-16T15:48:49.5817848Z #19 DONE 0.0s
+2026-02-16T15:48:49.5818029Z 
+2026-02-16T15:48:49.5818523Z #20 [linux/arm64 4/9] RUN useradd -m ***_user
+2026-02-16T15:48:49.6376538Z #20 DONE 0.2s
+2026-02-16T15:48:49.8221422Z 
+2026-02-16T15:48:49.8222042Z #21 [linux/arm64 5/9] COPY dist/ ./
+2026-02-16T15:48:49.8222618Z #21 DONE 0.0s
+2026-02-16T15:48:49.8222795Z 
+2026-02-16T15:48:49.8223003Z #22 [linux/arm64 6/9] COPY package*.json ./
+2026-02-16T15:48:49.8223433Z #22 DONE 0.0s
+2026-02-16T15:48:49.8223665Z 
+2026-02-16T15:48:49.8225944Z #23 [linux/arm64 7/9] RUN mkdir -p workspace &&     chown -R ***_user:***_user /app
+2026-02-16T15:48:49.9052926Z #23 DONE 0.2s
+2026-02-16T15:48:50.0567455Z 
+2026-02-16T15:48:50.0568029Z #24 [linux/arm64 8/9] RUN npm ci --omit=dev
+2026-02-16T15:49:06.9216129Z #24 17.02 
+2026-02-16T15:49:06.9217160Z #24 17.02 added 42 packages, and audited 43 packages in 15s
+2026-02-16T15:49:07.1111773Z #24 17.02 
+2026-02-16T15:49:07.1112344Z #24 17.02 3 packages are looking for funding
+2026-02-16T15:49:07.1112987Z #24 17.02   run `npm fund` for details
+2026-02-16T15:49:07.1113490Z #24 17.03 
+2026-02-16T15:49:07.1114340Z #24 17.03 found 0 vulnerabilities
+2026-02-16T15:49:07.1114827Z #24 17.05 npm notice
+2026-02-16T15:49:07.1115599Z #24 17.05 npm notice New minor version of npm available! 11.8.0 -> 11.10.0
+2026-02-16T15:49:07.1116781Z #24 17.05 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.10.0
+2026-02-16T15:49:07.1117870Z #24 17.05 npm notice To update run: npm install -g npm@11.10.0
+2026-02-16T15:49:07.1118551Z #24 17.05 npm notice
+2026-02-16T15:49:07.1700367Z #24 DONE 17.3s
+2026-02-16T15:49:07.3215774Z 
+2026-02-16T15:49:07.3217641Z #25 [linux/arm64 9/9] RUN git config --global user.email "agent.***@gmail.com" &&     git config --global user.name "SeedGPT" &&     git config --global init.defaultBranch main
+2026-02-16T15:49:07.4088240Z #25 DONE 0.2s
+2026-02-16T15:49:07.5611925Z 
+2026-02-16T15:49:07.5616017Z #26 exporting to image
+2026-02-16T15:49:07.5616794Z #26 exporting layers
+2026-02-16T15:49:12.1648258Z #26 exporting layers 4.8s done
+2026-02-16T15:49:12.3603045Z #26 exporting manifest sha256:20ac7fd670aceaec3a394c86134509e60fca80408d925161cb475b7dbc7231db done
+2026-02-16T15:49:12.3604744Z #26 exporting config sha256:fc23037372bc04d82630a26133cf2484cc83a646641fe575a892c3165a7bca42 done
+2026-02-16T15:49:12.3605999Z #26 exporting attestation manifest sha256:8e7995a8ac66d2504ae904aba41265f0d3889a168bd665545abb7dcc5953580b done
+2026-02-16T15:49:12.3607216Z #26 exporting manifest sha256:0c9e4b8d6605f8912cf362c9a717c02e69f59cc9b9ac8e53027518aa3a222d1e done
+2026-02-16T15:49:12.3608366Z #26 exporting config sha256:d2cafd31aef6878d6989dfe9c9f22bf751499b3ef6bf708a4fc17ba7d7857346 done
+2026-02-16T15:49:12.3609590Z #26 exporting attestation manifest sha256:682864135f47fc840ae23c539b9bb0d8822fc4127c9f25292b39844b617ca270 done
+2026-02-16T15:49:12.3611049Z #26 exporting manifest list sha256:67305807ab54c19bbe687a7119e4a64f23042e2aa137ed4c984a853e0d8fd290 done
+2026-02-16T15:49:12.3611773Z #26 pushing layers
+2026-02-16T15:49:12.5435739Z #26 ...
+2026-02-16T15:49:12.5435958Z 
+2026-02-16T15:49:12.5436605Z #27 [auth] ***/***:pull,push token for registry-1.docker.io
+2026-02-16T15:49:12.5437169Z #27 DONE 0.0s
+2026-02-16T15:49:12.6939068Z 
+2026-02-16T15:49:12.6939557Z #26 exporting to image
+2026-02-16T15:49:20.3083193Z #26 pushing layers 8.1s done
+2026-02-16T15:49:20.3085526Z #26 pushing manifest for docker.io/***/***:39d6cfb6eef3aeca19892a07364023bdc0b2b904@sha256:67305807ab54c19bbe687a7119e4a64f23042e2aa137ed4c984a853e0d8fd290
+2026-02-16T15:49:23.7916893Z #26 pushing manifest for docker.io/***/***:39d6cfb6eef3aeca19892a07364023bdc0b2b904@sha256:67305807ab54c19bbe687a7119e4a64f23042e2aa137ed4c984a853e0d8fd290 3.5s done
+2026-02-16T15:49:24.3975362Z #26 pushing layers 0.6s done
+2026-02-16T15:49:24.3977235Z #26 pushing manifest for docker.io/***/***:latest@sha256:67305807ab54c19bbe687a7119e4a64f23042e2aa137ed4c984a853e0d8fd290
+2026-02-16T15:49:27.3412755Z #26 pushing manifest for docker.io/***/***:latest@sha256:67305807ab54c19bbe687a7119e4a64f23042e2aa137ed4c984a853e0d8fd290 2.9s done
+2026-02-16T15:49:27.3414965Z #26 DONE 19.9s
+2026-02-16T15:49:27.3861912Z ##[group]Run sed -i "s/\${GITHUB_SHA}/39d6cfb6eef3aeca19892a07364023bdc0b2b904/g" DevOps/deployment.yaml
+2026-02-16T15:49:27.3862618Z [36;1msed -i "s/\${GITHUB_SHA}/39d6cfb6eef3aeca19892a07364023bdc0b2b904/g" DevOps/deployment.yaml[0m
+2026-02-16T15:49:27.3911309Z shell: /usr/bin/bash -e {0}
+2026-02-16T15:49:27.3911559Z ##[endgroup]
+2026-02-16T15:49:27.4053129Z ##[group]Run actions/checkout@v6
+2026-02-16T15:49:27.4053390Z with:
+2026-02-16T15:49:27.4053576Z   repository: SeedGPT/DevOps
+2026-02-16T15:49:27.4053960Z   token: ***
+2026-02-16T15:49:27.4054159Z   path: DevOpsRepo
+2026-02-16T15:49:27.4054373Z   ssh-strict: true
+2026-02-16T15:49:27.4054568Z   ssh-user: git
+2026-02-16T15:49:27.4054773Z   persist-credentials: true
+2026-02-16T15:49:27.4055002Z   clean: true
+2026-02-16T15:49:27.4055208Z   sparse-checkout-cone-mode: true
+2026-02-16T15:49:27.4055458Z   fetch-depth: 1
+2026-02-16T15:49:27.4055648Z   fetch-tags: false
+2026-02-16T15:49:27.4055853Z   show-progress: true
+2026-02-16T15:49:27.4056243Z   lfs: false
+2026-02-16T15:49:27.4056424Z   submodules: false
+2026-02-16T15:49:27.4056631Z   set-safe-directory: true
+2026-02-16T15:49:27.4056856Z ##[endgroup]
+2026-02-16T15:49:27.4867892Z Syncing repository: SeedGPT/DevOps
+2026-02-16T15:49:27.4873782Z ##[group]Getting Git version info
+2026-02-16T15:49:27.4874530Z Working directory is '/home/runner/work/SeedGPT/SeedGPT/DevOpsRepo'
+2026-02-16T15:49:27.4909250Z [command]/usr/bin/git version
+2026-02-16T15:49:27.4946776Z git version 2.52.0
+2026-02-16T15:49:27.4969526Z ##[endgroup]
+2026-02-16T15:49:27.4982579Z Temporarily overriding HOME='/home/runner/work/_temp/ed584a43-13b1-4491-a25b-c66c9afdb455' before making global git config changes
+2026-02-16T15:49:27.4983703Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-16T15:49:27.4988612Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SeedGPT/SeedGPT/DevOpsRepo
+2026-02-16T15:49:27.5022168Z ##[group]Initializing the repository
+2026-02-16T15:49:27.5027447Z [command]/usr/bin/git init /home/runner/work/SeedGPT/SeedGPT/DevOpsRepo
+2026-02-16T15:49:27.5068803Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-02-16T15:49:27.5070139Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-02-16T15:49:27.5071217Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-02-16T15:49:27.5071757Z hint: call:
+2026-02-16T15:49:27.5071948Z hint:
+2026-02-16T15:49:27.5072260Z hint: 	git config --global init.defaultBranch <name>
+2026-02-16T15:49:27.5072565Z hint:
+2026-02-16T15:49:27.5072939Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-02-16T15:49:27.5073528Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-02-16T15:49:27.5073912Z hint:
+2026-02-16T15:49:27.5074126Z hint: 	git branch -m <name>
+2026-02-16T15:49:27.5074357Z hint:
+2026-02-16T15:49:27.5074760Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-02-16T15:49:27.5075445Z Initialized empty Git repository in /home/runner/work/SeedGPT/SeedGPT/DevOpsRepo/.git/
+2026-02-16T15:49:27.5081416Z [command]/usr/bin/git remote add origin https://github.com/SeedGPT/DevOps
+2026-02-16T15:49:27.5119235Z ##[endgroup]
+2026-02-16T15:49:27.5119661Z ##[group]Disabling automatic garbage collection
+2026-02-16T15:49:27.5124809Z [command]/usr/bin/git config --local gc.auto 0
+2026-02-16T15:49:27.5153563Z ##[endgroup]
+2026-02-16T15:49:27.5154193Z ##[group]Setting up auth
+2026-02-16T15:49:27.5155384Z Removing SSH command configuration
+2026-02-16T15:49:27.5161672Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-16T15:49:27.5193494Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-16T15:49:27.5423439Z Removing HTTP extra header
+2026-02-16T15:49:27.5428561Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-16T15:49:27.5458145Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-16T15:49:27.5682308Z Removing includeIf entries pointing to credentials config files
+2026-02-16T15:49:27.5689463Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-02-16T15:49:27.5721993Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-02-16T15:49:27.5962497Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-02-16T15:49:27.6001818Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/SeedGPT/SeedGPT/DevOpsRepo/.git.path /home/runner/work/_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:27.6036268Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/SeedGPT/SeedGPT/DevOpsRepo/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:27.6071612Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/DevOpsRepo/.git.path /github/runner_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:27.6106444Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/DevOpsRepo/.git/worktrees/*.path /github/runner_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:27.6135820Z ##[endgroup]
+2026-02-16T15:49:27.6136444Z ##[group]Determining the default branch
+2026-02-16T15:49:27.6141580Z Retrieving the default branch name
+2026-02-16T15:49:27.9728284Z Default branch 'main'
+2026-02-16T15:49:27.9729244Z ##[endgroup]
+2026-02-16T15:49:27.9730215Z ##[group]Fetching the repository
+2026-02-16T15:49:27.9737613Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+2026-02-16T15:49:28.4304444Z From https://github.com/SeedGPT/DevOps
+2026-02-16T15:49:28.4305188Z  * [new branch]      main       -> origin/main
+2026-02-16T15:49:28.4335423Z ##[endgroup]
+2026-02-16T15:49:28.4336033Z ##[group]Determining the checkout info
+2026-02-16T15:49:28.4336856Z ##[endgroup]
+2026-02-16T15:49:28.4341858Z [command]/usr/bin/git sparse-checkout disable
+2026-02-16T15:49:28.4384094Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-02-16T15:49:28.4414133Z ##[group]Checking out the ref
+2026-02-16T15:49:28.4418057Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-02-16T15:49:28.4462365Z Switched to a new branch 'main'
+2026-02-16T15:49:28.4465734Z branch 'main' set up to track 'origin/main'.
+2026-02-16T15:49:28.4470660Z ##[endgroup]
+2026-02-16T15:49:28.4508448Z [command]/usr/bin/git log -1 --format=%H
+2026-02-16T15:49:28.4535503Z a896de8da33f732931dcb6f9d74847cd1ce0e1b4
+2026-02-16T15:49:28.4695927Z ##[group]Run cp DevOps/* DevOpsRepo/
+2026-02-16T15:49:28.4696266Z [36;1mcp DevOps/* DevOpsRepo/[0m
+2026-02-16T15:49:28.4696524Z [36;1mcd DevOpsRepo[0m
+2026-02-16T15:49:28.4696792Z [36;1mgit config user.name "GitHub Actions Bot"[0m
+2026-02-16T15:49:28.4697151Z [36;1mgit config user.email "actions@github.com"[0m
+2026-02-16T15:49:28.4697445Z [36;1mgit add .[0m
+2026-02-16T15:49:28.4697680Z [36;1mif git diff --staged --quiet; then[0m
+2026-02-16T15:49:28.4697961Z [36;1m  echo "No changes to commit"[0m
+2026-02-16T15:49:28.4698215Z [36;1melse[0m
+2026-02-16T15:49:28.4698516Z [36;1m  git commit -m "SeedGPT: 39d6cfb6eef3aeca19892a07364023bdc0b2b904"[0m
+2026-02-16T15:49:28.4698896Z [36;1m  git push origin HEAD[0m
+2026-02-16T15:49:28.4699133Z [36;1mfi[0m
+2026-02-16T15:49:28.4746916Z shell: /usr/bin/bash -e {0}
+2026-02-16T15:49:28.4747174Z ##[endgroup]
+2026-02-16T15:49:28.4953310Z [main 91e7bb8] SeedGPT: 39d6cfb6eef3aeca19892a07364023bdc0b2b904
+2026-02-16T15:49:28.4954208Z  1 file changed, 2 insertions(+), 2 deletions(-)
+2026-02-16T15:49:29.2021027Z To https://github.com/SeedGPT/DevOps
+2026-02-16T15:49:29.2021771Z    a896de8..91e7bb8  HEAD -> main
+2026-02-16T15:49:29.2133032Z Post job cleanup.
+2026-02-16T15:49:29.2930685Z [command]/usr/bin/git version
+2026-02-16T15:49:29.2967444Z git version 2.52.0
+2026-02-16T15:49:29.3008033Z Temporarily overriding HOME='/home/runner/work/_temp/77393b46-8e11-417f-a2e5-35b70399a590' before making global git config changes
+2026-02-16T15:49:29.3009563Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-16T15:49:29.3014391Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SeedGPT/SeedGPT/DevOpsRepo
+2026-02-16T15:49:29.3046537Z Removing SSH command configuration
+2026-02-16T15:49:29.3053108Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-16T15:49:29.3087127Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-16T15:49:29.3320857Z Removing HTTP extra header
+2026-02-16T15:49:29.3326683Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-16T15:49:29.3361277Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-16T15:49:29.3591380Z Removing includeIf entries pointing to credentials config files
+2026-02-16T15:49:29.3597515Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-02-16T15:49:29.3621904Z includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/DevOpsRepo/.git.path
+2026-02-16T15:49:29.3622924Z includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/DevOpsRepo/.git/worktrees/*.path
+2026-02-16T15:49:29.3623503Z includeif.gitdir:/github/workspace/DevOpsRepo/.git.path
+2026-02-16T15:49:29.3624015Z includeif.gitdir:/github/workspace/DevOpsRepo/.git/worktrees/*.path
+2026-02-16T15:49:29.3632448Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/DevOpsRepo/.git.path
+2026-02-16T15:49:29.3653847Z /home/runner/work/_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:29.3664126Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/DevOpsRepo/.git.path /home/runner/work/_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:29.3699053Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/DevOpsRepo/.git/worktrees/*.path
+2026-02-16T15:49:29.3721054Z /home/runner/work/_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:29.3730600Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/DevOpsRepo/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:29.3761564Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/DevOpsRepo/.git.path
+2026-02-16T15:49:29.3783866Z /github/runner_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:29.3792253Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/DevOpsRepo/.git.path /github/runner_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:29.3824131Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/DevOpsRepo/.git/worktrees/*.path
+2026-02-16T15:49:29.3846102Z /github/runner_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:29.3856212Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/DevOpsRepo/.git/worktrees/*.path /github/runner_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config
+2026-02-16T15:49:29.3892047Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-02-16T15:49:29.4131872Z Removing credentials config '/home/runner/work/_temp/git-credentials-40c50223-90e3-4788-a3a8-dfaef5a8ef90.config'
+2026-02-16T15:49:29.4258037Z Post job cleanup.
+2026-02-16T15:49:29.7290475Z ##[group]Logout from docker.io
+2026-02-16T15:49:29.7338424Z [command]/usr/bin/docker logout docker.io
+2026-02-16T15:49:29.7466380Z Removing login credentials for docker.io
+2026-02-16T15:49:29.7502273Z ##[endgroup]
+2026-02-16T15:49:29.7502880Z ##[group]Post cache
+2026-02-16T15:49:29.7504231Z State not set
+2026-02-16T15:49:29.7504963Z ##[endgroup]
+2026-02-16T15:49:29.7665817Z Post job cleanup.
+2026-02-16T15:49:30.0101585Z ##[group]Removing builder
+2026-02-16T15:49:30.1286773Z [command]/usr/bin/docker buildx rm builder-142fa642-1d96-4f71-8ec6-265b26471cb2
+2026-02-16T15:49:30.2736996Z builder-142fa642-1d96-4f71-8ec6-265b26471cb2 removed
+2026-02-16T15:49:30.2780891Z ##[endgroup]
+2026-02-16T15:49:30.2782772Z ##[group]Cleaning up certificates
+2026-02-16T15:49:30.2789321Z ##[endgroup]
+2026-02-16T15:49:30.2790181Z ##[group]Post cache
+2026-02-16T15:49:30.2792492Z State not set
+2026-02-16T15:49:30.2793450Z ##[endgroup]
+2026-02-16T15:49:30.2943541Z Post job cleanup.
+2026-02-16T15:49:30.4232606Z Cache hit occurred on the primary key node-cache-Linux-x64-npm-ed1440487ac0d66118cf25e65e7970fb66c7768862980c8b4428aff3e7961a61, not saving cache.
+2026-02-16T15:49:30.4339285Z Post job cleanup.
+2026-02-16T15:49:30.5168131Z [command]/usr/bin/git version
+2026-02-16T15:49:30.5204744Z git version 2.52.0
+2026-02-16T15:49:30.5245568Z Temporarily overriding HOME='/home/runner/work/_temp/2fbac7a7-3725-431f-b717-0f4540e1c530' before making global git config changes
+2026-02-16T15:49:30.5247167Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-16T15:49:30.5251989Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SeedGPT/SeedGPT
+2026-02-16T15:49:30.5284247Z Removing SSH command configuration
+2026-02-16T15:49:30.5291196Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-16T15:49:30.5328908Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-16T15:49:30.5564529Z Removing HTTP extra header
+2026-02-16T15:49:30.5570398Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-16T15:49:30.5603733Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-16T15:49:30.5836134Z Removing includeIf entries pointing to credentials config files
+2026-02-16T15:49:30.5842487Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-02-16T15:49:30.5865791Z includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git.path
+2026-02-16T15:49:30.5866730Z includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git/worktrees/*.path
+2026-02-16T15:49:30.5867221Z includeif.gitdir:/github/workspace/.git.path
+2026-02-16T15:49:30.5867837Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-02-16T15:49:30.5875821Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git.path
+2026-02-16T15:49:30.5898462Z /home/runner/work/_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:49:30.5909359Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git.path /home/runner/work/_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:49:30.5944434Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git/worktrees/*.path
+2026-02-16T15:49:30.5966393Z /home/runner/work/_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:49:30.5976391Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/SeedGPT/SeedGPT/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:49:30.6008416Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-02-16T15:49:30.6030551Z /github/runner_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:49:30.6039432Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:49:30.6071981Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-02-16T15:49:30.6093824Z /github/runner_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:49:30.6103705Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config
+2026-02-16T15:49:30.6136743Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-02-16T15:49:30.6362204Z Removing credentials config '/home/runner/work/_temp/git-credentials-20770001-18fe-45a3-ac6a-2db7eed335f3.config'
+2026-02-16T15:49:30.6478384Z Cleaning up orphan processes

@@ -69,52 +69,41 @@ async function collectErrors(
 	sha: string,
 	failedRuns: Array<{ id: number, name: string, conclusion: string | null, output: { title: string | null, summary: string | null, text: string | null } }>
 ): Promise<string> {
-	const errors: string[] = []
-
-	for (const run of failedRuns) {
-		let detail = `Check "${run.name}" — ${run.conclusion}`
-		if (run.output.summary) detail += `\n  ${run.output.summary}`
-		if (run.output.text) detail += `\n  ${run.output.text.slice(0, config.errors.maxCheckOutputChars)}`
-
-		try {
-			const { data: annotations } = await octokit.checks.listAnnotations({
-				owner, repo, check_run_id: run.id,
-			})
-			for (const ann of annotations) {
-				if (/Process completed with exit code/.test(ann.message ?? '')) continue
-				detail += `\n  ${ann.path}:${ann.start_line} [${ann.annotation_level}] ${ann.message}`
-			}
-		} catch { /* annotations unavailable */ }
-
-		errors.push(detail)
-	}
-
 	try {
 		const { data: runs } = await octokit.actions.listWorkflowRunsForRepo({
 			owner, repo, head_sha: sha, status: 'completed',
 		})
-		for (const run of runs.workflow_runs.filter(r => r.conclusion === 'failure')) {
-			const { data: jobs } = await octokit.actions.listJobsForWorkflowRun({
-				owner, repo, run_id: run.id,
-			})
-			for (const job of jobs.jobs.filter(j => j.conclusion === 'failure')) {
-				const failedStepNames = job.steps?.filter(s => s.conclusion === 'failure').map(s => s.name) ?? []
+		const failedWorkflows = runs.workflow_runs.filter(r => r.conclusion === 'failure')
 
-				try {
-					const { data: logData } = await octokit.actions.downloadJobLogsForWorkflowRun({
-						owner, repo, job_id: job.id,
-					})
-					const logText = typeof logData === 'string' ? logData : String(logData)
-					const extracted = extractFailedStepOutput(logText, failedStepNames)
-					errors.push(`Workflow job "${job.name}":\n${extracted}`)
-				} catch {
-					errors.push(`Workflow job "${job.name}" failed at steps: ${failedStepNames.join(', ')}`)
+		if (failedWorkflows.length > 0) {
+			const errors: string[] = []
+			for (const run of failedWorkflows) {
+				const { data: jobs } = await octokit.actions.listJobsForWorkflowRun({
+					owner, repo, run_id: run.id,
+				})
+				for (const job of jobs.jobs.filter(j => j.conclusion === 'failure')) {
+					const failedStepNames = job.steps?.filter(s => s.conclusion === 'failure').map(s => s.name) ?? []
+					try {
+						const { data: logData } = await octokit.actions.downloadJobLogsForWorkflowRun({
+							owner, repo, job_id: job.id,
+						})
+						const logText = typeof logData === 'string' ? logData : String(logData)
+						errors.push(extractFailedStepOutput(logText, failedStepNames))
+					} catch {
+						errors.push(`Job "${job.name}" failed at: ${failedStepNames.join(', ')} (logs unavailable)`)
+					}
 				}
 			}
+			if (errors.length > 0) return errors.join('\n\n')
 		}
-	} catch { /* workflow logs unavailable */ }
+	} catch { /* workflow API unavailable, fall through to check run output */ }
 
-	return errors.join('\n\n')
+	return failedRuns.map(run => {
+		let detail = `Check "${run.name}" failed`
+		if (run.output.summary) detail += `: ${run.output.summary}`
+		if (run.output.text) detail += `\n${run.output.text.slice(0, config.errors.maxCheckOutputChars)}`
+		return detail
+	}).join('\n\n')
 }
 
 export async function mergePR(prNumber: number): Promise<void> {

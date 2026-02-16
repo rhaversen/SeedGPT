@@ -1,6 +1,12 @@
 import { describe, it, expect } from '@jest/globals'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 const { extractCoverageFromLogs, extractFailedStepOutput } = await import('./log-parsing.js')
+
+function loadFixture(name: string): string {
+	return readFileSync(join(process.cwd(), '.ci-example-fixtures', name), 'utf-8')
+}
 
 const COVERAGE_TABLE = [
 	'------------------|---------|----------|---------|---------|-------------------',
@@ -200,5 +206,121 @@ describe('extractFailedStepOutput', () => {
 		expect(result).not.toContain('console.log')
 		expect(result).not.toContain('Applied 1 edit(s)')
 		expect(result).not.toContain('Saved usage')
+	})
+})
+
+describe('real CI log fixtures', () => {
+	describe('ci-suite-fail: test suite fails to run', () => {
+		const log = loadFixture('ci-suite-fail.txt')
+
+		it('extracts the module resolution error', () => {
+			const result = extractFailedStepOutput(log, ['npm test'])
+
+			expect(result).toContain('FAIL dist/tools/http.test.js')
+			expect(result).toContain("Cannot find module 'test'")
+			expect(result).toContain('Test Suites: 1 failed')
+		})
+
+		it('filters console.log noise from passing suites', () => {
+			const result = extractFailedStepOutput(log, ['npm test'])
+
+			expect(result).not.toContain('Applied 1 edit(s) successfully')
+			expect(result).not.toContain('SeedGPT starting iteration')
+			expect(result).not.toContain('PR #1 merged')
+		})
+
+		it('returns no coverage', () => {
+			expect(extractCoverageFromLogs(log)).toBeNull()
+		})
+	})
+
+	describe('ci-build-fail: TypeScript compile errors', () => {
+		const log = loadFixture('ci-build-fail.txt')
+
+		it('extracts TS compile errors from the build step', () => {
+			const result = extractFailedStepOutput(log, ['npm run build'])
+
+			expect(result).toContain('error TS2345')
+			expect(result).toContain("Argument of type 'number' is not assignable to parameter of type 'string'")
+		})
+
+		it('does not include npm ci or git setup noise', () => {
+			const result = extractFailedStepOutput(log, ['npm run build'])
+
+			expect(result).not.toContain('npm warn deprecated')
+			expect(result).not.toContain('added 367 packages')
+			expect(result).not.toContain('git config')
+		})
+
+		it('returns no coverage', () => {
+			expect(extractCoverageFromLogs(log)).toBeNull()
+		})
+	})
+
+	describe('ci-test-fail: test assertion failure', () => {
+		const log = loadFixture('ci-test-fail.txt')
+
+		it('extracts the assertion error with context', () => {
+			const result = extractFailedStepOutput(log, ['npm test'])
+
+			expect(result).toContain('FAIL dist/tools/log-parsing.test.js')
+			expect(result).toContain('Expected substring: "Found 2 errors"')
+			expect(result).toContain('error TS2345')
+			expect(result).toContain('error TS2322')
+		})
+
+		it('includes summary and filters PASS noise', () => {
+			const result = extractFailedStepOutput(log, ['npm test'])
+
+			expect(result).toContain('Test Suites: 1 failed')
+			expect(result).not.toContain('Applied 1 edit(s) successfully')
+			expect(result).not.toContain('PASS dist/llm/api.test.js')
+		})
+
+		it('returns no coverage', () => {
+			expect(extractCoverageFromLogs(log)).toBeNull()
+		})
+	})
+
+	describe('ci-coverage: successful run with coverage', () => {
+		const log = loadFixture('ci-coverage.txt')
+
+		it('extracts the complete coverage table', () => {
+			const result = extractCoverageFromLogs(log)
+
+			expect(result).not.toBeNull()
+			expect(result).toContain('------------------|---------|----------|---------|---------|')
+			expect(result).toContain('File              | % Stmts | % Branch | % Funcs | % Lines')
+			expect(result).toContain('All files         |')
+		})
+
+		it('includes file-level coverage details', () => {
+			const result = extractCoverageFromLogs(log)!
+
+			expect(result).toContain('src/agents')
+			expect(result).toContain('config.ts')
+			expect(result).toContain('logger.ts')
+		})
+
+		it('preserves uncovered line numbers', () => {
+			const result = extractCoverageFromLogs(log)!
+
+			expect(result).toContain('1-79')
+			expect(result).toContain('1-46')
+			expect(result).toContain('64,68-69')
+		})
+
+		it('filters out test console noise from coverage step', () => {
+			const result = extractCoverageFromLogs(log)!
+
+			expect(result).not.toContain('Applied 1 edit(s) successfully')
+			expect(result).not.toContain('● Console')
+		})
+
+		it('returns null for failed step extraction on passing run', () => {
+			const result = extractFailedStepOutput(log, ['npm test'])
+
+			expect(result).not.toContain('FAIL')
+		})
 	})
 })
