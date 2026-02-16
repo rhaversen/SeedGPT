@@ -21,7 +21,9 @@ export interface PlanResult {
 export async function plan(): Promise<PlanResult> {
 	logger.info('Asking LLM for a plan...')
 
-	const messages: Anthropic.MessageParam[] = []
+	const messages: Anthropic.MessageParam[] = [
+		{ role: 'user', content: 'Plan the next iteration.' },
+	]
 
 	const maxRounds = config.turns.maxPlanner
 	for (let round = 0; round < maxRounds; round++) {
