@@ -242,6 +242,23 @@ describe('callApi', () => {
 		expect(systemTexts.some((t: string) => t.includes('deadFunc'))).toBe(true)
 	})
 
+	it('applies cache_control to only the last system block', async () => {
+		setupBatchMocks()
+		mockGetLatestMainCoverage.mockResolvedValueOnce('90%')
+		mockGetRecentLog.mockResolvedValueOnce('log')
+		mockGetMemoryContext.mockResolvedValueOnce('mem')
+		const findUnused = (await import('../tools/codebase.js')).findUnusedFunctions as jest.MockedFunction<() => Promise<string | null>>
+		findUnused.mockResolvedValueOnce('dead code')
+
+		await callApi('planner', [{ role: 'user', content: 'plan' }])
+
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { system: Array<{ text: string; cache_control?: unknown }> } }> }
+		const blocks = batchParams.requests[0].params.system
+		const cached = blocks.filter((b: { cache_control?: unknown }) => b.cache_control)
+		expect(cached.length).toBe(1)
+		expect(blocks[blocks.length - 1].cache_control).toEqual({ type: 'ephemeral' })
+	})
+
 	it('handles GeneratedModel.create failure gracefully', async () => {
 		setupBatchMocks()
 		mockModelCreate.mockRejectedValueOnce(new Error('DB write failed'))

@@ -167,13 +167,9 @@ describe('FixSession', () => {
 		await session.fix('second error')
 
 		const allMessages = session.conversation
-		const textUserMessages = allMessages.filter(m => {
-			if (m.role !== 'user' || !Array.isArray(m.content)) return false
-			return (m.content as Array<{ type: string }>).some(c => c.type === 'text')
-		})
-		const secondFixMsg = textUserMessages[1]
-		const textContent = (secondFixMsg.content as Array<{ type: string; text: string }>)[0].text
-		expect(textContent).toContain('NOT your first attempt')
+		const userMessages = allMessages.filter(m => m.role === 'user' && typeof m.content === 'string')
+		const secondFixMsg = userMessages[1]
+		expect(secondFixMsg.content).toContain('NOT your first attempt')
 	})
 
 	it('includes warning on attempt 2 after a failed first attempt', async () => {
@@ -202,12 +198,8 @@ describe('FixSession', () => {
 		await session.fix('second error')
 
 		const allMessages = session.conversation
-		const textUserMessages = allMessages.filter(m => {
-			if (m.role !== 'user' || !Array.isArray(m.content)) return false
-			return (m.content as Array<{ type: string }>).some(c => c.type === 'text')
-		})
-		const secondFixMsg = textUserMessages[1]
-		const textContent = (secondFixMsg.content as Array<{ type: string; text: string }>)[0].text
-		expect(textContent).toContain('NOT your first attempt')
+		const userMessages = allMessages.filter(m => m.role === 'user' && typeof m.content === 'string')
+		const secondFixMsg = userMessages[1]
+		expect(secondFixMsg.content).toContain('NOT your first attempt')
 	})
 })

@@ -57,11 +57,7 @@ export class FixSession {
 
 		const fixMessage: Anthropic.MessageParam = {
 			role: 'user',
-			content: [{
-				type: 'text' as const,
-				text: sections.join('\n\n'),
-				cache_control: { type: 'ephemeral' },
-			}],
+			content: sections.join('\n\n'),
 		}
 		this.messages.push(fixMessage)
 

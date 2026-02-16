@@ -34,30 +34,32 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 	const extras = PHASE_EXTRAS[phase]
 	const system: Anthropic.TextBlockParam[] = []
 
-	system.push({ type: 'text', text: extras.system, cache_control: { type: 'ephemeral' as const } })
+	system.push({ type: 'text', text: extras.system })
 
 	if (phase === 'planner') {
 		const coverage = await getLatestMainCoverage()
 		if (coverage) {
-			system.push({ type: 'text', text: `\n\n## Code Coverage (last CI run on main)\n${coverage}`, cache_control: { type: 'ephemeral' as const } })
+			system.push({ type: 'text', text: `\n\n## Code Coverage (last CI run on main)\n${coverage}` })
 		}
 		const gitLog = await getRecentLog()
-		system.push({ type: 'text', text: `\n\nRecent git log:\n${gitLog}`, cache_control: { type: 'ephemeral' as const } })
+		system.push({ type: 'text', text: `\n\nRecent git log:\n${gitLog}` })
 	}
 
 	if (phase === 'builder' || phase === 'fixer' || phase === 'planner') {
 		const codebaseContext = await getCodebaseContext(env.workspacePath)
-		system.push({ type: 'text', text: `\n\n${codebaseContext}`, cache_control: { type: 'ephemeral' as const } })
+		system.push({ type: 'text', text: `\n\n${codebaseContext}` })
 	}
 
 	if (phase === 'planner') {
 		const memoryContext = await getMemoryContext()
-		system.push({ type: 'text', text: `\n\n${memoryContext}`, cache_control: { type: 'ephemeral' as const } })
+		system.push({ type: 'text', text: `\n\n${memoryContext}` })
 		const unusedFunctions = await findUnusedFunctions(env.workspacePath)
 		if (unusedFunctions) {
-			system.push({ type: 'text', text: `\n\n## Unused Functions\n${unusedFunctions}`, cache_control: { type: 'ephemeral' as const } })
+			system.push({ type: 'text', text: `\n\n## Unused Functions\n${unusedFunctions}` })
 		}
 	}
+
+	system[system.length - 1].cache_control = { type: 'ephemeral' as const }
 
 	const allTools = [...(extras.tools ?? []), ...(tools ?? [])]
 
