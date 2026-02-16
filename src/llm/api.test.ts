@@ -113,67 +113,71 @@ function* yieldSucceeded(ids: string[], messages: typeof fakeMessage[]) {
 	}
 }
 
+function setupBatchMocks(message: typeof fakeMessage = fakeMessage) {
+	mockBatchCreate.mockImplementation(async ({ requests }: { requests: Array<{ custom_id: string }> }) => {
+		return { id: 'batch_1', processing_status: 'in_progress', _requestIds: requests.map(r => r.custom_id) }
+	})
+	mockBatchRetrieve.mockResolvedValue({ id: 'batch_1', processing_status: 'ended' })
+	mockBatchResults.mockImplementation(async () => {
+		const ids = mockBatchCreate.mock.calls[0][0].requests.map((r: { custom_id: string }) => r.custom_id)
+		return (async function*() { yield* yieldSucceeded(ids, [message]) })()
+	})
+}
+
 describe('callApi', () => {
-	it('builds params and calls the SDK', async () => {
-		mockCreate.mockResolvedValue(fakeMessage)
+	it('builds params and calls the batch SDK', async () => {
+		setupBatchMocks()
 
 		const result = await callApi('reflect', [{ role: 'user', content: 'test' }])
 
 		expect(result).toBe(fakeMessage)
-		expect(mockCreate).toHaveBeenCalledTimes(1)
-		const params = mockCreate.mock.calls[0][0] as { model: string }
-		expect(params.model).toBe('claude-haiku-4-5')
+		expect(mockBatchCreate).toHaveBeenCalledTimes(1)
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { model: string } }> }
+		expect(batchParams.requests[0].params.model).toBe('claude-haiku-4-5')
 	})
 
 	it('records to Generated after a successful call', async () => {
-		mockCreate.mockResolvedValue(fakeMessage)
+		setupBatchMocks()
 
 		await callApi('builder', [{ role: 'user', content: 'test' }])
 
-		expect(mockComputeCost).toHaveBeenCalledWith('claude-sonnet-4-5', fakeUsage, { batch: false })
+		expect(mockComputeCost).toHaveBeenCalledWith('claude-sonnet-4-5', fakeUsage, { batch: true })
 		expect(mockModelCreate).toHaveBeenCalledTimes(1)
 		expect((mockModelCreate.mock.calls[0] as unknown[])[0]).toMatchObject({
 			phase: 'builder',
 			modelId: 'claude-sonnet-4-5',
-			batch: false,
+			batch: true,
 		})
 	})
 
-	it('retries on 429 status', async () => {
-		const rateLimitErr = Object.assign(new Error('rate limited'), { status: 429 })
-		mockCreate.mockRejectedValueOnce(rateLimitErr)
-		mockCreate.mockResolvedValueOnce(fakeMessage)
+	it('throws on errored batch result', async () => {
+		mockBatchCreate.mockResolvedValue({ id: 'batch_1', processing_status: 'ended' })
+		mockBatchResults.mockImplementation(async () => {
+			return (async function*() {
+				yield { custom_id: 'req-0', result: { type: 'errored', error: { type: 'server_error', message: 'fail' } } }
+			})()
+		})
 
-		const result = await callApi('reflect', [{ role: 'user', content: 'test' }])
-
-		expect(result).toBe(fakeMessage)
-		expect(mockCreate).toHaveBeenCalledTimes(2)
+		await expect(callApi('reflect', [{ role: 'user', content: 'test' }])).rejects.toThrow('failed')
 	})
 
-	it('throws non-429 errors immediately', async () => {
-		const serverErr = Object.assign(new Error('server error'), { status: 500 })
-		mockCreate.mockRejectedValue(serverErr)
+	it('throws when batch returns no results', async () => {
+		mockBatchCreate.mockResolvedValue({ id: 'batch_1', processing_status: 'ended' })
+		mockBatchResults.mockImplementation(async () => {
+			return (async function*() {})()
+		})
 
-		await expect(callApi('reflect', [{ role: 'user', content: 'test' }])).rejects.toThrow('server error')
-		expect(mockCreate).toHaveBeenCalledTimes(1)
-	})
-
-	it('throws after exhausting retries', async () => {
-		const rateLimitErr = Object.assign(new Error('rate limited'), { status: 429 })
-		mockCreate.mockRejectedValue(rateLimitErr)
-
-		await expect(callApi('reflect', [{ role: 'user', content: 'test' }])).rejects.toThrow('rate limited')
-		expect(mockCreate).toHaveBeenCalledTimes(3)
+		await expect(callApi('reflect', [{ role: 'user', content: 'test' }])).rejects.toThrow('no results')
 	})
 
 	it('passes extra tools when provided', async () => {
-		mockCreate.mockResolvedValue(fakeMessage)
+		setupBatchMocks()
 		const extraTool = { name: 'test_tool', description: 'test', input_schema: { type: 'object' as const, properties: {} } }
 
 		await callApi('reflect', [{ role: 'user', content: 'test' }], [extraTool])
 
-		const params = mockCreate.mock.calls[0][0] as { tools?: unknown[] }
-		expect(params.tools).toEqual([extraTool])
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { tools?: unknown[] } }> }
+		expect(batchParams.requests[0].params.tools).toEqual([extraTool])
 	})
 })
 
