@@ -34,27 +34,25 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 	const extras = PHASE_EXTRAS[phase]
 	const system: Anthropic.TextBlockParam[] = []
 
-	// Builder, fixer and planner gets codebase context
+	system.push({ type: 'text', text: extras.system, cache_control: { type: 'ephemeral' as const } })
+
+	if (phase === 'planner') {
+		const coverage = await getLatestMainCoverage()
+		if (coverage) {
+			system.push({ type: 'text', text: `\n\n## Code Coverage (last CI run on main)\n${coverage}`, cache_control: { type: 'ephemeral' as const } })
+		}
+		const gitLog = await getRecentLog()
+		system.push({ type: 'text', text: `\n\nRecent git log:\n${gitLog}`, cache_control: { type: 'ephemeral' as const } })
+	}
+
 	if (phase === 'builder' || phase === 'fixer' || phase === 'planner') {
 		const codebaseContext = await getCodebaseContext(env.workspacePath)
 		system.push({ type: 'text', text: `\n\n${codebaseContext}`, cache_control: { type: 'ephemeral' as const } })
 	}
 
-	// Add role-specific system prompt
-	system.push({ type: 'text', text: extras.system, cache_control: { type: 'ephemeral' as const } })
-
-	// Planner also gets memory and recent git log for situational awareness to make informed plans.
-	// Memory is excluded from the builder since it should focus on the current plan and implementation,
-	// not be distracted by past memories which may or may not be relevant to the current task.
 	if (phase === 'planner') {
 		const memoryContext = await getMemoryContext()
 		system.push({ type: 'text', text: `\n\n${memoryContext}`, cache_control: { type: 'ephemeral' as const } })
-		const gitLog = await getRecentLog()
-		system.push({ type: 'text', text: `\n\nRecent git log:\n${gitLog}`, cache_control: { type: 'ephemeral' as const } })
-		const coverage = await getLatestMainCoverage()
-		if (coverage) {
-			system.push({ type: 'text', text: `\n\n## Code Coverage (last CI run on main)\n${coverage}`, cache_control: { type: 'ephemeral' as const } })
-		}
 		const unusedFunctions = await findUnusedFunctions(env.workspacePath)
 		if (unusedFunctions) {
 			system.push({ type: 'text', text: `\n\n## Unused Functions\n${unusedFunctions}`, cache_control: { type: 'ephemeral' as const } })
