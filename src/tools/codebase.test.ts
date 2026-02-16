@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 import { mkdtemp, writeFile, rm, mkdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { getCodebaseContext, grepSearch } from './codebase.js'
+import { getCodebaseContext, grepSearch, fileSearch, listDirectory, findUnusedFunctions, readFile } from './codebase.js'
 
 function extractDeclarations(ctx: string): string {
 	return ctx.split('## Declarations')[1] ?? ''
@@ -393,5 +393,160 @@ describe('grepSearch', () => {
 	it('returns no-match message when nothing matches', async () => {
 		const result = await grepSearch(tempDir, 'nonexistent_string_xyz')
 		expect(result).toBe('No matches found.')
+	})
+})
+
+describe('fileSearch', () => {
+	let tempDir: string
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-fsearch-'))
+		await writeFile(join(tempDir, 'app.ts'), 'export const x = 1')
+		await writeFile(join(tempDir, 'readme.md'), '# Readme')
+		await mkdir(join(tempDir, 'src'))
+		await writeFile(join(tempDir, 'src', 'utils.ts'), 'export function f() {}')
+		await writeFile(join(tempDir, 'src', 'index.js'), 'console.log("hi")')
+	})
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true })
+	})
+
+	it('matches files by glob pattern', async () => {
+		const result = await fileSearch(tempDir, '**/*.ts')
+		expect(result).toContain('src/utils.ts')
+		expect(result).not.toContain('readme.md')
+		expect(result).not.toContain('index.js')
+	})
+
+	it('returns no-match message for unmatched glob', async () => {
+		const result = await fileSearch(tempDir, '**/*.xyz')
+		expect(result).toBe('No files matched.')
+	})
+
+	it('matches specific file names', async () => {
+		const result = await fileSearch(tempDir, '**/index.*')
+		expect(result).toContain('src/index.js')
+		expect(result).not.toContain('app.ts')
+	})
+})
+
+describe('listDirectory', () => {
+	let tempDir: string
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-listdir-'))
+		await writeFile(join(tempDir, 'file1.ts'), '')
+		await writeFile(join(tempDir, 'file2.ts'), '')
+		await mkdir(join(tempDir, 'subdir'))
+		await writeFile(join(tempDir, 'subdir', 'nested.ts'), '')
+	})
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true })
+	})
+
+	it('lists files and directories', async () => {
+		const result = await listDirectory(tempDir, '.')
+		expect(result).toContain('file1.ts')
+		expect(result).toContain('file2.ts')
+		expect(result).toContain('subdir/')
+	})
+
+	it('lists contents of a subdirectory', async () => {
+		const result = await listDirectory(tempDir, 'subdir')
+		expect(result).toContain('nested.ts')
+		expect(result).not.toContain('file1.ts')
+	})
+
+	it('ignores node_modules', async () => {
+		await mkdir(join(tempDir, 'node_modules'))
+		await writeFile(join(tempDir, 'node_modules', 'lib.js'), '')
+		const result = await listDirectory(tempDir, '.')
+		expect(result).not.toContain('node_modules')
+	})
+
+	it('throws for non-existent directory', async () => {
+		await expect(listDirectory(tempDir, 'nonexistent')).rejects.toThrow()
+	})
+})
+
+describe('findUnusedFunctions', () => {
+	let tempDir: string
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-unused-'))
+		await mkdir(join(tempDir, 'src'), { recursive: true })
+	})
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true })
+	})
+
+	it('returns null when all functions are used', async () => {
+		await writeFile(join(tempDir, 'src', 'utils.ts'), `export function add(a: number, b: number) { return a + b }`)
+		await writeFile(join(tempDir, 'src', 'main.ts'), `import { add } from './utils'\nconst x = add(1, 2)`)
+
+		const result = await findUnusedFunctions(tempDir)
+		expect(result).toBeNull()
+	})
+
+	it('detects dead code (not used anywhere)', async () => {
+		await writeFile(join(tempDir, 'src', 'utils.ts'), `export function dead() { return 42 }\nexport function alive() { return 1 }`)
+		await writeFile(join(tempDir, 'src', 'main.ts'), `import { alive } from './utils'\nconsole.log(alive())`)
+
+		const result = await findUnusedFunctions(tempDir)
+		expect(result).toContain('dead')
+		expect(result).toContain('Not used anywhere')
+	})
+
+	it('detects functions only used in tests', async () => {
+		await writeFile(join(tempDir, 'src', 'utils.ts'), `export function helper() { return 1 }`)
+		await writeFile(join(tempDir, 'src', 'utils.test.ts'), `import { helper } from './utils'\nexpect(helper()).toBe(1)`)
+
+		const result = await findUnusedFunctions(tempDir)
+		expect(result).toContain('helper')
+		expect(result).toContain('Only used in tests')
+	})
+
+	it('detects exported-for-tests pattern', async () => {
+		await writeFile(join(tempDir, 'src', 'service.ts'), [
+			`export function internal() { return compute() }`,
+			`export function compute() { return 42 }`,
+		].join('\n'))
+		await writeFile(join(tempDir, 'src', 'service.test.ts'), `import { compute } from './service'\nexpect(compute()).toBe(42)`)
+
+		const result = await findUnusedFunctions(tempDir)
+		expect(result).toContain('compute')
+		expect(result).toContain('Exported only for tests')
+	})
+
+	it('detects class method declarations as unused', async () => {
+		await writeFile(join(tempDir, 'src', 'service.ts'), [
+			`export class Service {`,
+			`  unusedMethod() { return 1 }`,
+			`}`,
+		].join('\n'))
+
+		const result = await findUnusedFunctions(tempDir)
+		expect(result).toContain('unusedMethod')
+	})
+})
+
+describe('readFile', () => {
+	let tempDir: string
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-readfile-'))
+	})
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true })
+	})
+
+	it('reads file content relative to root path', async () => {
+		await writeFile(join(tempDir, 'hello.txt'), 'hello world')
+		const content = await readFile(tempDir, 'hello.txt')
+		expect(content).toBe('hello world')
 	})
 })

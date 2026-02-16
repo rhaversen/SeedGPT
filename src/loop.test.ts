@@ -196,4 +196,40 @@ describe('run', () => {
 		await expect(run()).rejects.toThrow('network error')
 		expect(database.disconnectFromDatabase).toHaveBeenCalledTimes(1)
 	})
+
+	it('closes PR when fixer.fix throws an error', async () => {
+		const awaitChecks = github.awaitChecks as jest.MockedFunction<typeof github.awaitChecks>
+		awaitChecks
+			.mockResolvedValueOnce({ passed: false, error: 'build error' })
+			.mockResolvedValueOnce({ passed: true })
+
+		mockFixSession.fix.mockRejectedValueOnce(new Error('API timeout'))
+
+		await run()
+
+		expect(github.closePR).toHaveBeenCalledWith(1)
+		expect(reflectModule.reflect).toHaveBeenCalledWith(
+			expect.stringContaining('API timeout'),
+			expect.anything(),
+		)
+		expect(github.mergePR).toHaveBeenCalled()
+	})
+
+	it('closes PR when fixer returns empty edits', async () => {
+		const awaitChecks = github.awaitChecks as jest.MockedFunction<typeof github.awaitChecks>
+		awaitChecks
+			.mockResolvedValueOnce({ passed: false, error: 'test failure' })
+			.mockResolvedValueOnce({ passed: true })
+
+		mockFixSession.fix.mockResolvedValueOnce([])
+
+		await run()
+
+		expect(github.closePR).toHaveBeenCalledWith(1)
+		expect(reflectModule.reflect).toHaveBeenCalledWith(
+			expect.stringContaining('Fixer produced no fix edits'),
+			expect.anything(),
+		)
+		expect(github.mergePR).toHaveBeenCalled()
+	})
 })

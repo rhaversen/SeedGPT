@@ -77,7 +77,7 @@ describe('reflect', () => {
 
 		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
 		expect(transcript).toContain('[tool: read_file]')
-		expect(transcript).toContain('[result]')
+		expect(transcript).toContain('[Read src/a.ts')
 	})
 
 	it('marks error tool results', async () => {
@@ -131,5 +131,113 @@ describe('reflect', () => {
 
 		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
 		expect(transcript).toContain('Simple string response')
+	})
+
+	it('summarizes grep_search results in transcript', async () => {
+		const messages = [
+			{
+				role: 'assistant' as const,
+				content: [{ type: 'tool_use' as const, id: 't1', name: 'grep_search', input: { query: 'findme' } }],
+			},
+			{
+				role: 'user' as const,
+				content: [{ type: 'tool_result' as const, tool_use_id: 't1', content: 'file.ts:1: findme\nfile.ts:5: findme' }],
+			},
+		]
+
+		await reflect('Done', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('[Searched "findme": 2 matches]')
+	})
+
+	it('summarizes file_search results in transcript', async () => {
+		const messages = [
+			{
+				role: 'assistant' as const,
+				content: [{ type: 'tool_use' as const, id: 't1', name: 'file_search', input: { query: '**/*.ts' } }],
+			},
+			{
+				role: 'user' as const,
+				content: [{ type: 'tool_result' as const, tool_use_id: 't1', content: 'a.ts\nb.ts\nc.ts' }],
+			},
+		]
+
+		await reflect('Done', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('[File search: 3 results]')
+	})
+
+	it('summarizes list_directory results in transcript', async () => {
+		const messages = [
+			{
+				role: 'assistant' as const,
+				content: [{ type: 'tool_use' as const, id: 't1', name: 'list_directory', input: { path: 'src' } }],
+			},
+			{
+				role: 'user' as const,
+				content: [{ type: 'tool_result' as const, tool_use_id: 't1', content: 'a.ts\nb.ts' }],
+			},
+		]
+
+		await reflect('Done', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('[Listed src: 2 entries]')
+	})
+
+	it('summarizes git_diff results in transcript', async () => {
+		const messages = [
+			{
+				role: 'assistant' as const,
+				content: [{ type: 'tool_use' as const, id: 't1', name: 'git_diff', input: {} }],
+			},
+			{
+				role: 'user' as const,
+				content: [{ type: 'tool_result' as const, tool_use_id: 't1', content: 'diff --git a/f.ts b/f.ts\n+line' }],
+			},
+		]
+
+		await reflect('Done', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('[Diff: 2 lines]')
+	})
+
+	it('summarizes codebase_context results in transcript', async () => {
+		const messages = [
+			{
+				role: 'assistant' as const,
+				content: [{ type: 'tool_use' as const, id: 't1', name: 'codebase_context', input: {} }],
+			},
+			{
+				role: 'user' as const,
+				content: [{ type: 'tool_result' as const, tool_use_id: 't1', content: 'line1\nline2\nline3' }],
+			},
+		]
+
+		await reflect('Done', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('[Codebase context viewed: 3 lines]')
+	})
+
+	it('uses default summary for unknown tool names', async () => {
+		const messages = [
+			{
+				role: 'assistant' as const,
+				content: [{ type: 'tool_use' as const, id: 't1', name: 'custom_tool', input: {} }],
+			},
+			{
+				role: 'user' as const,
+				content: [{ type: 'tool_result' as const, tool_use_id: 't1', content: 'some custom result' }],
+			},
+		]
+
+		await reflect('Done', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('some custom result')
 	})
 })

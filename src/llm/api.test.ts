@@ -49,6 +49,21 @@ jest.unstable_mockModule('../tools/codebase.js', () => ({
 	findUnusedFunctions: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
 }))
 
+const mockGetLatestMainCoverage = jest.fn<() => Promise<string | null>>().mockResolvedValue(null)
+jest.unstable_mockModule('../tools/github.js', () => ({
+	getLatestMainCoverage: mockGetLatestMainCoverage,
+}))
+
+const mockGetRecentLog = jest.fn<() => Promise<string>>().mockResolvedValue('abc123 initial commit')
+jest.unstable_mockModule('../tools/git.js', () => ({
+	getRecentLog: mockGetRecentLog,
+}))
+
+const mockGetMemoryContext = jest.fn<() => Promise<string>>().mockResolvedValue('No memories yet.')
+jest.unstable_mockModule('../agents/memory.js', () => ({
+	getMemoryContext: mockGetMemoryContext,
+}))
+
 jest.unstable_mockModule('./prompts.js', () => ({
 	SYSTEM_PLAN: 'plan prompt',
 	SYSTEM_BUILD: 'build prompt',
@@ -185,6 +200,80 @@ describe('callApi', () => {
 
 		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { tools?: unknown[] } }> }
 		expect(batchParams.requests[0].params.tools).toEqual([extraTool])
+	})
+
+	it('includes coverage, git log, codebase, memory in planner system prompt', async () => {
+		setupBatchMocks()
+		mockGetLatestMainCoverage.mockResolvedValueOnce('85.5%')
+		mockGetRecentLog.mockResolvedValueOnce('abc123 test commit')
+		mockGetMemoryContext.mockResolvedValueOnce('Memory: learned X')
+
+		await callApi('planner', [{ role: 'user', content: 'plan' }])
+
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { system: Array<{ text: string }> } }> }
+		const systemTexts = batchParams.requests[0].params.system.map((s: { text: string }) => s.text)
+		const joined = systemTexts.join('\n')
+
+		expect(joined).toContain('85.5%')
+		expect(joined).toContain('abc123 test commit')
+		expect(joined).toContain('codebase context')
+		expect(joined).toContain('Memory: learned X')
+	})
+
+	it('includes codebase context for builder phase', async () => {
+		setupBatchMocks()
+
+		await callApi('builder', [{ role: 'user', content: 'build' }])
+
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { system: Array<{ text: string }> } }> }
+		const systemTexts = batchParams.requests[0].params.system.map((s: { text: string }) => s.text)
+		expect(systemTexts.some((t: string) => t.includes('codebase context'))).toBe(true)
+	})
+
+	it('includes unused functions in planner when present', async () => {
+		setupBatchMocks()
+		const findUnused = (await import('../tools/codebase.js')).findUnusedFunctions as jest.MockedFunction<() => Promise<string | null>>
+		findUnused.mockResolvedValueOnce('src/util.ts: deadFunc')
+
+		await callApi('planner', [{ role: 'user', content: 'plan' }])
+
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { system: Array<{ text: string }> } }> }
+		const systemTexts = batchParams.requests[0].params.system.map((s: { text: string }) => s.text)
+		expect(systemTexts.some((t: string) => t.includes('deadFunc'))).toBe(true)
+	})
+
+	it('handles GeneratedModel.create failure gracefully', async () => {
+		setupBatchMocks()
+		mockModelCreate.mockRejectedValueOnce(new Error('DB write failed'))
+
+		const result = await callApi('reflect', [{ role: 'user', content: 'test' }])
+		expect(result).toBe(fakeMessage)
+	})
+
+	it('does not call compressConversation for summarizer phase', async () => {
+		setupBatchMocks()
+		const { compressConversation } = await import('../agents/compression.js') as { compressConversation: jest.Mock }
+		compressConversation.mockClear()
+
+		await callApi('summarizer', [{ role: 'user', content: 'test' }])
+
+		expect(compressConversation).not.toHaveBeenCalled()
+	})
+
+	it('polls batch until ended with backoff', async () => {
+		mockBatchCreate.mockResolvedValue({ id: 'batch_1', processing_status: 'in_progress' })
+		mockBatchRetrieve
+			.mockResolvedValueOnce({ id: 'batch_1', processing_status: 'in_progress' })
+			.mockResolvedValueOnce({ id: 'batch_1', processing_status: 'ended' })
+		mockBatchResults.mockImplementation(async () => {
+			return (async function*() {
+				yield { custom_id: 'req-0', result: { type: 'succeeded', message: fakeMessage } }
+			})()
+		})
+
+		const result = await callApi('reflect', [{ role: 'user', content: 'test' }])
+		expect(result).toBe(fakeMessage)
+		expect(mockBatchRetrieve).toHaveBeenCalledTimes(2)
 	})
 })
 

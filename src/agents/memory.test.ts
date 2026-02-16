@@ -127,6 +127,16 @@ describe('memory', () => {
 			expect(context).toContain('## Recent Reflections')
 		})
 
+		it('lists notes newest-first', async () => {
+			await MemoryModel.create({ content: 'old', summary: 'OLD_NOTE', category: 'note', active: true, createdAt: new Date('2025-01-01') })
+			await MemoryModel.create({ content: 'new', summary: 'NEW_NOTE', category: 'note', active: true, createdAt: new Date('2025-06-01') })
+
+			const context = await memory.getMemoryContext()
+			const oldIdx = context.indexOf('OLD_NOTE')
+			const newIdx = context.indexOf('NEW_NOTE')
+			expect(newIdx).toBeLessThan(oldIdx)
+		})
+
 		it('shows full content for recent reflections and summaries for older ones', async () => {
 			for (let i = 0; i < 10; i++) {
 				await MemoryModel.create({

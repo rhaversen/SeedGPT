@@ -88,6 +88,16 @@ describe('extractCoverageFromLogs', () => {
 		expect(extractCoverageFromLogs(log)).toBeNull()
 	})
 
+	it('returns null when coverage step has only one separator line', () => {
+		const content = [
+			'File              | % Stmts | % Branch | % Funcs | % Lines',
+			'------------------|---------|----------|---------|---------|-------------------',
+			'All files         |   69.91 |    86.91 |   64.89 |   69.91 |',
+		].join('\n')
+		const log = buildLog('Coverage', content)
+		expect(extractCoverageFromLogs(log)).toBeNull()
+	})
+
 	it('ignores non-table content surrounding the table', () => {
 		const content = [
 			'PASS dist/loop.test.js',
@@ -178,6 +188,24 @@ describe('extractFailedStepOutput', () => {
 		expect(result).toContain('Fatal error occurred')
 	})
 
+	it('matches step name as substring of section name', () => {
+		const log = [
+			'2026-01-01T00:00:00Z ##[group]Run npm test -- --coverage --silent',
+			'2026-01-01T00:00:01Z  FAIL  dist/thing.test.js',
+			'2026-01-01T00:00:01Z   ● should work',
+			'2026-01-01T00:00:01Z     assertion failed',
+			'2026-01-01T00:00:02Z ##[endgroup]',
+			'2026-01-01T00:00:03Z ##[group]Post-run cleanup',
+			'2026-01-01T00:00:04Z Removing temp artifacts from disk',
+			'2026-01-01T00:00:05Z ##[endgroup]',
+		].join('\n')
+
+		const result = extractFailedStepOutput(log, ['npm test'])
+		expect(result).toContain('FAIL')
+		expect(result).toContain('assertion failed')
+		expect(result).not.toContain('Removing temp artifacts')
+	})
+
 	it('filters PASS noise from fallback when step matching fails', () => {
 		const log = [
 			'2026-01-01T00:00:00Z ##[group]Run tests',
@@ -206,6 +234,23 @@ describe('extractFailedStepOutput', () => {
 		expect(result).not.toContain('console.log')
 		expect(result).not.toContain('Applied 1 edit(s)')
 		expect(result).not.toContain('Saved usage')
+	})
+
+	it('retains FAIL output up to 8000 chars', () => {
+		const longLine = 'x'.repeat(100)
+		const failLines = Array.from({ length: 60 }, (_, i) => `2026-01-01T00:00:01Z   error line ${i}: ${longLine}`)
+		const log = [
+			'2026-01-01T00:00:00Z ##[group]Run npm test',
+			'2026-01-01T00:00:01Z  FAIL  dist/big.test.js',
+			...failLines,
+			'2026-01-01T00:00:04Z Test Suites: 1 failed, 0 passed, 1 total',
+			'2026-01-01T00:00:05Z ##[endgroup]',
+		].join('\n')
+
+		const result = extractFailedStepOutput(log, ['npm test'])
+		expect(result.length).toBeGreaterThan(4000)
+		expect(result.length).toBeLessThanOrEqual(8100)
+		expect(result).toContain('FAIL')
 	})
 })
 
@@ -322,5 +367,76 @@ describe('real CI log fixtures', () => {
 
 			expect(result).not.toContain('FAIL')
 		})
+	})
+})
+
+describe('isNoise filtering via prioritizeFailures fallback', () => {
+	function buildStepLog(content: string): string {
+		return [
+			'2026-01-01T00:00:00.0000000Z ##[group]Run tests',
+			content,
+			'2026-01-01T00:00:01.0000000Z ##[endgroup]',
+		].join('\n')
+	}
+
+	it('filters console.log/warn/error noise lines', () => {
+		const log = buildStepLog([
+			'  console.log',
+			'  console.warn',
+			'  console.error',
+			'actual output here',
+		].join('\n'))
+		const result = extractFailedStepOutput(log, ['Run tests'])
+		expect(result).toContain('actual output here')
+		expect(result).not.toMatch(/^\s*console\.(log|warn|error)\s*$/m)
+	})
+
+	it('filters stack trace lines', () => {
+		const log = buildStepLog([
+			'Error: something broke',
+			'      at Object.run (/app/src/index.ts:10:5)',
+			'      at async main (/app/src/main.ts:3:2)',
+			'actual useful output',
+		].join('\n'))
+		const result = extractFailedStepOutput(log, ['Run tests'])
+		expect(result).not.toContain('at Object.run')
+		expect(result).not.toContain('at async main')
+	})
+
+	it('filters timestamp INFO/DEBUG lines', () => {
+		const log = buildStepLog([
+			'2026-01-01T00:00:00.0000000Z 2025-06-01T12:00:00.000Z [INFO] Server started',
+			'2026-01-01T00:00:00.0000000Z 2025-06-01T12:00:01.000Z [DEBUG] Connecting...',
+			'actual important output',
+		].join('\n'))
+		const result = extractFailedStepOutput(log, ['Run tests'])
+		expect(result).toContain('actual important output')
+		expect(result).not.toContain('[INFO] Server started')
+		expect(result).not.toContain('[DEBUG] Connecting')
+	})
+
+	it('filters Jest Console header (● Console)', () => {
+		const log = buildStepLog([
+			'  ● Console',
+			'real test output',
+		].join('\n'))
+		const result = extractFailedStepOutput(log, ['Run tests'])
+		expect(result).toContain('real test output')
+		expect(result).not.toContain('● Console')
+	})
+
+	it('falls back to cleaned lines when no FAIL/error/summary found', () => {
+		const log = buildStepLog([
+			'some random output',
+			'another line',
+			'  console.log',
+			'',
+			'useful info',
+		].join('\n'))
+		const result = extractFailedStepOutput(log, ['Run tests'])
+		expect(result).toContain('some random output')
+		expect(result).toContain('useful info')
+		expect(result).not.toMatch(/^\s*console\.log\s*$/m)
+		expect(result).not.toContain('\n\n')
 	})
 })
