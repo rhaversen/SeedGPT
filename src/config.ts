@@ -107,6 +107,7 @@ export const config = {
 		charThreshold: 20_000, // Tool results larger than this get summarized
 		minResultChars: 300, // Minimum chars to keep in summarized results
 		protectedTurns: 2, // Most recent turns never compressed
+		gapMarker: '[Lines omitted from context. Re-read file if required context is missing.]', // Message shown where lines are omitted
 	},
 
 	// Database connection configuration

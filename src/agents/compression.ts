@@ -17,7 +17,6 @@ interface Candidate {
 	toolName: string
 	charLen: number
 	inputHint: string
-	contentPreview: string
 }
 
 // --- Constants ---
@@ -60,6 +59,7 @@ function stripWriteInputs(messages: Anthropic.MessageParam[]): void {
 		assistantIdx++
 		if (assistantMsgCount - assistantIdx < protectedTurns) continue
 
+		let changed = false
 		const content = msg.content as Anthropic.ContentBlockParam[]
 		for (let j = 0; j < content.length; j++) {
 			const block = content[j]
@@ -70,15 +70,17 @@ function stripWriteInputs(messages: Anthropic.MessageParam[]): void {
 				const oldLines = (input.oldString as string).split('\n').length
 				const newLines = (input.newString as string).split('\n').length
 				content[j] = { ...block, input: { filePath: input.filePath, oldString: `[applied — ${oldLines} lines]`, newString: `[applied — ${newLines} lines]` } }
+				changed = true
 				stripped++
 			} else if (block.name === 'create_file' && typeof input.content === 'string' && !(input.content as string).startsWith('[applied')) {
 				const lines = (input.content as string).split('\n').length
 				content[j] = { ...block, input: { filePath: input.filePath, content: `[applied — ${lines} lines]` } }
+				changed = true
 				stripped++
 			}
 		}
 
-		if (stripped > 0) msg.content = content
+		if (changed) msg.content = content
 	}
 
 	if (stripped > 0) logger.info(`Stripped ${stripped} write tool input(s)`)
@@ -154,7 +156,6 @@ function selectCandidates(messages: Anthropic.MessageParam[], toolMap: Map<strin
 				toolName: tool.name,
 				charLen: text.length,
 				inputHint: buildInputHint(tool),
-				contentPreview: text.slice(0, 200),
 			})
 		}
 	}
@@ -185,17 +186,114 @@ const KEEP_TOOL: Anthropic.Tool = {
 	},
 }
 
-const SUMMARIZE_TOOL: Anthropic.Tool = {
-	name: 'summarize',
-	description: 'Replace a tool result with a smaller version containing only the relevant portions.',
+const SUMMARIZE_LINES_TOOL: Anthropic.Tool = {
+	name: 'summarize_lines',
+	description: `Specify which lines of the tool result to keep in the conversation history.
+Use this for any large tool result - code, JSON, binary output, etc. - when only specific sections are relevant.
+Line numbers refer to the content as currently numbered (starting from 1).
+You can specify individual lines or ranges: "1", "1-5", "1-5,10", "1-5,10-15", etc.
+Gap markers will be automatically added to show where content was omitted.`,
 	input_schema: {
 		type: 'object' as const,
 		properties: {
 			tool_use_id: { type: 'string' as const, description: 'The tool_use_id of the result to summarize' },
-			summary: { type: 'string' as const, description: 'The summarized content — only the relevant portions, verbatim' },
+			keep_lines: { type: 'string' as const, description: 'Line ranges to keep, e.g., "1-10,15,20-25"' },
 		},
-		required: ['tool_use_id', 'summary'],
+		required: ['tool_use_id', 'keep_lines'],
 	},
+}
+
+// --- Line-Based Compression Utilities ---
+
+/**
+ * Add ephemeral line numbers to content (one char separator)
+ */
+function addLineNumbers(content: string): string {
+	const lines = content.split('\n')
+	return lines.map((line, i) => `${i + 1}|${line}`).join('\n')
+}
+
+/**
+ * Parse line ranges like "1", "1-5", "1-5,10-15"
+ * Returns sorted array of [start, end] tuples
+ */
+function parseLineRanges(rangeStr: string): Array<[number, number]> {
+	const parts = rangeStr.split(',').map(s => s.trim())
+	const ranges: Array<[number, number]> = []
+
+	for (const part of parts) {
+		if (part.includes('-')) {
+			const [start, end] = part.split('-').map(Number)
+			if (start && end && start <= end) {
+				ranges.push([start, end])
+			}
+		} else {
+			const num = Number(part)
+			if (num) {
+				ranges.push([num, num])
+			}
+		}
+	}
+
+	ranges.sort((a, b) => a[0] - b[0])
+
+	const merged: Array<[number, number]> = []
+	for (const range of ranges) {
+		const prev = merged[merged.length - 1]
+		if (prev && range[0] <= prev[1] + 1) {
+			prev[1] = Math.max(prev[1], range[1])
+		} else {
+			merged.push([...range])
+		}
+	}
+
+	return merged
+}
+
+/**
+ * Filter lines by keeping only specified ranges, adding gap markers
+ * Always add gap markers for consistency:
+ * - Before first range if not starting at line 1
+ * - Between non-consecutive ranges
+ * - After last range if not ending at last line
+ */
+function filterByLineRanges(content: string, rangeStr: string): string {
+	const lines = content.split('\n')
+	const totalLines = lines.length
+	const ranges = parseLineRanges(rangeStr)
+
+	if (ranges.length === 0) {
+		return content // Keep unchanged if invalid ranges
+	}
+
+	const kept: string[] = []
+
+	// Add gap marker before first range if not starting at line 1
+	if (ranges[0][0] > 1) {
+		kept.push(config.summarization.gapMarker)
+	}
+
+	// Add lines for each range and gap markers between them
+	for (let i = 0; i < ranges.length; i++) {
+		const [start, end] = ranges[i]
+
+		// Add lines in this range (with bounds checking)
+		for (let lineNum = start; lineNum <= end && lineNum <= totalLines; lineNum++) {
+			kept.push(lines[lineNum - 1])
+		}
+
+		if (i < ranges.length - 1) {
+			kept.push(config.summarization.gapMarker)
+		}
+	}
+
+	// Add gap marker after last range if not ending at last line
+	const lastRange = ranges[ranges.length - 1]
+	if (lastRange[1] < totalLines) {
+		kept.push(config.summarization.gapMarker)
+	}
+
+	return kept.join('\n')
 }
 
 async function summarizeCandidates(
@@ -204,48 +302,105 @@ async function summarizeCandidates(
 ): Promise<void> {
 	const cachedMessages = addCacheBreakpoint(messages)
 
-	const requests: BatchRequest[] = candidates.map(c => ({
-		phase: 'summarizer' as const,
-		messages: [
-			...cachedMessages,
-			{ role: 'assistant' as const, content: 'I will now evaluate tool results for summarization.' },
-			{
-				role: 'user' as const,
-				content: `Evaluate the tool result with tool_use_id="${c.toolUseId}" (${c.toolName}${c.inputHint}, ${c.charLen} chars) for summarization. Its content starts with:\n${c.contentPreview}\n\nCall either keep or summarize.`,
-			},
-		],
-		tools: [KEEP_TOOL, SUMMARIZE_TOOL],
-	}))
+	const requests: BatchRequest[] = candidates.map(c => {
+		// Get the actual content and add line numbers
+		const msg = messages[c.msgIdx]
+		const blocks = msg.content as Anthropic.ContentBlockParam[]
+		const block = blocks[c.blockIdx] as Anthropic.ToolResultBlockParam
+		const content = typeof block.content === 'string' ? block.content : ''
+		const numberedContent = addLineNumbers(content)
+
+		return {
+			phase: 'summarizer' as const,
+			messages: [
+				...cachedMessages,
+				{ role: 'assistant' as const, content: 'I will now evaluate tool results for summarization.' },
+				{
+					role: 'user' as const,
+					content: `Evaluate the tool result with tool_use_id="${c.toolUseId}" (${c.toolName}${c.inputHint}, ${c.charLen} chars) for summarization. Its content with line numbers:\n\n${numberedContent}\n\nCall keep to preserve unchanged, or summarize_lines with line ranges to keep (e.g., "1-10,15-20").`,
+				},
+			],
+			tools: [KEEP_TOOL, SUMMARIZE_LINES_TOOL],
+		}
+	})
 
 	let kept = 0
 	let summarized = 0
-	let failed = 0
+	let apiErrors = 0
 	const diffs: string[] = []
 
+	let responses: Anthropic.Message[] = []
 	try {
-		const responses = await callBatchApi(requests)
-
-		for (let i = 0; i < candidates.length; i++) {
-			const toolCall = responses[i].content.find(b => b.type === 'tool_use')
-			if (!toolCall || toolCall.type !== 'tool_use' || toolCall.name === 'keep') {
-				kept++
-			} else {
-				const input = toolCall.input as { summary?: string }
-				const summary = input.summary ?? ''
-				summarized++
-				diffs.push(`${candidates[i].toolName}: ${candidates[i].charLen} → ${summary.length} chars`)
-				applySummary(messages, candidates[i], summary)
-			}
+		responses = await callBatchApi(requests)
+		if (responses.length !== candidates.length) {
+			logger.warn(`Batch API returned ${responses.length} responses for ${candidates.length} candidates — processing available responses`)
 		}
-	} catch {
-		for (const candidate of candidates) {
-			failed++
-			applyRedaction(messages, candidate)
+	} catch (err) {
+		logger.warn(`Batch API failed: ${err instanceof Error ? err.message : String(err)} — keeping all candidates unchanged`)
+		kept = candidates.length
+		logger.info(`Summarizer: ${kept} kept, ${summarized} summarized (${candidates.length} candidates, ${apiErrors} errors)`)
+		return
+	}
+
+	// Build map of tool_use_id -> response for resilient matching
+	const responseMap = new Map<string, Anthropic.Message>()
+	for (const response of responses) {
+		if (!response?.content) continue
+		try {
+			const toolCall = response.content.find(b => b.type === 'tool_use')
+			if (toolCall && toolCall.type === 'tool_use') {
+				const input = toolCall.input as { tool_use_id?: string }
+				if (input.tool_use_id) {
+					responseMap.set(input.tool_use_id, response)
+				}
+			}
+		} catch (err) {
+			logger.warn(`Error parsing response: ${err instanceof Error ? err.message : String(err)}`)
+			apiErrors++
 		}
 	}
 
+	// Apply responses by matching tool_use_id
+	for (const candidate of candidates) {
+		const response = responseMap.get(candidate.toolUseId)
+		if (!response?.content) {
+			kept++
+			continue
+		}
+
+		try {
+			const toolCall = response.content.find(b => b.type === 'tool_use')
+			if (!toolCall || toolCall.type !== 'tool_use' || toolCall.name === 'keep') {
+				kept++
+			} else if (toolCall.name === 'summarize_lines') {
+				const input = toolCall.input as { keep_lines?: string }
+				const keepLines = input.keep_lines
+				if (typeof keepLines === 'string') {
+					const msg = messages[candidate.msgIdx]
+					const blocks = msg.content as Anthropic.ContentBlockParam[]
+					const block = blocks[candidate.blockIdx] as Anthropic.ToolResultBlockParam
+					const originalContent = typeof block.content === 'string' ? block.content : ''
+					
+					const filtered = filterByLineRanges(originalContent, keepLines)
+					summarized++
+					diffs.push(`${candidate.toolName}: ${candidate.charLen} → ${filtered.length} chars`)
+					applySummary(messages, candidate, filtered)
+				} else {
+					kept++
+				}
+			} else {
+				kept++
+			}
+		} catch (err) {
+			logger.warn(`Error processing candidate ${candidate.toolUseId}: ${err instanceof Error ? err.message : String(err)}`)
+			apiErrors++
+			kept++
+		}
+	}
+
+	const errorLog = apiErrors > 0 ? `, ${apiErrors} errors` : ''
 	const diffLog = diffs.length > 0 ? ` | ${diffs.join(' | ')}` : ''
-	logger.info(`Summarizer: ${kept} kept, ${summarized} summarized, ${failed} failed (${candidates.length} candidates)${diffLog}`)
+	logger.info(`Summarizer: ${kept} kept, ${summarized} summarized (${candidates.length} candidates${errorLog})${diffLog}`)
 }
 
 function addCacheBreakpoint(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
@@ -274,15 +429,5 @@ function applySummary(messages: Anthropic.MessageParam[], candidate: Candidate, 
 	const block = content[candidate.blockIdx]
 	if (block.type !== 'tool_result') return
 	content[candidate.blockIdx] = { ...block, content: summary }
-	messages[candidate.msgIdx] = { ...msg, content }
-}
-
-function applyRedaction(messages: Anthropic.MessageParam[], candidate: Candidate): void {
-	const msg = messages[candidate.msgIdx]
-	if (!Array.isArray(msg.content)) return
-	const content = [...msg.content as Anthropic.ContentBlockParam[]]
-	const block = content[candidate.blockIdx]
-	if (block.type !== 'tool_result') return
-	content[candidate.blockIdx] = { ...block, content: `[Redacted: ${candidate.toolName} result removed — re-call if needed.]` }
 	messages[candidate.msgIdx] = { ...msg, content }
 }
