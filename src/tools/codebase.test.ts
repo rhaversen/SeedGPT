@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 import { mkdtemp, writeFile, rm, mkdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { getCodebaseContext } from './codebase.js'
+import { getCodebaseContext, grepSearch } from './codebase.js'
 
 function extractDeclarations(ctx: string): string {
 	return ctx.split('## Declarations')[1] ?? ''
@@ -346,5 +346,61 @@ const SECRET = 'x'
 		expect(result).toContain('├── a/')
 		expect(result).toContain('│   └── x.ts')
 		expect(result).toContain('└── b.ts')
+	})
+})
+
+describe('grepSearch', () => {
+	let tempDir: string
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-grep-'))
+		await writeFile(join(tempDir, 'example.ts'), [
+			'import { config } from "./config.js"',
+			'',
+			'export function run(): void {',
+			'  const max = config.coverage.maxLowCoverageFiles',
+			'  console.log(max)',
+			'}',
+		].join('\n'))
+	})
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true })
+	})
+
+	it('finds plain text matches (case-insensitive)', async () => {
+		const result = await grepSearch(tempDir, 'config')
+		expect(result).toContain('example.ts:1:')
+		expect(result).toContain('example.ts:4:')
+	})
+
+	it('treats regex pattern correctly', async () => {
+		const result = await grepSearch(tempDir, 'config\\.')
+		expect(result).toContain('example.ts:4:')
+		expect(result).not.toContain('example.ts:5:')
+	})
+
+	it('plain dot is treated as regex wildcard', async () => {
+		const result = await grepSearch(tempDir, 'config.')
+		expect(result).toContain('example.ts:1:')
+		expect(result).toContain('example.ts:4:')
+	})
+
+	it('escapes and retries on invalid regex', async () => {
+		await writeFile(join(tempDir, 'brackets.ts'), 'const arr = [config]')
+		const result = await grepSearch(tempDir, '[config')
+		expect(result).toContain('brackets.ts:1:')
+	})
+
+	it('filters by includePattern', async () => {
+		await writeFile(join(tempDir, 'other.js'), 'config.something')
+		const result = await grepSearch(tempDir, 'config', { includePattern: '*.ts' })
+		expect(result).toContain('example.ts')
+		expect(result).not.toContain('other.js')
+	})
+
+	it('returns no-match message when nothing matches', async () => {
+		const result = await grepSearch(tempDir, 'nonexistent_string_xyz')
+		expect(result).toBe('No matches found.')
 	})
 })

@@ -303,12 +303,12 @@ function collectFunctionNames(node: ts.Node, file: string, out: Array<{ name: st
 	}
 }
 
-export async function grepSearch(rootPath: string, pattern: string, options?: { isRegexp?: boolean; includePattern?: string }): Promise<string> {
+export async function grepSearch(rootPath: string, pattern: string, options?: { includePattern?: string }): Promise<string> {
 	const allFiles: string[] = []
 	await walk(rootPath, '', allFiles)
 
-	const regex = options?.isRegexp ? new RegExp(pattern, 'gi') : null
-	const lowerPattern = pattern.toLowerCase()
+	let regex: RegExp
+	try { regex = new RegExp(pattern, 'gi') } catch { regex = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi') }
 	const includeGlob = options?.includePattern
 
 	const matches: string[] = []
@@ -323,8 +323,8 @@ export async function grepSearch(rootPath: string, pattern: string, options?: { 
 			const lines = content.split('\n')
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i]
-				const isMatch = regex ? regex.test(line) : line.toLowerCase().includes(lowerPattern)
-				if (regex) regex.lastIndex = 0
+				const isMatch = regex.test(line)
+				regex.lastIndex = 0
 				if (isMatch) {
 					matches.push(`${relPath}:${i + 1}: ${line.trimStart()}`)
 					if (matches.length >= maxResults) {

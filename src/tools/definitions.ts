@@ -130,7 +130,7 @@ const readFile = {
 
 const grepSearch = {
 	name: 'grep_search' as const,
-	description: 'Search for a text pattern across all files in the repository. Returns matching lines with file paths and line numbers. Use this to find usages of functions, variables, imports, strings, or any text pattern. Note: This tool only searches the current working directory, not logs or memories.',
+	description: 'Search for a text pattern across all files in the repository. Returns matching lines with file paths and line numbers. Use this to find usages of functions, variables, imports, strings, or any text pattern. Queries are interpreted as regex (e.g. config\\. matches literal dot, \\bword\\b matches word boundary). Plain text queries work identically since they are valid regex. Note: This tool only searches the current working directory, not logs, coverage or memories.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {
@@ -138,10 +138,7 @@ const grepSearch = {
 				type: 'string' as const,
 				description: 'The text or regex pattern to search for.',
 			},
-			isRegexp: {
-				type: 'boolean' as const,
-				description: 'Whether the query is a regular expression. Default: false.',
-			},
+
 			includePattern: {
 				type: 'string' as const,
 				description: 'Glob pattern to filter which files to search (e.g. "src/**/*.ts"). If omitted, searches all files.',
@@ -298,8 +295,8 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 	}
 
 	if (name === 'grep_search') {
-		const { query, isRegexp, includePattern } = input as { query: string; isRegexp?: boolean; includePattern?: string }
-		const result = await codebase.grepSearch(config.workspacePath, query, { isRegexp, includePattern })
+		const { query, includePattern } = input as { query: string; includePattern?: string }
+		const result = await codebase.grepSearch(config.workspacePath, query, { includePattern })
 		const matchCount = result === 'No matches found.' ? 0 : result.split('\n').filter(l => !l.startsWith('(truncated')).length
 		logger.info(`  → ${matchCount} match${matchCount !== 1 ? 'es' : ''}`)
 		return { type: 'tool_result', tool_use_id: id, content: result }
