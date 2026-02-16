@@ -7,6 +7,7 @@ jest.unstable_mockModule('../config.js', () => ({
 			memory: { model: 'claude-haiku-4-5', maxTokens: 64 },
 			planner: { model: 'claude-sonnet-4-5', maxTokens: 4096 },
 			builder: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
+			fixer: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
 			summarizer: { model: 'claude-haiku-4-5', maxTokens: 2048 },
 		},
 		api: { maxRetries: 2, initialRetryDelay: 10, maxRetryDelay: 50 },
@@ -51,6 +52,7 @@ jest.unstable_mockModule('../tools/codebase.js', () => ({
 jest.unstable_mockModule('./prompts.js', () => ({
 	SYSTEM_PLAN: 'plan prompt',
 	SYSTEM_BUILD: 'build prompt',
+	SYSTEM_FIX: 'fix prompt',
 	SYSTEM_REFLECT: 'reflect prompt',
 	SYSTEM_MEMORY: 'memory prompt',
 	SYSTEM_SUMMARIZE: 'summarize prompt',

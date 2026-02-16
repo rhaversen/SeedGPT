@@ -5,13 +5,13 @@ import logger from '../logger.js'
 import { compressConversation } from '../agents/compression.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS } from '../tools/definitions.js'
 import { getCodebaseContext, findUnusedFunctions } from '../tools/codebase.js'
-import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_REFLECT, SYSTEM_MEMORY, SYSTEM_SUMMARIZE } from '../llm/prompts.js'
+import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_FIX, SYSTEM_REFLECT, SYSTEM_MEMORY, SYSTEM_SUMMARIZE } from '../llm/prompts.js'
 import GeneratedModel, { computeCost, type ApiUsage } from '../models/Generated.js'
 import { getMemoryContext } from '../agents/memory.js'
 import { getRecentLog } from '../tools/git.js'
 import { getLatestMainCoverage } from '../tools/github.js'
 
-export type Phase = 'planner' | 'builder' | 'reflect' | 'memory' | 'summarizer'
+export type Phase = 'planner' | 'builder' | 'fixer' | 'reflect' | 'memory' | 'summarizer'
 
 const client = new Anthropic({ apiKey: env.anthropicApiKey })
 
@@ -21,6 +21,7 @@ const PHASE_EXTRAS: Record<Phase, {
 }> = {
 	planner: { system: SYSTEM_PLAN, tools: PLANNER_TOOLS },
 	builder: { system: SYSTEM_BUILD, tools: BUILDER_TOOLS },
+	fixer: { system: SYSTEM_FIX, tools: BUILDER_TOOLS },
 	reflect: { system: SYSTEM_REFLECT },
 	memory: { system: SYSTEM_MEMORY },
 	summarizer: { system: SYSTEM_SUMMARIZE },
@@ -33,8 +34,8 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 	const extras = PHASE_EXTRAS[phase]
 	const system: Anthropic.TextBlockParam[] = []
 
-	// Builder and planner gets codebase context
-	if (phase === 'builder' || phase === 'planner') {
+	// Builder, fixer and planner gets codebase context
+	if (phase === 'builder' || phase === 'fixer' || phase === 'planner') {
 		const codebaseContext = await getCodebaseContext(env.workspacePath)
 		system.push({ type: 'text', text: `\n\n${codebaseContext}`, cache_control: { type: 'ephemeral' as const } })
 	}

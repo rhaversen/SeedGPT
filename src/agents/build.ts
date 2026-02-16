@@ -24,6 +24,16 @@ export class PatchSession {
 		return this.roundsUsed >= config.turns.maxBuilder
 	}
 
+	get editedFiles(): { created: string[]; modified: string[] } {
+		const created: string[] = []
+		const modified: string[] = []
+		for (const edit of this.edits) {
+			if (edit.type === 'create' && !created.includes(edit.filePath)) created.push(edit.filePath)
+			else if (edit.type === 'replace' && !modified.includes(edit.filePath) && !created.includes(edit.filePath)) modified.push(edit.filePath)
+		}
+		return { created, modified }
+	}
+
 	constructor(plan: Plan) {
 		this.plan = plan
 
@@ -45,29 +55,6 @@ export class PatchSession {
 
 	async createPatch(): Promise<EditOperation[]> {
 		logger.info('Builder starting implementation...')
-		return this.runBuilderLoop()
-	}
-
-	async fixPatch(error: string): Promise<EditOperation[]> {
-		logger.info('Builder fixing implementation...')
-
-		const fixMessage: Anthropic.MessageParam = {
-			role: 'user',
-			content: [{
-				type: 'text' as const,
-				text: [
-					`You were implementing "${this.plan.title}": ${this.plan.description}`,
-					'The changes were applied but CI failed. You have a limited turn budget to diagnose and fix the issue.',
-					`## Error\n\`\`\`\n${error}\n\`\`\``,
-					'Start by reading the files implicated in the error. If the error points at a test, read that test file. If not, check tests for the modules you changed. Make the targeted fix, then call done. Do not redo work that already succeeded.',
-				].join('\n\n'),
-				cache_control: { type: 'ephemeral' },
-			}],
-		}
-		this.messages = [fixMessage]
-		this.fullHistory.push(fixMessage)
-
-		this.edits.length = 0
 		return this.runBuilderLoop()
 	}
 

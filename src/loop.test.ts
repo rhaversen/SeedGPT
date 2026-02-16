@@ -5,6 +5,7 @@ jest.unstable_mockModule('./config.js', () => ({
 		turns: {
 			maxPlanner: 25,
 			maxBuilder: 40,
+			maxFixer: 20,
 		},
 		errors: {
 			maxLoopErrorChars: 10000,
@@ -78,8 +79,15 @@ const mockEdits = [{ type: 'replace' as const, filePath: 'src/index.ts', oldStri
 let mockExhausted = false
 const mockPatchSession = {
 	createPatch: jest.fn<() => Promise<typeof mockEdits>>().mockResolvedValue(mockEdits),
-	fixPatch: jest.fn<(...args: unknown[]) => Promise<typeof mockEdits>>().mockResolvedValue(mockEdits),
 	get exhausted() { return mockExhausted },
+	conversation: [] as unknown[],
+	editedFiles: { created: ['src/index.test.ts'], modified: ['src/index.ts'] },
+}
+
+let mockFixerExhausted = false
+const mockFixSession = {
+	fix: jest.fn<(...args: unknown[]) => Promise<typeof mockEdits>>().mockResolvedValue(mockEdits),
+	get exhausted() { return mockFixerExhausted },
 	conversation: [] as unknown[],
 }
 
@@ -95,6 +103,10 @@ jest.unstable_mockModule('./agents/build.js', () => ({
 	PatchSession: jest.fn().mockImplementation(() => mockPatchSession),
 }))
 
+jest.unstable_mockModule('./agents/fix.js', () => ({
+	FixSession: jest.fn().mockImplementation(() => mockFixSession),
+}))
+
 const { run } = await import('./loop.js')
 const database = await import('./database.js')
 const git = await import('./tools/git.js')
@@ -103,10 +115,12 @@ const memory = await import('./agents/memory.js')
 const planModule = await import('./agents/plan.js')
 const reflectModule = await import('./agents/reflect.js')
 const buildModule = await import('./agents/build.js')
+const fixModule = await import('./agents/fix.js')
 
 beforeEach(() => {
 	jest.clearAllMocks()
 	mockExhausted = false
+	mockFixerExhausted = false
 })
 
 describe('run', () => {
@@ -127,7 +141,7 @@ describe('run', () => {
 		expect(database.disconnectFromDatabase).toHaveBeenCalledTimes(1)
 	})
 
-	it('retries with fixPatch on CI failure and merges', async () => {
+	it('retries with FixSession on CI failure and merges', async () => {
 		const awaitChecks = github.awaitChecks as jest.MockedFunction<typeof github.awaitChecks>
 		awaitChecks
 			.mockResolvedValueOnce({ passed: false, error: 'type error in index.ts' })
@@ -136,21 +150,27 @@ describe('run', () => {
 		await run()
 
 		expect(git.commitAndPush).toHaveBeenCalledTimes(2)
-		expect(mockPatchSession.fixPatch).toHaveBeenCalledWith('type error in index.ts')
+		expect(fixModule.FixSession).toHaveBeenCalledWith({
+			planTitle: 'test-change',
+			planDescription: 'A test change',
+			createdFiles: ['src/index.test.ts'],
+			modifiedFiles: ['src/index.ts'],
+		})
+		expect(mockFixSession.fix).toHaveBeenCalledWith('type error in index.ts')
 		expect(github.mergePR).toHaveBeenCalledWith(1)
 	})
 
-	it('closes PR when builder exhausts turns, then succeeds on next plan', async () => {
+	it('closes PR when fixer exhausts turns, then succeeds on next plan', async () => {
 		const awaitChecks = github.awaitChecks as jest.MockedFunction<typeof github.awaitChecks>
 		awaitChecks
 			.mockResolvedValueOnce({ passed: false, error: 'persistent failure' })
 			.mockResolvedValueOnce({ passed: true })
 
-		mockExhausted = true
+		mockFixerExhausted = true
 
 		await run()
 
-		expect(mockPatchSession.fixPatch).not.toHaveBeenCalled()
+		expect(mockFixSession.fix).not.toHaveBeenCalled()
 		expect(github.closePR).toHaveBeenCalledWith(1)
 		expect(github.deleteRemoteBranch).toHaveBeenCalledWith('seedgpt/test-change')
 		expect(memory.storeReflection).toHaveBeenCalled()

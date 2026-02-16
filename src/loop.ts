@@ -7,6 +7,7 @@ import { connectToDatabase, disconnectFromDatabase } from './database.js'
 import logger, { writeIterationLog } from './logger.js'
 import { plan } from './agents/plan.js'
 import { PatchSession } from './agents/build.js'
+import { FixSession } from './agents/fix.js'
 import { reflect } from './agents/reflect.js'
 import { setIterationId } from './llm/api.js'
 
@@ -47,6 +48,7 @@ async function iterate(): Promise<boolean> {
 	let prNumber: number | null = null
 	let merged = false
 	let outcome: string
+	let fixer: FixSession | null = null
 
 	if (edits.length === 0) {
 		outcome = 'Builder produced no edits.'
@@ -68,7 +70,18 @@ async function iterate(): Promise<boolean> {
 
 			fixAttempt++
 			const error = result.error ?? 'CI checks failed with unknown error'
-			if (session.exhausted) {
+
+			if (!fixer) {
+				const { created, modified } = session.editedFiles
+				fixer = new FixSession({
+					planTitle: iterationPlan.title,
+					planDescription: iterationPlan.description,
+					createdFiles: created,
+					modifiedFiles: modified,
+				})
+			}
+
+			if (fixer.exhausted) {
 				outcome = `CI failed (attempt ${fixAttempt}, no budget left): ${error.slice(0, config.errors.maxLoopErrorChars)}`
 				logger.error(outcome)
 				break
@@ -77,15 +90,15 @@ async function iterate(): Promise<boolean> {
 			logger.warn(`CI failed (attempt ${fixAttempt}), attempting fix: ${error.slice(0, 500)}`)
 
 			try {
-				edits = await session.fixPatch(error)
+				edits = await fixer.fix(error)
 			} catch (error) {
-				outcome = `Builder failed to fix: ${error instanceof Error ? error.message.slice(0, 500) : String(error)}`
+				outcome = `Fixer failed: ${error instanceof Error ? error.message.slice(0, 500) : String(error)}`
 				logger.error(outcome)
 				break
 			}
 
 			if (edits.length === 0) {
-				outcome = 'Builder produced no fix edits.'
+				outcome = 'Fixer produced no fix edits.'
 				logger.warn(outcome)
 				break
 			}
@@ -114,7 +127,7 @@ async function iterate(): Promise<boolean> {
 		logger.error(`Plan "${iterationPlan.title}" failed — starting fresh plan.`)
 	}
 
-	const allMessages = [...plannerMessages, ...session.conversation]
+	const allMessages = [...plannerMessages, ...session.conversation, ...(fixer?.conversation ?? [])]
 	const reflection = await reflect(outcome, allMessages)
 	await storeReflection(reflection)
 	await writeIterationLog()

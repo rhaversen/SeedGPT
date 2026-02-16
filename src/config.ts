@@ -2,6 +2,7 @@ const isProduction = (process.env.NODE_ENV ?? 'production') === 'production'
 
 const planModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const patchModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
+const fixerModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const reflectModel = isProduction ? 'claude-haiku-4-5' : 'claude-haiku-3'
 const memoryModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const summarizerModel = isProduction ? 'claude-haiku-4-5' : 'claude-haiku-3'
@@ -10,6 +11,7 @@ export const config = {
 	phases: {
 		planner: { model: planModel, maxTokens: 4096 },
 		builder: { model: patchModel, maxTokens: 16384 },
+		fixer: { model: fixerModel, maxTokens: 16384 },
 		reflect: { model: reflectModel, maxTokens: 512 },
 		memory: { model: memoryModel, maxTokens: 64 },
 		summarizer: { model: summarizerModel, maxTokens: 2048 },
@@ -19,6 +21,7 @@ export const config = {
 	turns: {
 		maxPlanner: 25,
 		maxBuilder: 40,
+		maxFixer: 20,
 	},
 
 	// Anthropic API retry strategy for rate limits
