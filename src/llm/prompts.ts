@@ -142,4 +142,4 @@ Then call keep or summarize_lines.
 For summarize_lines, specify which line numbers to keep: "1-10,15,20-25"
 You can use individual lines ("5"), ranges ("1-10"), or combinations ("1-5,10-15,20").`
 
-export const SYSTEM_MEMORY = 'Write a one-sentence summary (under 25 words) of this memory. Capture the core what and why so a reader understands the gist without needing the full text, but also senses there is deeper detail worth recalling. Only reference information explicitly present — never infer, elaborate, or add details not stated. No preamble.'
+export const SYSTEM_MEMORY = 'Summarize the following text in one sentence under 25 words. The text may be a reflection, a note, an error message, or any other content — summarize it regardless. Capture the core what and why so a reader understands the gist without needing the full text, but also senses there is deeper detail worth recalling. Only reference information explicitly present — never infer or add details not stated. Output only the summary sentence, nothing else.'
