@@ -10,24 +10,28 @@ SeedGPT has no fixed objective. It decides what to become. It sets its own goals
 
 Each cycle follows a deterministic pipeline. The LLM controls two decisions: what to change and how to change it. Everything else — git, PRs, CI, merging, memory — is handled by code the agent wrote (and continues to rewrite).
 
-1. **Wake up** — Clone its own repo, load persistent memory
-2. **Plan** — A planner model reads the codebase, reviews past notes, searches memories, and commits to a single focused change
-3. **Build** — A builder model receives the plan and implements it using structured code edits, with full access to read files, search the codebase, and inspect structural diffs
-4. **Ship** — Create a branch, apply edits, push, open a PR
-5. **Verify** — Wait for CI. If checks fail, the builder analyzes errors and retries with the full conversation history
-6. **Merge or learn** — Squash-merge on success, record the failure on exhaustion
-7. **Measure** — Extract code coverage from the CI run and store it in memory so the planner can track quality over time
-8. **Reflect** — A reflection model reviews the entire planner and builder conversation and writes an honest self-assessment that goes into memory
-9. **Rebuild** — The merge triggers CI/CD, building a new image and deploying the updated agent
+1. **Wake up** — Clean up stale PRs from previous failed runs, then clone its own repo
+2. **Plan** — A planner model reads the codebase index, recent git log, code coverage from the latest main CI run, unused function analysis, and persistent memory (notes + reflections), then commits to a single focused change
+3. **Branch** — Create a feature branch for the planned change
+4. **Build** — A builder model receives the plan and implements it using structured code edits, with full access to read files, search the codebase, and inspect structural diffs
+5. **Ship** — Commit, push, and open a PR
+6. **Verify** — Wait for CI. If checks fail, the builder analyzes errors and retries with the full conversation history
+7. **Merge or learn** — Squash-merge on success, close the PR and delete the branch on exhaustion
+8. **Reflect** — A reflection model reviews the entire planner and builder conversation and writes an honest self-assessment stored as a memory
+9. **Retry or rebuild** — If the plan failed, start a fresh plan from step 2. On success, the merge triggers CI/CD, building a new image and deploying the updated agent
 
 The agent then starts its next cycle as a new version of itself.
+
+## Context Compression
+
+Long conversations are automatically compressed to stay within token limits. Write-tool inputs from earlier turns are replaced with summaries (`[applied — N lines]`), and large tool results are batched to a summarizer model that either keeps them verbatim or trims them to the most relevant sections.
 
 ## Memory
 
 SeedGPT persists memory across cycles in MongoDB:
 
 - **Notes to self** — Pinned notes the agent leaves for future versions: goals, observations, warnings. They stay visible until the agent dismisses them.
-- **Past** — Automatically recorded events: plans, merges, failures, reflections. Shown newest-first within a token budget.
+- **Reflections** — Automatic self-assessments written after each iteration. The last 5 are shown in full, the next 20 are summarized.
 
 During planning, the agent can search its full memory history, save new notes, and dismiss completed ones. Memory is its continuity — how it thinks across cycles.
 
@@ -37,13 +41,15 @@ The agent reads its own source code every cycle. Its system prompts live in `pro
 
 ## Architecture
 
-Three LLM roles per cycle:
+Five LLM roles per cycle:
 
 - **Planner** — Multi-turn exploration with tools: read files, search the codebase, manage notes, recall memories.
 - **Builder** — Implementation with edit tools, plus codebase context, structural diffs, and git diffs for situational awareness.
 - **Reflector** — Reviews the full conversation and writes a self-assessment stored in memory.
+- **Memory** — Summarizes notes and reflections into concise one-line summaries for efficient retrieval.
+- **Summarizer** — Compresses large tool results mid-conversation to keep context within token limits.
 
-All API usage is tracked with per-call token counts and cost, logged as a summary at the end of each cycle.
+All API calls use the batch API for 50% cost reduction. Usage is tracked with per-call token counts and cost.
 
 ## Deployment
 
