@@ -1,41 +1,26 @@
-import { describe, it, expect, jest } from '@jest/globals'
-
-jest.unstable_mockModule('../config.js', () => ({
-	config: {
-		coverage: {
-			maxLowCoverageFiles: 10,
-		},
-	},
-}))
+import { describe, it, expect } from '@jest/globals'
 
 const { extractCoverageFromLogs, extractFailedStepOutput } = await import('./log-parsing.js')
 
-const COVERAGE_JSON = JSON.stringify({
-	total: {
-		lines: { total: 200, covered: 150, skipped: 0, pct: 75 },
-		statements: { total: 250, covered: 180, skipped: 0, pct: 72 },
-		functions: { total: 40, covered: 30, skipped: 0, pct: 75 },
-		branches: { total: 60, covered: 42, skipped: 0, pct: 70 },
-	},
-	'dist/api.js': {
-		lines: { total: 50, covered: 0, skipped: 0, pct: 0 },
-		statements: { total: 60, covered: 0, skipped: 0, pct: 0 },
-		functions: { total: 10, covered: 0, skipped: 0, pct: 0 },
-		branches: { total: 15, covered: 0, skipped: 0, pct: 0 },
-	},
-	'dist/logger.js': {
-		lines: { total: 30, covered: 28, skipped: 0, pct: 93.33 },
-		statements: { total: 35, covered: 33, skipped: 0, pct: 94.29 },
-		functions: { total: 8, covered: 8, skipped: 0, pct: 100 },
-		branches: { total: 10, covered: 9, skipped: 0, pct: 90 },
-	},
-	'dist/memory.js': {
-		lines: { total: 40, covered: 15, skipped: 0, pct: 37.5 },
-		statements: { total: 45, covered: 18, skipped: 0, pct: 40 },
-		functions: { total: 6, covered: 3, skipped: 0, pct: 50 },
-		branches: { total: 8, covered: 3, skipped: 0, pct: 37.5 },
-	},
-})
+const COVERAGE_TABLE = [
+	'------------------|---------|----------|---------|---------|-------------------',
+	'File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s',
+	'------------------|---------|----------|---------|---------|-------------------',
+	'All files         |   69.91 |    86.91 |   64.89 |   69.91 |',
+	' src              |   56.78 |    85.93 |   76.92 |   56.78 |',
+	'  config.ts       |       0 |        0 |       0 |       0 | 1-84',
+	'  database.ts     |       0 |        0 |       0 |       0 | 1-46',
+	'  logger.ts       |     100 |    92.68 |     100 |     100 | 64,68-69',
+	'  loop.ts         |   94.85 |       85 |     100 |   94.85 | 82-84,88-91',
+	' src/agents       |   72.96 |    83.95 |      92 |   72.96 |',
+	'  build.ts        |       0 |        0 |       0 |       0 | 1-122',
+	'  memory.ts       |     100 |     93.1 |     100 |     100 | 8,23',
+	'  plan.ts         |       0 |        0 |       0 |       0 | 1-80',
+	' src/tools        |   60.07 |    91.48 |      44 |   60.07 |',
+	'  codebase.ts     |   71.61 |    90.38 |   73.68 |   71.61 | 283-289,292-298',
+	'  definitions.ts  |   62.64 |      100 |       0 |   62.64 | 269-415,418-431',
+	'------------------|---------|----------|---------|---------|-------------------',
+].join('\n')
 
 function buildLog(stepName: string, content: string): string {
 	return [
@@ -49,32 +34,27 @@ function buildLog(stepName: string, content: string): string {
 }
 
 describe('extractCoverageFromLogs', () => {
-	it('extracts coverage from a "Coverage" step', () => {
-		const log = buildLog('Coverage', `2026-01-01T00:00:03.5000000Z ${COVERAGE_JSON}`)
+	it('extracts the full coverage table from a "Coverage" step', () => {
+		const log = buildLog('Coverage', COVERAGE_TABLE)
 		const result = extractCoverageFromLogs(log)
 
-		expect(result).not.toBeNull()
-		expect(result).toContain('72% statements')
-		expect(result).toContain('70% branches')
-		expect(result).toContain('75% functions')
-		expect(result).toContain('75% lines')
+		expect(result).toBe(COVERAGE_TABLE)
 	})
 
-	it('identifies low-coverage files', () => {
-		const log = buildLog('Coverage', `2026-01-01T00:00:03.5000000Z ${COVERAGE_JSON}`)
-		const result = extractCoverageFromLogs(log)!
+	it('matches "Run Coverage" step variant', () => {
+		const log = buildLog('Run Coverage', COVERAGE_TABLE)
+		const result = extractCoverageFromLogs(log)
 
-		expect(result).toContain('Low coverage (<50%)')
-		expect(result).toContain('dist/api.js (0%)')
-		expect(result).toContain('dist/memory.js (40%)')
-		expect(result).not.toContain('dist/logger.js')
+		expect(result).toBe(COVERAGE_TABLE)
 	})
 
-	it('reports untested file count', () => {
-		const log = buildLog('Coverage', `2026-01-01T00:00:03.5000000Z ${COVERAGE_JSON}`)
+	it('preserves uncovered line numbers in the table', () => {
+		const log = buildLog('Coverage', COVERAGE_TABLE)
 		const result = extractCoverageFromLogs(log)!
 
-		expect(result).toContain('Untested files: 1')
+		expect(result).toContain('1-84')
+		expect(result).toContain('82-84,88-91')
+		expect(result).toContain('269-415,418-431')
 	})
 
 	it('returns null when no coverage step exists', () => {
@@ -90,52 +70,24 @@ describe('extractCoverageFromLogs', () => {
 		expect(extractCoverageFromLogs(log)).toBeNull()
 	})
 
-	it('returns null when coverage step has no JSON', () => {
+	it('returns null when coverage step has no table', () => {
 		const log = buildLog('Coverage', 'Running coverage...\nAll tests passed!')
 		expect(extractCoverageFromLogs(log)).toBeNull()
 	})
 
-	it('returns null for malformed JSON', () => {
-		const log = buildLog('Coverage', '2026-01-01T00:00:03.5000000Z {"total": invalid}')
-		expect(extractCoverageFromLogs(log)).toBeNull()
-	})
-
-	it('matches "Run Coverage" step variant', () => {
-		const log = buildLog('Run Coverage', `2026-01-01T00:00:03.5000000Z ${COVERAGE_JSON}`)
+	it('ignores non-table content surrounding the table', () => {
+		const content = [
+			'PASS dist/loop.test.js',
+			'Test Suites: 5 passed, 5 total',
+			'',
+			COVERAGE_TABLE,
+			'',
+			'Done in 12.34s.',
+		].join('\n')
+		const log = buildLog('Coverage', content)
 		const result = extractCoverageFromLogs(log)
-		expect(result).not.toBeNull()
-		expect(result).toContain('72% statements')
-	})
 
-	it('handles 100% coverage with no low-coverage section', () => {
-		const perfectJson = JSON.stringify({
-			total: {
-				lines: { total: 100, covered: 100, skipped: 0, pct: 100 },
-				statements: { total: 100, covered: 100, skipped: 0, pct: 100 },
-				functions: { total: 20, covered: 20, skipped: 0, pct: 100 },
-				branches: { total: 30, covered: 30, skipped: 0, pct: 100 },
-			},
-			'dist/perfect.js': {
-				lines: { total: 100, covered: 100, skipped: 0, pct: 100 },
-				statements: { total: 100, covered: 100, skipped: 0, pct: 100 },
-				functions: { total: 20, covered: 20, skipped: 0, pct: 100 },
-				branches: { total: 30, covered: 30, skipped: 0, pct: 100 },
-			},
-		})
-		const log = buildLog('Coverage', `2026-01-01T00:00:03.5000000Z ${perfectJson}`)
-		const result = extractCoverageFromLogs(log)!
-
-		expect(result).toContain('100% statements')
-		expect(result).not.toContain('Low coverage')
-		expect(result).not.toContain('Untested')
-	})
-
-	it('sorts low coverage files by percentage ascending', () => {
-		const log = buildLog('Coverage', `2026-01-01T00:00:03.5000000Z ${COVERAGE_JSON}`)
-		const result = extractCoverageFromLogs(log)!
-		const lowCoverageIdx = result.indexOf('dist/api.js')
-		const memoryIdx = result.indexOf('dist/memory.js')
-		expect(lowCoverageIdx).toBeLessThan(memoryIdx)
+		expect(result).toBe(COVERAGE_TABLE)
 	})
 })
 

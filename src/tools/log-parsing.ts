@@ -1,24 +1,3 @@
-import { config } from '../config.js'
-
-interface CoverageMetric {
-	total: number
-	covered: number
-	skipped: number
-	pct: number
-}
-
-interface FileCoverage {
-	statements: CoverageMetric
-	branches: CoverageMetric
-	functions: CoverageMetric
-	lines: CoverageMetric
-}
-
-interface CoverageSummaryJson {
-	total: FileCoverage
-	[filePath: string]: FileCoverage
-}
-
 function stripLogLine(line: string): string {
 	return line
 		.replace(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?/, '')
@@ -139,38 +118,10 @@ export function extractCoverageFromLogs(logText: string): string | null {
 	const sectionLines = lines.slice(coverageSection.start, coverageSection.end)
 		.filter(l => !l.startsWith('##[') && l.trim() !== '')
 
-	const jsonLine = sectionLines.find(l => l.trim().startsWith('{') && l.includes('"total"'))
-	if (!jsonLine) return null
+	const separators = sectionLines
+		.map((l, i) => /^-+\|/.test(l) ? i : -1)
+		.filter(i => i !== -1)
+	if (separators.length < 2) return null
 
-	try {
-		const data = JSON.parse(jsonLine.trim()) as CoverageSummaryJson
-		return formatCoverageSummary(data)
-	} catch {
-		return null
-	}
-}
-
-function formatCoverageSummary(data: CoverageSummaryJson): string {
-	const t = data.total
-	const parts: string[] = [
-		`Coverage: ${t.statements.pct}% statements, ${t.branches.pct}% branches, ${t.functions.pct}% functions, ${t.lines.pct}% lines`,
-	]
-
-	const fileEntries = Object.entries(data)
-		.filter(([key]) => key !== 'total')
-		.map(([filePath, cov]) => ({ filePath, pct: cov.statements.pct }))
-		.sort((a, b) => a.pct - b.pct)
-
-	const lowCoverage = fileEntries.filter(f => f.pct < 50)
-	if (lowCoverage.length > 0) {
-		const listed = lowCoverage.slice(0, config.coverage.maxLowCoverageFiles).map(f => `${f.filePath} (${f.pct}%)`).join(', ')
-		parts.push(`Low coverage (<50%): ${listed}`)
-	}
-
-	const zeroCoverage = fileEntries.filter(f => f.pct === 0)
-	if (zeroCoverage.length > 0) {
-		parts.push(`Untested files: ${zeroCoverage.length}`)
-	}
-
-	return parts.join('\n')
+	return sectionLines.slice(separators[0], separators[separators.length - 1] + 1).join('\n')
 }

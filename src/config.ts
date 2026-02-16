@@ -56,11 +56,6 @@ export const config = {
 		maxLoopErrorChars: 10000, // Max chars from CI failure in loop outcomes
 	},
 
-	// Coverage reporting limits
-	coverage: {
-		maxLowCoverageFiles: 10, // Max low-coverage files listed in summary
-	},
-
 	// Memory system configuration
 	memory: {
 		tokenBudget: 10_000, // Soft limit for memory context size
