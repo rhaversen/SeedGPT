@@ -31,8 +31,8 @@ export function helper(): void {
 		await writeFile(join(tempDir, 'test.ts'), src)
 		const result = await getCodebaseContext(tempDir)
 		const decls = extractDeclarations(result)
-		expect(decls).toContain('export function greet(name: string): string  [L1-3]')
-		expect(decls).toContain('export function helper(): void  [L5-7]')
+		expect(decls).toContain('export function greet  [L1-3]')
+		expect(decls).toContain('export function helper  [L5-7]')
 	})
 
 	it('extracts async functions', async () => {
@@ -43,7 +43,7 @@ export function helper(): void {
 		await writeFile(join(tempDir, 'test.ts'), src)
 		const result = await getCodebaseContext(tempDir)
 		const decls = extractDeclarations(result)
-		expect(decls).toContain('export async function fetchData(url: string): Promise<string>  [L1-3]')
+		expect(decls).toContain('export async function fetchData  [L1-3]')
 	})
 
 	it('extracts interfaces with members', async () => {
@@ -56,10 +56,8 @@ export function helper(): void {
 		await writeFile(join(tempDir, 'test.ts'), src)
 		const result = await getCodebaseContext(tempDir)
 		const decls = extractDeclarations(result)
-		expect(decls).toContain('export interface User  [L1-5]')
-		expect(decls).toContain('name: string')
-		expect(decls).toContain('age?: number')
-		expect(decls).toContain('greet(msg: string): void')
+		expect(decls).toContain('export interface User { name, age, greet }  [L1-5]')
+		expect(decls).not.toContain('name: string')
 	})
 
 	it('extracts type aliases (short inline, long omitted)', async () => {
@@ -95,9 +93,9 @@ export const untyped = 'hello'
 		await writeFile(join(tempDir, 'test.ts'), src)
 		const result = await getCodebaseContext(tempDir)
 		const decls = extractDeclarations(result)
-		expect(decls).toContain('export const API_URL: string  [L1]')
-		expect(decls).toContain('export let counter: number  [L2]')
-		expect(decls).toContain('export const untyped: string  [L3]')
+		expect(decls).toContain('export const API_URL  [L1]')
+		expect(decls).toContain('export let counter  [L2]')
+		expect(decls).toContain('export const untyped  [L3]')
 	})
 
 	it('extracts classes with constructor, methods, and properties', async () => {
@@ -120,11 +118,11 @@ export const untyped = 'hello'
 		const result = await getCodebaseContext(tempDir)
 		const decls = extractDeclarations(result)
 		expect(decls).toContain('export class Service  [L1-14]')
-		expect(decls).toContain('readonly name: string  [L2]')
-		expect(decls).toContain('protected static count: number  [L3]')
-		expect(decls).toContain('constructor(name: string)  [L5-7]')
-		expect(decls).toContain('async fetchData(url: string): Promise<string>  [L9-11]')
-		expect(decls).toContain('static reset(): void  [L13]')
+		expect(decls).toContain('name  [L2]')
+		expect(decls).toContain('static count  [L3]')
+		expect(decls).toContain('constructor  [L5-7]')
+		expect(decls).toContain('async fetchData  [L9-11]')
+		expect(decls).toContain('static reset  [L13]')
 	})
 
 	it('extracts union types from type aliases', async () => {
@@ -142,7 +140,7 @@ export const untyped = 'hello'
 		await writeFile(join(tempDir, 'test.ts'), src)
 		const result = await getCodebaseContext(tempDir)
 		const decls = extractDeclarations(result)
-		expect(decls).toContain('export function process(required: string, optional?: number, ...rest: string[]): void  [L1]')
+		expect(decls).toContain('export function process  [L1]')
 	})
 
 	it('returns empty declarations for files with no declarations', async () => {
@@ -166,29 +164,22 @@ import { foo } from 'bar'
 		expect(decls).not.toContain('L1-')
 	})
 
-	it('infers types from initializers', async () => {
+	it('omits type annotations from variables', async () => {
 		const src = `export const s = 'hello'
-export const t = \`template\`
 export const n = 42
 export const b = true
-export const f = false
-export const a = [1, 2, 3]
 export const obj = { name: 'test', value: 1 }
-export const fn = (x: number): string => String(x)
-export const inst = new Map()
 `
 		await writeFile(join(tempDir, 'test.ts'), src)
 		const result = await getCodebaseContext(tempDir)
 		const decls = extractDeclarations(result)
-		expect(decls).toContain('export const s: string  [L1]')
-		expect(decls).toContain('export const t: string  [L2]')
-		expect(decls).toContain('export const n: number  [L3]')
-		expect(decls).toContain('export const b: boolean  [L4]')
-		expect(decls).toContain('export const f: boolean  [L5]')
-		expect(decls).toContain('export const a: [...]  [L6]')
-		expect(decls).toContain('export const obj: { name, value }  [L7]')
-		expect(decls).toContain('export const fn: (x: number) => string  [L8]')
-		expect(decls).toContain('export const inst: Map  [L9]')
+		expect(decls).toContain('export const s  [L1]')
+		expect(decls).toContain('export const n  [L2]')
+		expect(decls).toContain('export const b  [L3]')
+		expect(decls).toContain('export const obj  [L4]')
+		expect(decls).not.toContain(': string')
+		expect(decls).not.toContain(': number')
+		expect(decls).not.toContain(': boolean')
 	})
 
 	it('exportedOnly omits non-exported declarations', async () => {
@@ -206,8 +197,8 @@ const SECRET = 'shh'
 		await writeFile(join(tempDir, 'test.ts'), src)
 		const result = await getCodebaseContext(tempDir)
 		const decls = extractDeclarations(result)
-		expect(decls).toContain('export function greet(name: string): string  [L1-3]')
-		expect(decls).toContain('export const API: string  [L9]')
+		expect(decls).toContain('export function greet  [L1-3]')
+		expect(decls).toContain('export const API  [L9]')
 		expect(decls).not.toContain('helper')
 		expect(decls).not.toContain('SECRET')
 	})
@@ -229,9 +220,9 @@ const SECRET = 'shh'
 		const result = await getCodebaseContext(tempDir)
 		const decls = extractDeclarations(result)
 		expect(decls).toContain('export class Service  [L1-11]')
-		expect(decls).toContain('count: number  [L3]')
-		expect(decls).toContain('constructor(name: string)  [L5-7]')
-		expect(decls).toContain('fetch(): string  [L10]')
+		expect(decls).toContain('count  [L3]')
+		expect(decls).toContain('constructor  [L5-7]')
+		expect(decls).toContain('fetch  [L10]')
 		expect(decls).not.toContain('private')
 	})
 })
@@ -254,7 +245,7 @@ describe('getCodebaseContext', () => {
 		expect(result).toContain('## File Tree')
 		expect(result).toContain('├── a.ts')
 		expect(result).toContain('## Declarations')
-		expect(result).toContain('export function main(): void  [L2]')
+		expect(result).toContain('export function main  [L2]')
 	})
 
 	it('indexes .ts files with declarations and line counts', async () => {
@@ -264,7 +255,7 @@ describe('getCodebaseContext', () => {
 `)
 		const result = await getCodebaseContext(tempDir)
 		expect(result).toContain('### app.ts (4 lines)')
-		expect(result).toContain('export function main(): void  [L1-3]')
+		expect(result).toContain('export function main  [L1-3]')
 	})
 
 	it('lists .json files with line count only', async () => {
@@ -315,7 +306,7 @@ function priv(): void {}
 const SECRET = 'x'
 `)
 		const result = await getCodebaseContext(tempDir)
-		expect(result).toContain('export function pub(): void')
+		expect(result).toContain('export function pub')
 		expect(result).not.toContain('priv')
 		expect(result).not.toContain('SECRET')
 	})

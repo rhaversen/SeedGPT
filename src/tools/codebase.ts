@@ -72,13 +72,15 @@ function visitNode(sf: ts.SourceFile, node: ts.Node, out: string[], indent: stri
 
 	if (ts.isFunctionDeclaration(node) && node.name) {
 		const a = mod(node, ts.SyntaxKind.AsyncKeyword) ? 'async ' : ''
-		out.push(`${indent}${exp}${a}function ${node.name.text}(${params(sf, node)})${retType(sf, node)}  [${range}]`)
+		out.push(`${indent}${exp}${a}function ${node.name.text}  [${range}]`)
 	} else if (ts.isClassDeclaration(node) && node.name) {
 		out.push(`${indent}${exp}class ${node.name.text}  [${range}]`)
 		for (const m of node.members) visitClassMember(sf, m, out, indent + '  ', expOnly)
 	} else if (ts.isInterfaceDeclaration(node)) {
-		out.push(`${indent}${exp}interface ${node.name.text}  [${range}]`)
-		for (const m of node.members) visitTypeMember(sf, m, out, indent + '  ')
+		const members = node.members
+			.map(m => m.name?.getText(sf))
+			.filter(Boolean)
+		out.push(`${indent}${exp}interface ${node.name.text}${members.length ? ` { ${members.join(', ')} }` : ''}  [${range}]`)
 	} else if (ts.isTypeAliasDeclaration(node)) {
 		const text = node.type.getText(sf)
 		const short = text.length < 80 ? ` = ${text}` : ''
@@ -90,8 +92,7 @@ function visitNode(sf: ts.SourceFile, node: ts.Node, out: string[], indent: stri
 		const keyword = node.declarationList.flags & ts.NodeFlags.Const ? 'const' : 'let'
 		for (const d of node.declarationList.declarations) {
 			if (!ts.isIdentifier(d.name)) continue
-			const type = d.type ? `: ${d.type.getText(sf)}` : inferType(sf, d.initializer)
-			out.push(`${indent}${exp}${keyword} ${d.name.text}${type}  [${range}]`)
+			out.push(`${indent}${exp}${keyword} ${d.name.text}  [${range}]`)
 		}
 	}
 }
@@ -100,52 +101,16 @@ function visitClassMember(sf: ts.SourceFile, node: ts.Node, out: string[], inden
 	if (expOnly && mod(node, ts.SyntaxKind.PrivateKeyword)) return
 
 	const range = lineRange(sf, node)
-	const access = mod(node, ts.SyntaxKind.PrivateKeyword) ? 'private '
-		: mod(node, ts.SyntaxKind.ProtectedKeyword) ? 'protected ' : ''
 	const s = mod(node, ts.SyntaxKind.StaticKeyword) ? 'static ' : ''
-	const ro = mod(node, ts.SyntaxKind.ReadonlyKeyword) ? 'readonly ' : ''
 	const a = mod(node, ts.SyntaxKind.AsyncKeyword) ? 'async ' : ''
 
 	if (ts.isConstructorDeclaration(node)) {
-		out.push(`${indent}constructor(${params(sf, node)})  [${range}]`)
+		out.push(`${indent}constructor  [${range}]`)
 	} else if (ts.isMethodDeclaration(node) && node.name) {
-		out.push(`${indent}${access}${s}${a}${node.name.getText(sf)}(${params(sf, node)})${retType(sf, node)}  [${range}]`)
+		out.push(`${indent}${s}${a}${node.name.getText(sf)}  [${range}]`)
 	} else if (ts.isPropertyDeclaration(node) && node.name) {
-		const type = node.type ? `: ${node.type.getText(sf)}` : ''
-		out.push(`${indent}${access}${s}${ro}${node.name.getText(sf)}${type}  [${range}]`)
+		out.push(`${indent}${s}${node.name.getText(sf)}  [${range}]`)
 	}
-}
-
-function visitTypeMember(sf: ts.SourceFile, node: ts.Node, out: string[], indent: string): void {
-	if (ts.isPropertySignature(node) && node.name) {
-		const opt = node.questionToken ? '?' : ''
-		const type = node.type ? `: ${node.type.getText(sf)}` : ''
-		out.push(`${indent}${node.name.getText(sf)}${opt}${type}`)
-	} else if (ts.isMethodSignature(node) && node.name) {
-		const p = node.parameters.map(p => {
-			const dots = p.dotDotDotToken ? '...' : ''
-			const name = p.name.getText(sf)
-			const opt = p.questionToken ? '?' : ''
-			const type = p.type ? `: ${p.type.getText(sf)}` : ''
-			return `${dots}${name}${opt}${type}`
-		}).join(', ')
-		const ret = node.type ? `: ${node.type.getText(sf)}` : ''
-		out.push(`${indent}${node.name.getText(sf)}(${p})${ret}`)
-	}
-}
-
-function params(sf: ts.SourceFile, node: ts.FunctionLikeDeclaration): string {
-	return node.parameters.map(p => {
-		const dots = p.dotDotDotToken ? '...' : ''
-		const name = p.name.getText(sf)
-		const opt = p.questionToken ? '?' : ''
-		const type = p.type ? `: ${p.type.getText(sf)}` : ''
-		return `${dots}${name}${opt}${type}`
-	}).join(', ')
-}
-
-function retType(sf: ts.SourceFile, node: ts.FunctionLikeDeclaration): string {
-	return node.type ? `: ${node.type.getText(sf)}` : ''
 }
 
 function lineRange(sf: ts.SourceFile, node: ts.Node): string {
@@ -164,31 +129,6 @@ function isTestFile(relPath: string): boolean {
 
 function mod(node: ts.Node, kind: ts.SyntaxKind): boolean {
 	return ts.canHaveModifiers(node) && (ts.getModifiers(node)?.some(m => m.kind === kind) ?? false)
-}
-
-// When no explicit type annotation exists, infers a readable type approximation from
-// the initializer AST node. This gives the codebase index useful type hints for the
-// planner even when the codebase uses type inference heavily.
-function inferType(sf: ts.SourceFile, init: ts.Expression | undefined): string {
-	if (!init) return ''
-	if (ts.isStringLiteral(init) || ts.isNoSubstitutionTemplateLiteral(init) || ts.isTemplateExpression(init)) return ': string'
-	if (ts.isNumericLiteral(init)) return ': number'
-	if (init.kind === ts.SyntaxKind.TrueKeyword || init.kind === ts.SyntaxKind.FalseKeyword) return ': boolean'
-	if (ts.isArrayLiteralExpression(init)) return ': [...]'
-	if (ts.isNewExpression(init) && init.expression) return `: ${init.expression.getText(sf)}`
-	if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
-		const p = params(sf, init)
-		const r = retType(sf, init)
-		return `: (${p})${r ? ` => ${r.slice(2)}` : ''}`
-	}
-	if (ts.isObjectLiteralExpression(init)) {
-		const keys = init.properties
-			.map(p => ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p) ? p.name?.getText(sf) : null)
-			.filter(Boolean)
-		return keys.length > 0 ? `: { ${keys.join(', ')} }` : ': {}'
-	}
-	if (ts.isAsExpression(init)) return inferType(sf, init.expression)
-	return ''
 }
 
 async function walkTree(basePath: string, prefix: string, lines: string[]): Promise<void> {
