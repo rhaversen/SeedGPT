@@ -110,9 +110,10 @@ export function extractCoverageFromLogs(logText: string): string | null {
 	const stepSections = parsed.map(({ name, start, end }) => ({ name, start, end }))
 	const lines = parsed[0]?.lines ?? logText.split('\n').map(stripLogLine)
 
-	const coverageSection = stepSections.find(s =>
-		s.name === 'Coverage' || s.name === 'Run Coverage' || s.name.includes('Coverage')
-	)
+	const coverageSection = stepSections.find(s => {
+		const name = s.name.toLowerCase()
+		return name === 'coverage' || name === 'run coverage' || name.includes('coverage')
+	})
 	if (!coverageSection) return null
 
 	const sectionLines = lines.slice(coverageSection.start, coverageSection.end)

@@ -48,6 +48,13 @@ describe('extractCoverageFromLogs', () => {
 		expect(result).toBe(COVERAGE_TABLE)
 	})
 
+	it('matches step name containing "coverage" case-insensitively', () => {
+		const log = buildLog('Run npm test -- --coverage --coverageProvider=v8', COVERAGE_TABLE)
+		const result = extractCoverageFromLogs(log)
+
+		expect(result).toBe(COVERAGE_TABLE)
+	})
+
 	it('preserves uncovered line numbers in the table', () => {
 		const log = buildLog('Coverage', COVERAGE_TABLE)
 		const result = extractCoverageFromLogs(log)!
