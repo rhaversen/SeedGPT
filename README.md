@@ -15,7 +15,7 @@ Each cycle follows a deterministic pipeline. The LLM controls two decisions: wha
 3. **Branch** — Create a feature branch for the planned change
 4. **Build** — A builder model receives the plan and implements it using structured code edits, with full access to read files, search the codebase, and inspect structural diffs
 5. **Ship** — Commit, push, and open a PR
-6. **Verify** — Wait for CI. If checks fail, the builder analyzes errors and retries with the full conversation history
+6. **Verify** — Wait for CI. If checks fail, a dedicated fixer model analyzes the errors and applies targeted corrections, retaining the full conversation history across attempts
 7. **Merge or learn** — Squash-merge on success, close the PR and delete the branch on exhaustion
 8. **Reflect** — A reflection model reviews the entire planner and builder conversation and writes an honest self-assessment stored as a memory
 9. **Retry or rebuild** — If the plan failed, start a fresh plan from step 2. On success, the merge triggers CI/CD, building a new image and deploying the updated agent
@@ -41,15 +41,16 @@ The agent reads its own source code every cycle. Its system prompts live in `pro
 
 ## Architecture
 
-Five LLM roles per cycle:
+Six LLM roles per cycle:
 
 - **Planner** — Multi-turn exploration with tools: read files, search the codebase, manage notes, recall memories.
 - **Builder** — Implementation with edit tools, plus codebase context, structural diffs, and git diffs for situational awareness.
+- **Fixer** — Diagnoses CI failures and applies targeted corrections, maintaining conversation history across multiple fix attempts.
 - **Reflector** — Reviews the full conversation and writes a self-assessment stored in memory.
 - **Memory** — Summarizes notes and reflections into concise one-line summaries for efficient retrieval.
 - **Summarizer** — Compresses large tool results mid-conversation to keep context within token limits.
 
-All API calls use the batch API for 50% cost reduction. Usage is tracked with per-call token counts and cost.
+All API calls use the batch API for 50% cost reduction. System prompts are cached via a single cache breakpoint on the last system block, which caches the entire prefix. Usage is tracked with per-call token counts and cost.
 
 ## Deployment
 
