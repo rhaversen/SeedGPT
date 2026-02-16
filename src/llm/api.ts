@@ -109,23 +109,42 @@ async function recordGenerated(
 
 export async function callApi(phase: Phase, messages: Anthropic.MessageParam[], tools?: Anthropic.Tool[]): Promise<Anthropic.Message> {
 	const params = await buildParams(phase, messages, tools)
-	const { maxRetries, initialRetryDelay, maxRetryDelay } = config.api
-	for (let attempt = 0; ; attempt++) {
-		try {
-			const response = await client.messages.create(params)
-			await recordGenerated(phase, params, response, false)
-			return response
-		} catch (error: unknown) {
-			const status = error instanceof Error && 'status' in error ? (error as { status: number }).status : 0
-			if (status === 429 && attempt < maxRetries) {
-				const delay = Math.min(maxRetryDelay, initialRetryDelay * 2 ** attempt)
-				logger.warn(`Rate limited, waiting ${Math.round(delay / 1000)}s before retry (attempt ${attempt + 1}/${maxRetries})...`)
-				await new Promise(r => setTimeout(r, delay))
-				continue
-			}
-			throw error
+
+	// We use batch API even for single requests to achieve a 50% cost reduction.
+	const customId = `req-${Date.now()}-0`
+	const batch = await client.messages.batches.create({
+		requests: [{ custom_id: customId, params }],
+	})
+
+	const { pollInterval, maxPollInterval, pollBackoff } = config.batch
+	let delay: number = pollInterval
+	let status: string = batch.processing_status
+
+	while (status !== 'ended') {
+		await new Promise(r => setTimeout(r, delay))
+		const poll = await client.messages.batches.retrieve(batch.id)
+		status = poll.processing_status
+		if (status !== 'ended') {
+			const nextDelay = Math.min(maxPollInterval, delay * pollBackoff)
+			logger.info(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
+			delay = nextDelay
 		}
 	}
+
+	const decoder = await client.messages.batches.results(batch.id)
+	for await (const entry of decoder) {
+		if (entry.result.type === 'succeeded') {
+			const response = entry.result.message
+			await recordGenerated(phase, params, response, true)
+			return response
+		}
+		const detail = entry.result.type === 'errored'
+			? JSON.stringify((entry.result as Anthropic.Messages.Batches.MessageBatchErroredResult).error)
+			: entry.result.type
+		throw new Error(`Batch request failed: ${detail}`)
+	}
+
+	throw new Error('Batch completed but returned no results')
 }
 
 export interface BatchRequest {
