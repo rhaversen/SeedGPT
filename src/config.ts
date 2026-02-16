@@ -1,33 +1,5 @@
-const env = process.env.NODE_ENV ?? 'production'
-const isProduction = env === 'production'
+const isProduction = (process.env.NODE_ENV ?? 'production') === 'production'
 
-function requireEnv(key: string): string {
-	const value = process.env[key]
-	if (!value) throw new Error(`Missing required environment variable: ${key}`)
-	return value
-}
-
-// --- Environment variables: secrets and deployment-specific values ---
-// Everything else in this file is a hardcoded constant that the agent can change in code.
-
-const ALWAYS_REQUIRED = ['ANTHROPIC_API_KEY', 'GITHUB_TOKEN', 'GITHUB_OWNER', 'GITHUB_REPO'] as const
-// DB credentials are only required in production — dev/test uses an in-memory MongoDB replica set
-const PRODUCTION_REQUIRED = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_NAME'] as const
-
-for (const key of ALWAYS_REQUIRED) requireEnv(key)
-if (isProduction) for (const key of PRODUCTION_REQUIRED) requireEnv(key)
-
-const db = isProduction ? {
-	user: requireEnv('DB_USER'),
-	password: requireEnv('DB_PASSWORD'),
-	host: requireEnv('DB_HOST'),
-	name: requireEnv('DB_NAME'),
-} : null
-
-// --- Configuration constants ---
-
-// Model selection: Production uses Sonnet for planning/building (reasoning quality),
-// dev uses Haiku to minimize cost. Reflection always uses Haiku (lightweight summary).
 const planModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const patchModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const reflectModel = isProduction ? 'claude-haiku-4-5' : 'claude-haiku-3'
@@ -35,14 +7,6 @@ const memoryModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const summarizerModel = isProduction ? 'claude-haiku-4-5' : 'claude-haiku-3'
 
 export const config = {
-	env,
-	isProduction,
-	anthropicApiKey: requireEnv('ANTHROPIC_API_KEY'),
-	githubToken: requireEnv('GITHUB_TOKEN'),
-	githubOwner: requireEnv('GITHUB_OWNER'),
-	githubRepo: requireEnv('GITHUB_REPO'),
-
-	// LLM phase configuration: model selection and output token budgets
 	phases: {
 		planner: { model: planModel, maxTokens: 4096 },
 		builder: { model: patchModel, maxTokens: 16384 },
@@ -110,14 +74,8 @@ export const config = {
 		gapMarker: '[Lines omitted from context. Re-read file if required context is missing.]', // Message shown where lines are omitted
 	},
 
-	// Database connection configuration
 	db: {
-		uri: db
-			? `mongodb+srv://${db.user}:${db.password}@${db.host}/${db.name}?retryWrites=true&w=majority&appName=SeedGPT`
-			: '',
 		maxRetryAttempts: 5,
 		retryInterval: 5_000, // 5 seconds
 	},
-
-	workspacePath: isProduction ? '/app/workspace' : './workspace',
 } as const

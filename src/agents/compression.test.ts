@@ -3,7 +3,6 @@ import type Anthropic from '@anthropic-ai/sdk'
 
 jest.unstable_mockModule('../config.js', () => ({
 	config: {
-		anthropicApiKey: 'test-key',
 		summarization: {
 			charThreshold: 500,
 			minResultChars: 100,

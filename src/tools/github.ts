@@ -1,12 +1,13 @@
 import { Octokit } from '@octokit/rest'
 import { config } from '../config.js'
+import { env } from '../env.js'
 import logger from '../logger.js'
 import { getHeadSha } from './git.js'
 import { extractFailedStepOutput, extractCoverageFromLogs } from './log-parsing.js'
 
-const octokit = new Octokit({ auth: config.githubToken })
-const owner = config.githubOwner
-const repo = config.githubRepo
+const octokit = new Octokit({ auth: env.githubToken })
+const owner = env.githubOwner
+const repo = env.githubRepo
 
 export interface CheckResult {
 	passed: boolean

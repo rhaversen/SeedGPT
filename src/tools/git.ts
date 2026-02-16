@@ -2,6 +2,7 @@ import simpleGit, { SimpleGit } from 'simple-git'
 import { writeFile, unlink, readFile, mkdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import { config } from '../config.js'
+import { env } from '../env.js'
 import logger from '../logger.js'
 import type { EditOperation } from '../agents/build.js'
 
@@ -13,13 +14,13 @@ function getClient(): SimpleGit {
 }
 
 export async function cloneRepo(): Promise<void> {
-	const url = `https://x-access-token:${config.githubToken}@github.com/${config.githubOwner}/${config.githubRepo}.git`
-	logger.info(`Cloning ${config.githubOwner}/${config.githubRepo}`)
+	const url = `https://x-access-token:${env.githubToken}@github.com/${env.githubOwner}/${env.githubRepo}.git`
+	logger.info(`Cloning ${env.githubOwner}/${env.githubRepo}`)
 
 	const git = simpleGit()
-	await git.clone(url, config.workspacePath)
+	await git.clone(url, env.workspacePath)
 
-	client = simpleGit(config.workspacePath)
+	client = simpleGit(env.workspacePath)
 	await client.addConfig('user.email', 'agent.seedgpt@gmail.com')
 	await client.addConfig('user.name', 'SeedGPT')
 }
@@ -36,7 +37,7 @@ export async function applyEdits(operations: EditOperation[]): Promise<void> {
 	const errors: string[] = []
 
 	for (const op of operations) {
-		const fullPath = join(config.workspacePath, op.filePath)
+		const fullPath = join(env.workspacePath, op.filePath)
 
 		try {
 			if (op.type === 'replace') {
@@ -110,7 +111,7 @@ export async function resetWorkspace(): Promise<void> {
 }
 
 export async function getDiff(): Promise<string> {
-	const git = simpleGit(config.workspacePath)
+	const git = simpleGit(env.workspacePath)
 	// `add -N` (intent-to-add) stages untracked files without content so they appear in the diff.
 	// Without this, newly created files would be invisible to `git diff`.
 	await git.raw(['add', '-N', '.'])

@@ -1,4 +1,4 @@
-import { config } from '../config.js'
+import { env } from '../env.js'
 import logger from '../logger.js'
 import * as memory from '../agents/memory.js'
 import * as codebase from './codebase.js'
@@ -270,7 +270,7 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 		const { filePath, startLine, endLine } = input as { filePath: string; startLine?: number; endLine?: number }
 		const MAX_LINES = 300
 		try {
-			const fullContent = await codebase.readFile(config.workspacePath, filePath)
+			const fullContent = await codebase.readFile(env.workspacePath, filePath)
 			const lines = fullContent.split('\n')
 			const totalLines = lines.length
 			if (startLine) {
@@ -296,7 +296,7 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 
 	if (name === 'grep_search') {
 		const { query, includePattern } = input as { query: string; includePattern?: string }
-		const result = await codebase.grepSearch(config.workspacePath, query, { includePattern })
+		const result = await codebase.grepSearch(env.workspacePath, query, { includePattern })
 		const matchCount = result === 'No matches found.' ? 0 : result.split('\n').filter(l => !l.startsWith('(truncated')).length
 		logger.info(`  → ${matchCount} match${matchCount !== 1 ? 'es' : ''}`)
 		return { type: 'tool_result', tool_use_id: id, content: result }
@@ -304,7 +304,7 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 
 	if (name === 'file_search') {
 		const { query } = input as { query: string }
-		const result = await codebase.fileSearch(config.workspacePath, query)
+		const result = await codebase.fileSearch(env.workspacePath, query)
 		const matchCount = result === 'No files matched.' ? 0 : result.split('\n').length
 		logger.info(`  → ${matchCount} file${matchCount !== 1 ? 's' : ''}`)
 		return { type: 'tool_result', tool_use_id: id, content: result }
@@ -313,7 +313,7 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 	if (name === 'list_directory') {
 		const { path } = input as { path: string }
 		try {
-			const result = await codebase.listDirectory(config.workspacePath, path)
+			const result = await codebase.listDirectory(env.workspacePath, path)
 			const entryCount = result.split('\n').filter(Boolean).length
 			logger.info(`  → ${entryCount} entr${entryCount !== 1 ? 'ies' : 'y'}`)
 			return { type: 'tool_result', tool_use_id: id, content: result }
@@ -365,7 +365,7 @@ export async function handleTool(name: string, input: Record<string, unknown>, i
 		const op: FileEdit = { type: 'replace', filePath, oldString, newString }
 		try {
 			await git.applyEdits([op])
-			const fullContent = await codebase.readFile(config.workspacePath, filePath)
+			const fullContent = await codebase.readFile(env.workspacePath, filePath)
 			const lines = fullContent.split('\n')
 			const matchIdx = fullContent.indexOf(newString)
 			if (matchIdx !== -1) {

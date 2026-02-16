@@ -1,18 +1,19 @@
 import mongoose from 'mongoose'
 
 import { config } from './config.js'
+import { env } from './env.js'
 import logger from './logger.js'
 
 let replSet: InstanceType<typeof import('mongodb-memory-server').MongoMemoryReplSet> | null = null
 
 export async function connectToDatabase(): Promise<void> {
-	if (config.isProduction) {
-		const { uri, maxRetryAttempts, retryInterval } = config.db
+	if (env.isProduction) {
+		const { maxRetryAttempts, retryInterval } = config.db
 
 		for (let attempt = 0; attempt < maxRetryAttempts; attempt++) {
 			logger.info(`Attempting connection to MongoDB (attempt ${attempt + 1}/${maxRetryAttempts})`)
 			try {
-				await mongoose.connect(uri)
+				await mongoose.connect(env.db.uri)
 				logger.info('Connected to MongoDB')
 				return
 			} catch (error) {

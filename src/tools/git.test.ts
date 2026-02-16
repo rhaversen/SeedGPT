@@ -5,19 +5,23 @@ import { join } from 'path'
 import { existsSync } from 'fs'
 
 jest.unstable_mockModule('../config.js', () => ({
-	config: {
+	config: {},
+}))
+
+jest.unstable_mockModule('../env.js', () => ({
+	env: {
 		workspacePath: '',
 	},
 }))
 
-const { config } = await import('../config.js')
+const { env } = await import('../env.js')
 const { applyEdits } = await import('./git.js')
 
 let tempDir: string
 
 beforeEach(async () => {
 	tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-test-'));
-	(config as { workspacePath: string }).workspacePath = tempDir
+	(env as { workspacePath: string }).workspacePath = tempDir
 })
 
 afterEach(async () => {

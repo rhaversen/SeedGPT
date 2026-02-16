@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { config } from '../config.js'
+import { env } from '../env.js'
 import logger from '../logger.js'
 import { compressConversation } from '../agents/compression.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS } from '../tools/definitions.js'
@@ -12,7 +13,7 @@ import { getLatestMainCoverage } from '../tools/github.js'
 
 export type Phase = 'planner' | 'builder' | 'reflect' | 'memory' | 'summarizer'
 
-const client = new Anthropic({ apiKey: config.anthropicApiKey })
+const client = new Anthropic({ apiKey: env.anthropicApiKey })
 
 const PHASE_EXTRAS: Record<Phase, {
 	system: string
@@ -34,7 +35,7 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 
 	// Builder and planner gets codebase context
 	if (phase === 'builder' || phase === 'planner') {
-		const codebaseContext = await getCodebaseContext(config.workspacePath)
+		const codebaseContext = await getCodebaseContext(env.workspacePath)
 		system.push({ type: 'text', text: `\n\n${codebaseContext}`, cache_control: { type: 'ephemeral' as const } })
 	}
 
@@ -53,7 +54,7 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 		if (coverage) {
 			system.push({ type: 'text', text: `\n\n## Code Coverage (last CI run on main)\n${coverage}`, cache_control: { type: 'ephemeral' as const } })
 		}
-		const unusedFunctions = await findUnusedFunctions(config.workspacePath)
+		const unusedFunctions = await findUnusedFunctions(env.workspacePath)
 		if (unusedFunctions) {
 			system.push({ type: 'text', text: `\n\n## Unused Functions\n${unusedFunctions}`, cache_control: { type: 'ephemeral' as const } })
 		}

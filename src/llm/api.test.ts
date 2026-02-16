@@ -2,7 +2,6 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals'
 
 jest.unstable_mockModule('../config.js', () => ({
 	config: {
-		anthropicApiKey: 'test-key',
 		phases: {
 			reflect: { model: 'claude-haiku-4-5', maxTokens: 512 },
 			memory: { model: 'claude-haiku-4-5', maxTokens: 64 },
@@ -12,6 +11,12 @@ jest.unstable_mockModule('../config.js', () => ({
 		},
 		api: { maxRetries: 2, initialRetryDelay: 10, maxRetryDelay: 50 },
 		batch: { pollInterval: 10, maxPollInterval: 50, pollBackoff: 1.5 },
+	},
+}))
+
+jest.unstable_mockModule('../env.js', () => ({
+	env: {
+		anthropicApiKey: 'test-key',
 		workspacePath: './workspace',
 	},
 }))

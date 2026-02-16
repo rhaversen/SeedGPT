@@ -2,14 +2,6 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals'
 
 jest.unstable_mockModule('./config.js', () => ({
 	config: {
-		env: 'test',
-		isProduction: false,
-		anthropicApiKey: 'test-key',
-		githubToken: 'test-token',
-		githubOwner: 'test-owner',
-		githubRepo: 'test-repo',
-		planModel: 'claude-haiku-4-5',
-		patchModel: 'claude-haiku-4-5',
 		turns: {
 			maxPlanner: 25,
 			maxBuilder: 40,
@@ -17,14 +9,26 @@ jest.unstable_mockModule('./config.js', () => ({
 		errors: {
 			maxLoopErrorChars: 10000,
 		},
-		workspacePath: './workspace',
-		db: { uri: '', maxRetryAttempts: 5, retryInterval: 5000 },
+		db: { maxRetryAttempts: 5, retryInterval: 5000 },
 		memory: {
 			tokenBudget: 10000,
 			fullReflections: 5,
 			summarizedReflections: 20,
 			estimationRatio: 4,
 		},
+	},
+}))
+
+jest.unstable_mockModule('./env.js', () => ({
+	env: {
+		nodeEnv: 'test',
+		isProduction: false,
+		anthropicApiKey: 'test-key',
+		githubToken: 'test-token',
+		githubOwner: 'test-owner',
+		githubRepo: 'test-repo',
+		workspacePath: './workspace',
+		db: { uri: '' },
 	},
 }))
 

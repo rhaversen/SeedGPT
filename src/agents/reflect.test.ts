@@ -2,7 +2,6 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals'
 
 jest.unstable_mockModule('../config.js', () => ({
 	config: {
-		anthropicApiKey: 'test-key',
 		summarization: {
 			charThreshold: 20_000,
 			minResultChars: 300,
