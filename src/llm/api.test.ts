@@ -8,10 +8,10 @@ jest.unstable_mockModule('../config.js', () => ({
 			planner: { model: 'claude-sonnet-4-5', maxTokens: 4096 },
 			builder: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
 			fixer: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
-			summarizer: { model: 'claude-haiku-4-5', maxTokens: 2048 },
 		},
 		api: { maxRetries: 2, initialRetryDelay: 10, maxRetryDelay: 50 },
 		batch: { pollInterval: 10, maxPollInterval: 50, pollBackoff: 1.5 },
+		context: { protectedTurns: 1, minResultChars: 200, maxActiveLines: 2000, contextPadding: 5, thinkingBudget: 10_000 },
 	},
 }))
 
@@ -26,10 +26,6 @@ jest.unstable_mockModule('../logger.js', () => {
 	const noop = () => {}
 	return { default: { debug: noop, info: noop, warn: noop, error: noop } }
 })
-
-jest.unstable_mockModule('../agents/compression.js', () => ({
-	compressConversation: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-}))
 
 const mockComputeCost = jest.fn<(...args: unknown[]) => number>(() => 0.01)
 const mockModelCreate = jest.fn<() => Promise<void>>().mockResolvedValue(undefined as never)
@@ -47,6 +43,7 @@ jest.unstable_mockModule('../tools/definitions.js', () => ({
 jest.unstable_mockModule('../tools/codebase.js', () => ({
 	getCodebaseContext: jest.fn<() => Promise<string>>().mockResolvedValue('codebase context'),
 	findUnusedFunctions: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
+	readFile: jest.fn<() => Promise<string>>().mockResolvedValue('file content'),
 }))
 
 const mockGetLatestMainCoverage = jest.fn<() => Promise<string | null>>().mockResolvedValue(null)
@@ -242,7 +239,7 @@ describe('callApi', () => {
 		expect(systemTexts.some((t: string) => t.includes('deadFunc'))).toBe(true)
 	})
 
-	it('applies cache_control to only the last system block', async () => {
+	it('applies cache_control to last block before working context', async () => {
 		setupBatchMocks()
 		mockGetLatestMainCoverage.mockResolvedValueOnce('90%')
 		mockGetRecentLog.mockResolvedValueOnce('log')
@@ -256,7 +253,8 @@ describe('callApi', () => {
 		const blocks = batchParams.requests[0].params.system
 		const cached = blocks.filter((b: { cache_control?: unknown }) => b.cache_control)
 		expect(cached.length).toBe(1)
-		expect(blocks[blocks.length - 1].cache_control).toEqual({ type: 'ephemeral' })
+		const cachedBlock = cached[0] as { text: string }
+		expect(cachedBlock.text).not.toContain('Working Context')
 	})
 
 	it('handles GeneratedModel.create failure gracefully', async () => {
@@ -267,14 +265,26 @@ describe('callApi', () => {
 		expect(result).toBe(fakeMessage)
 	})
 
-	it('does not call compressConversation for summarizer phase', async () => {
+	it('enables extended thinking for builder phase', async () => {
 		setupBatchMocks()
-		const { compressConversation } = await import('../agents/compression.js') as { compressConversation: jest.Mock }
-		compressConversation.mockClear()
 
-		await callApi('summarizer', [{ role: 'user', content: 'test' }])
+		await callApi('builder', [{ role: 'user', content: 'build' }])
 
-		expect(compressConversation).not.toHaveBeenCalled()
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { thinking?: { type: string; budget_tokens: number }; max_tokens: number } }> }
+		const params = batchParams.requests[0].params
+		expect(params.thinking).toEqual({ type: 'enabled', budget_tokens: 10_000 })
+		expect(params.max_tokens).toBe(16384 + 10_000)
+	})
+
+	it('enables extended thinking for reflect phase', async () => {
+		setupBatchMocks()
+
+		await callApi('reflect', [{ role: 'user', content: 'test' }])
+
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { thinking?: { type: string; budget_tokens: number }; max_tokens: number } }> }
+		const params = batchParams.requests[0].params
+		expect(params.thinking).toEqual({ type: 'enabled', budget_tokens: expect.any(Number) })
+		expect(params.max_tokens).toBe(512 + params.thinking!.budget_tokens)
 	})
 
 	it('polls batch until ended with backoff', async () => {

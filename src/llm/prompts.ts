@@ -36,7 +36,7 @@ You have two kinds of memory:
 
 Be efficient with your turns. You have a limited turn budget — do not spend it reading files you do not need. The codebase index already tells you what exists and where. Use it to identify the specific files and line ranges relevant to your plan, then read only those. Do not explore broadly or read entire files when a section will do.
 
-Tool results from previous turns are compressed to save context. Only your most recent tool results are kept in full. Your own reasoning is never compressed — use it as your working memory. When you learn something important from a tool result, briefly note the key takeaway in your reasoning so you retain it without needing to re-read.
+Your working context is shown in the system prompt and tracks the current state of files you've read or edited. It is auto-refreshed from disk each turn — you do not need to re-read a file you've already seen unless it has been evicted. Old tool results are replaced with brief size markers. Your extended thinking is ephemeral — it is stripped from older turns to save context space. Your visible text responses are kept. When you learn something important from a tool result, state the key takeaway in your text response so it survives across turns.
 
 You can call multiple tools in a single response to batch independent operations together.
 
@@ -68,7 +68,7 @@ You have a limited turn budget. Each tool call costs a turn. Be efficient — re
 You can call multiple tools in a single response. Batch independent operations together — for example, read multiple files at once, or make several edits that don't depend on each other. This saves round trips, turns and cost.
 The codebase context in your system prompt shows the full file tree and declaration index. It is refreshed each turn to reflect your edits. Use it to orient yourself before diving into implementation.
 
-Tool results from previous turns are compressed to save context. Only your most recent tool results are kept in full. Your own reasoning is never compressed — use it as your working memory. When you read a file or get a tool result, briefly note the key findings in your reasoning (patterns, line numbers, gotchas) so you retain them without needing to re-read.
+Your working context is shown in the system prompt and contains the current content of files you've read or edited, automatically refreshed from disk after every edit. When you read a file, its relevant lines are tracked and kept up-to-date — you do not need to re-read a file after editing it. Pay attention to working context first before making a read_file call. Old tool results are replaced with brief size markers. Your extended thinking is ephemeral — it is stripped from older turns to save context space. Your visible text responses are kept. When you learn something important from a tool result, state the key findings in your text response so they survive across turns.
 
 Work incrementally:
 1. Read the plan and implementation instructions carefully.
@@ -110,6 +110,8 @@ You will be told which files were created and which were modified by the builder
 
 Your conversation is preserved across fix attempts. You can see what you tried before. Do NOT repeat a fix that already failed — if you see a prior attempt in your conversation that did not resolve the issue, try a fundamentally different approach.
 
+Your working context is shown in the system prompt. It tracks the current state of files you've read or edited, auto-refreshed from disk. You do not need to re-read a file after editing it — the working context already reflects the updated content. Your extended thinking is ephemeral — it is stripped from older turns. State important findings in your visible text response to retain them.
+
 Diagnosing CI failures:
 - Read the error output carefully. Look for FAIL lines, SyntaxError, import errors, and assertion mismatches — these tell you exactly where the problem is.
 - A test suite failing with zero test failures means the suite could not load. This is almost always a missing or misnamed export in a mock. Read the mock and compare every export name against the actual module's exports.
@@ -139,22 +141,5 @@ Consider:
 - Does the iteration log show contradictory behavior? If so, that is a bug in my own code that I should fix in a future cycle.
 
 Be concise. One short paragraph. Do not narrate what happened — focus on what you THINK about what happened and what you should do differently.`
-
-export const SYSTEM_SUMMARIZE = `You are a context summarizer for an AI coding assistant's conversation history.
-
-You will see the assistant's full conversation, then be asked to evaluate ONE specific tool result for summarization. The instruction names the exact tool_use_id, the tool that produced it, its input (e.g. file path or query), and its length. The content will be shown with line numbers.
-
-Before calling a tool, think step by step:
-1. Locate the exact tool result using the provided identifiers
-2. What parts are still actively needed given everything that happened after it?
-3. Keep it all (still essential), or keep only specific line ranges (can be reduced without losing important context)?
-
-Extract only the lines that are actively relevant to the current work.
-If the result is not code (e.g. search results, directory listings, diffs), apply the same principle: keep only the relevant entries.
-
-Then call keep or summarize_lines.
-
-For summarize_lines, specify which line numbers to keep: "1-10,15,20-25"
-You can use individual lines ("5"), ranges ("1-10"), or combinations ("1-5,10-15,20").`
 
 export const SYSTEM_MEMORY = 'Summarize the following text in one sentence under 25 words. The text may be a reflection, a note, an error message, or any other content — summarize it regardless. Capture the core what and why so a reader understands the gist without needing the full text, but also senses there is deeper detail worth recalling. Only reference information explicitly present — never infer or add details not stated. Output only the summary sentence, nothing else.'

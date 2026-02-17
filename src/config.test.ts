@@ -12,12 +12,12 @@ describe('config', () => {
 		expect(config.git).toBeDefined()
 		expect(config.errors).toBeDefined()
 		expect(config.memory).toBeDefined()
-		expect(config.summarization).toBeDefined()
+		expect(config.context).toBeDefined()
 		expect(config.db).toBeDefined()
 	})
 
 	it('has models and maxTokens for all phases', () => {
-		for (const phase of ['planner', 'builder', 'fixer', 'reflect', 'memory', 'summarizer'] as const) {
+		for (const phase of ['planner', 'builder', 'fixer', 'reflect', 'memory'] as const) {
 			expect(typeof config.phases[phase].model).toBe('string')
 			expect(config.phases[phase].maxTokens).toBeGreaterThan(0)
 		}
@@ -40,10 +40,10 @@ describe('config', () => {
 		expect(config.batch.pollBackoff).toBeGreaterThan(1)
 	})
 
-	it('has valid summarization settings', () => {
-		expect(config.summarization.charThreshold).toBeGreaterThan(0)
-		expect(config.summarization.protectedTurns).toBeGreaterThanOrEqual(1)
-		expect(typeof config.summarization.gapMarker).toBe('string')
+	it('has valid context settings', () => {
+		expect(config.context.protectedTurns).toBeGreaterThanOrEqual(1)
+		expect(config.context.maxActiveLines).toBeGreaterThan(0)
+		expect(config.context.minResultChars).toBeGreaterThan(0)
 	})
 
 	it('uses a chars-per-token ratio between 1 and 10', () => {

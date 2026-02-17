@@ -2,16 +2,16 @@ import Anthropic from '@anthropic-ai/sdk'
 import { config } from '../config.js'
 import { env } from '../env.js'
 import logger from '../logger.js'
-import { compressConversation } from '../agents/compression.js'
+import { prepareAndBuildContext } from '../agents/context.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS } from '../tools/definitions.js'
 import { getCodebaseContext, findUnusedFunctions } from '../tools/codebase.js'
-import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_FIX, SYSTEM_REFLECT, SYSTEM_MEMORY, SYSTEM_SUMMARIZE } from '../llm/prompts.js'
+import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_FIX, SYSTEM_REFLECT, SYSTEM_MEMORY } from '../llm/prompts.js'
 import GeneratedModel, { computeCost, type ApiUsage } from '../models/Generated.js'
 import { getMemoryContext } from '../agents/memory.js'
 import { getRecentLog } from '../tools/git.js'
 import { getLatestMainCoverage } from '../tools/github.js'
 
-export type Phase = 'planner' | 'builder' | 'fixer' | 'reflect' | 'memory' | 'summarizer'
+export type Phase = 'planner' | 'builder' | 'fixer' | 'reflect' | 'memory'
 
 const client = new Anthropic({ apiKey: env.anthropicApiKey })
 
@@ -24,11 +24,18 @@ const PHASE_EXTRAS: Record<Phase, {
 	fixer: { system: SYSTEM_FIX, tools: BUILDER_TOOLS },
 	reflect: { system: SYSTEM_REFLECT },
 	memory: { system: SYSTEM_MEMORY },
-	summarizer: { system: SYSTEM_SUMMARIZE },
 }
 
+const THINKING_PHASES = new Set<Phase>(['planner', 'builder', 'fixer', 'reflect'])
+const MIN_OUTPUT_TOKENS = 2048
+
 async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], tools?: Anthropic.Tool[]): Promise<Anthropic.MessageCreateParamsNonStreaming> {
-	if (phase !== 'memory' && phase !== 'summarizer') await compressConversation(messages)
+	const useContext = phase !== 'memory'
+	let workingContext: string | null = null
+
+	if (useContext) {
+		workingContext = await prepareAndBuildContext(env.workspacePath, messages)
+	}
 
 	const { model, maxTokens } = config.phases[phase]
 	const extras = PHASE_EXTRAS[phase]
@@ -61,14 +68,23 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 
 	system[system.length - 1].cache_control = { type: 'ephemeral' as const }
 
+	if (workingContext) {
+		system.push({ type: 'text', text: `\n\n${workingContext}` })
+	}
+
 	const allTools = [...(extras.tools ?? []), ...(tools ?? [])]
+
+	const useThinking = THINKING_PHASES.has(phase)
+	const thinkingBudget = Math.min(config.context.thinkingBudget, maxTokens - MIN_OUTPUT_TOKENS)
+	const effectiveMaxTokens = useThinking ? maxTokens + thinkingBudget : maxTokens
 
 	return {
 		model,
-		max_tokens: maxTokens,
+		max_tokens: effectiveMaxTokens,
 		system,
 		messages,
 		...(allTools.length > 0 && { tools: allTools }),
+		...(useThinking && { thinking: { type: 'enabled' as const, budget_tokens: thinkingBudget } }),
 	}
 }
 

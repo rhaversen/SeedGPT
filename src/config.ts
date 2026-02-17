@@ -5,8 +5,6 @@ const patchModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const fixerModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
 const reflectModel = isProduction ? 'claude-haiku-4-5' : 'claude-haiku-3'
 const memoryModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
-const summarizerModel = isProduction ? 'claude-haiku-4-5' : 'claude-haiku-3'
-
 export const config = {
 	phases: {
 		planner: { model: planModel, maxTokens: 4096 },
@@ -14,7 +12,6 @@ export const config = {
 		fixer: { model: fixerModel, maxTokens: 16384 },
 		reflect: { model: reflectModel, maxTokens: 512 },
 		memory: { model: memoryModel, maxTokens: 64 },
-		summarizer: { model: summarizerModel, maxTokens: 2048 },
 	},
 
 	// Turn limits: max tool-use rounds per phase before giving up
@@ -64,12 +61,12 @@ export const config = {
 		estimationRatio: 4, // chars/token approximation for budget estimates
 	},
 
-	// Conversation compression thresholds
-	summarization: {
-		charThreshold: 20_000, // Tool results larger than this get summarized
-		minResultChars: 300, // Minimum chars to keep in summarized results
-		protectedTurns: 2, // Most recent turns never compressed
-		gapMarker: '[Lines omitted from context. Re-read file if required context is missing.]', // Message shown where lines are omitted
+	context: {
+		protectedTurns: 1, // Last N turns keep full tool results inline; older results are stubbed
+		minResultChars: 200, // Tool results shorter than this are never stubbed
+		maxActiveLines: 2000, // Budget for working context in system prompt; oldest regions evicted first
+		contextPadding: 5, // Extra lines shown above/below each tracked region
+		thinkingBudget: 10_000, // Extended thinking budget for planner/builder/fixer/reflect
 	},
 
 	db: {
