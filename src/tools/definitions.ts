@@ -3,6 +3,7 @@ import logger from '../logger.js'
 import * as memory from '../agents/memory.js'
 import * as codebase from './codebase.js'
 import * as git from './git.js'
+import { config } from '../config.js'
 
 export interface FileEdit {
 	type: 'replace'
@@ -268,7 +269,7 @@ export const BUILDER_TOOLS = [editFile, createFile, deleteFile, readFile, grepSe
 export async function handleTool(name: string, input: Record<string, unknown>, id: string): Promise<ToolResult> {
 	if (name === 'read_file') {
 		const { filePath, startLine, endLine } = input as { filePath: string; startLine?: number; endLine?: number }
-		const MAX_LINES = 300
+		const MAX_LINES = config.tools.defaultReadWindow
 		try {
 			const fullContent = await codebase.readFile(env.workspacePath, filePath)
 			const lines = fullContent.split('\n')

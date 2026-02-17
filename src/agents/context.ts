@@ -161,7 +161,9 @@ function trackRead(
 	const file = getOrCreateFile(files, path)
 	file.deleted = false
 
-	const { contextPadding, defaultReadWindow } = config.context
+	const contextPadding = config.context.contextPadding
+	const defaultReadWindow = config.tools.defaultReadWindow
+
 	const paddedStart = Math.max(1, startLine - contextPadding)
 	const paddedEnd = (endLine ?? startLine + defaultReadWindow - 1) + contextPadding
 	file.regions = addRegion(file.regions, paddedStart, paddedEnd, turn)
