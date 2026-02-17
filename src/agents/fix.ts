@@ -19,6 +19,7 @@ export class FixSession {
 	private readonly edits: EditOperation[] = []
 	private readonly context: FixContext
 	private roundsUsed = 0
+	private fixAttempts = 0
 
 	get exhausted(): boolean {
 		return this.roundsUsed >= config.turns.maxFixer
@@ -33,7 +34,8 @@ export class FixSession {
 	}
 
 	async fix(error: string): Promise<EditOperation[]> {
-		const attempt = this.messages.filter(m => m.role === 'user').length + 1
+		this.fixAttempts++
+		const attempt = this.fixAttempts
 		logger.info(`Fixer starting attempt ${attempt}...`)
 
 		const sections = [
@@ -49,10 +51,10 @@ export class FixSession {
 			sections.push(`Files MODIFIED by the builder (edited existing):\n${this.context.modifiedFiles.map(f => `- ${f}`).join('\n')}`)
 		}
 
-		sections.push(`## Error\n\`\`\`\n${error}\n\`\`\``)
+		sections.push(`## Error (attempt ${attempt})\n\`\`\`\n${error}\n\`\`\``)
 
 		if (attempt > 1) {
-			sections.push('This is NOT your first attempt. Review your previous attempts above — do NOT repeat a fix that already failed. Try a fundamentally different approach.')
+			sections.push(`This is fix attempt ${attempt}. Your previous changes were applied and CI was re-run, but it still failed. Analyze the error and make a new fix.`)
 		}
 
 		sections.push('Start by reading the files implicated in the error. Make the targeted fix, then call done.')

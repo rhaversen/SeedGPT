@@ -170,7 +170,8 @@ describe('FixSession', () => {
 		const allMessages = session.conversation
 		const userMessages = allMessages.filter(m => m.role === 'user' && typeof m.content === 'string')
 		const secondFixMsg = userMessages[1]
-		expect(secondFixMsg.content).toContain('NOT your first attempt')
+		expect(secondFixMsg.content).toContain('fix attempt 2')
+		expect(secondFixMsg.content).toContain('CI was re-run')
 	})
 
 	it('includes warning on attempt 2 after a failed first attempt', async () => {
@@ -201,6 +202,7 @@ describe('FixSession', () => {
 		const allMessages = session.conversation
 		const userMessages = allMessages.filter(m => m.role === 'user' && typeof m.content === 'string')
 		const secondFixMsg = userMessages[1]
-		expect(secondFixMsg.content).toContain('NOT your first attempt')
+		expect(secondFixMsg.content).toContain('fix attempt 2')
+		expect(secondFixMsg.content).toContain('DIFFERENT root cause')
 	})
 })
