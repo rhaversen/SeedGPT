@@ -26,13 +26,13 @@ export async function prepareAndBuildContext(
 	workspacePath: string,
 	messages: Anthropic.MessageParam[],
 ): Promise<string | null> {
-	const { files, establishedRanges } = scanFileActivity(workspacePath, messages)
+	const files = scanFileActivity(workspacePath, messages)
 
 	stripOldTurns(messages)
 	await refreshFiles(workspacePath, files)
 	evictOverBudget(files)
 
-	return buildWorkingContext(files, establishedRanges)
+	return buildWorkingContext(files)
 }
 
 // --- Region Management ---
@@ -73,34 +73,16 @@ export function addRegion(regions: TrackedRegion[], start: number, end: number, 
 
 // --- State Derivation ---
 
-type EstablishedRanges = Map<string, { start: number; end: number }[]>
-
 function scanFileActivity(
 	workspacePath: string,
 	messages: Anthropic.MessageParam[],
-): { files: Map<string, TrackedFile>; establishedRanges: EstablishedRanges } {
+): Map<string, TrackedFile> {
 	const files = new Map<string, TrackedFile>()
-
-	// Count total turns first
-	let totalTurns = 0
-	for (const msg of messages) {
-		if (msg.role === 'assistant') totalTurns++
-	}
-
-	// Process messages, snapshot before last turn
 	let turn = 0
-	let establishedRanges: EstablishedRanges = new Map()
 
 	for (const msg of messages) {
 		if (msg.role !== 'assistant') continue
 		turn++
-
-		// Before processing the last turn, snapshot covered ranges
-		if (turn === totalTurns) {
-			for (const [path, file] of files) {
-				establishedRanges.set(path, file.regions.map(r => ({ start: r.start, end: r.end })))
-			}
-		}
 
 		if (!Array.isArray(msg.content)) continue
 
@@ -132,7 +114,7 @@ function scanFileActivity(
 		}
 	}
 
-	return { files, establishedRanges }
+	return files
 }
 
 function normalizePath(workspacePath: string, filePath: string): string {
@@ -354,12 +336,7 @@ function evictOverBudget(files: Map<string, TrackedFile>): void {
 
 // --- Working Context Builder ---
 
-function isLineEstablished(line: number, ranges: { start: number; end: number }[] | undefined): boolean {
-	if (!ranges) return false
-	return ranges.some(r => line >= r.start && line <= r.end)
-}
-
-function buildWorkingContext(files: Map<string, TrackedFile>, establishedRanges: EstablishedRanges): string | null {
+function buildWorkingContext(files: Map<string, TrackedFile>): string | null {
 	const activeFiles = [...files.values()]
 		.filter(f => !f.deleted && f.lastContent && f.regions.length > 0)
 		.sort((a, b) => a.path.localeCompare(b.path))
