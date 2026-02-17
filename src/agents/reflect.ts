@@ -39,8 +39,13 @@ function buildTranscript(messages: Anthropic.MessageParam[]): string {
 			if (block.type === 'text' && 'text' in block) {
 				if (msg.role === 'assistant') parts.push((block as Anthropic.TextBlockParam).text)
 			} else if (block.type === 'tool_use') {
-				toolNames.set(block.id, { name: block.name, input: block.input as Record<string, unknown> })
-				parts.push(`[tool: ${block.name}]`)
+				const input = block.input as Record<string, unknown>
+				toolNames.set(block.id, { name: block.name, input })
+				if (block.name === 'submit_plan') {
+					parts.push(`[PLAN] ${input.title}\n${input.description}\n\nImplementation:\n${input.implementation}`)
+				} else {
+					parts.push(`[tool: ${block.name}]`)
+				}
 			} else if (block.type === 'tool_result') {
 				const text = typeof block.content === 'string' ? block.content : ''
 				const tool = toolNames.get(block.tool_use_id)

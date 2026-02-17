@@ -240,4 +240,30 @@ describe('reflect', () => {
 		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
 		expect(transcript).toContain('some custom result')
 	})
+
+	it('expands submit_plan with full plan content', async () => {
+		const messages = [
+			{
+				role: 'assistant' as const,
+				content: [{
+					type: 'tool_use' as const,
+					id: 't1',
+					name: 'submit_plan',
+					input: { title: 'Add caching', description: 'Cache API responses', implementation: 'Use Map in api.ts' },
+				}],
+			},
+			{
+				role: 'user' as const,
+				content: [{ type: 'tool_result' as const, tool_use_id: 't1', content: 'Plan submitted.' }],
+			},
+		]
+
+		await reflect('Done', messages)
+
+		const transcript = ((mockCallApi.mock.calls[0] as unknown[])[1] as Array<{ content: string }>)[0].content
+		expect(transcript).toContain('[PLAN] Add caching')
+		expect(transcript).toContain('Cache API responses')
+		expect(transcript).toContain('Use Map in api.ts')
+		expect(transcript).not.toContain('[tool: submit_plan]')
+	})
 })
