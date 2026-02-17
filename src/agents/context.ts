@@ -26,13 +26,13 @@ export async function prepareAndBuildContext(
 	workspacePath: string,
 	messages: Anthropic.MessageParam[],
 ): Promise<string | null> {
-	const { files } = scanFileActivity(workspacePath, messages)
+	const { files, establishedRanges } = scanFileActivity(workspacePath, messages)
 
 	stripOldTurns(messages)
 	await refreshFiles(workspacePath, files)
 	evictOverBudget(files)
 
-	return buildWorkingContext(files)
+	return buildWorkingContext(files, establishedRanges)
 }
 
 // --- Region Management ---
@@ -73,16 +73,35 @@ export function addRegion(regions: TrackedRegion[], start: number, end: number, 
 
 // --- State Derivation ---
 
+type EstablishedRanges = Map<string, { start: number; end: number }[]>
+
 function scanFileActivity(
 	workspacePath: string,
 	messages: Anthropic.MessageParam[],
-): { files: Map<string, TrackedFile>; currentTurn: number } {
+): { files: Map<string, TrackedFile>; establishedRanges: EstablishedRanges } {
 	const files = new Map<string, TrackedFile>()
+
+	// Count total turns first
+	let totalTurns = 0
+	for (const msg of messages) {
+		if (msg.role === 'assistant') totalTurns++
+	}
+
+	// Process messages, snapshot before last turn
 	let turn = 0
+	let establishedRanges: EstablishedRanges = new Map()
 
 	for (const msg of messages) {
 		if (msg.role !== 'assistant') continue
 		turn++
+
+		// Before processing the last turn, snapshot covered ranges
+		if (turn === totalTurns) {
+			for (const [path, file] of files) {
+				establishedRanges.set(path, file.regions.map(r => ({ start: r.start, end: r.end })))
+			}
+		}
+
 		if (!Array.isArray(msg.content)) continue
 
 		for (const block of msg.content) {
@@ -113,7 +132,7 @@ function scanFileActivity(
 		}
 	}
 
-	return { files, currentTurn: turn }
+	return { files, establishedRanges }
 }
 
 function normalizePath(workspacePath: string, filePath: string): string {
@@ -142,9 +161,9 @@ function trackRead(
 	const file = getOrCreateFile(files, path)
 	file.deleted = false
 
-	const { contextPadding } = config.context
+	const { contextPadding, defaultReadWindow } = config.context
 	const paddedStart = Math.max(1, startLine - contextPadding)
-	const paddedEnd = endLine ? endLine + contextPadding : Infinity
+	const paddedEnd = (endLine ?? startLine + defaultReadWindow - 1) + contextPadding
 	file.regions = addRegion(file.regions, paddedStart, paddedEnd, turn)
 }
 
@@ -333,9 +352,14 @@ function evictOverBudget(files: Map<string, TrackedFile>): void {
 
 // --- Working Context Builder ---
 
-function buildWorkingContext(files: Map<string, TrackedFile>): string | null {
+function isLineEstablished(line: number, ranges: { start: number; end: number }[] | undefined): boolean {
+	if (!ranges) return false
+	return ranges.some(r => line >= r.start && line <= r.end)
+}
+
+function buildWorkingContext(files: Map<string, TrackedFile>, establishedRanges: EstablishedRanges): string | null {
 	const activeFiles = [...files.values()]
-		.filter(f => !f.deleted && f.lastContent && f.regions.length > 0)
+		.filter(f => !f.deleted && f.lastContent && f.regions.length > 0 && establishedRanges.has(f.path))
 		.sort((a, b) => a.path.localeCompare(b.path))
 
 	if (activeFiles.length === 0) return null
@@ -346,34 +370,39 @@ function buildWorkingContext(files: Map<string, TrackedFile>): string | null {
 	for (const file of activeFiles) {
 		if (!file.lastContent) continue
 		const lines = file.lastContent.split('\n')
+		const established = establishedRanges.get(file.path)
 		const sorted = [...file.regions].sort((a, b) => a.start - b.start)
 		if (sorted.length === 0) continue
 
-		sections.push(`\n--- ${file.path} (${file.totalLines} lines) ---`)
+		const fileLines: string[] = []
+		let lastShownLine = 0
 
-		if (sorted[0].start > 1) sections.push(`[... ${sorted[0].start - 1} lines above ...]`)
-
-		for (let i = 0; i < sorted.length; i++) {
-			const region = sorted[i]
-			const start = Math.max(1, region.start) - 1
+		for (const region of sorted) {
+			const start = Math.max(1, region.start)
 			const end = Math.min(region.end, file.totalLines)
 
-			for (let lineIdx = start; lineIdx < end; lineIdx++) {
-				sections.push(`${lineIdx + 1} | ${lines[lineIdx]}`)
-				totalLinesShown++
-			}
+			for (let lineNum = start; lineNum <= end; lineNum++) {
+				if (!isLineEstablished(lineNum, established)) continue
 
-			if (i < sorted.length - 1) {
-				const gapSize = sorted[i + 1].start - region.end - 1
-				if (gapSize > 0) {
-					sections.push(`[... ${gapSize} lines omitted ...]`)
+				if (lastShownLine === 0 && lineNum > 1) {
+					fileLines.push(`[... ${lineNum - 1} lines above ...]`)
+				} else if (lastShownLine > 0 && lineNum > lastShownLine + 1) {
+					fileLines.push(`[... ${lineNum - lastShownLine - 1} lines omitted ...]`)
 				}
+
+				fileLines.push(`${lineNum} | ${lines[lineNum - 1]}`)
+				lastShownLine = lineNum
+				totalLinesShown++
 			}
 		}
 
-		const lastRegion = sorted[sorted.length - 1]
-		if (lastRegion.end < file.totalLines) {
-			sections.push(`[... ${file.totalLines - lastRegion.end} lines below ...]`)
+		if (fileLines.length === 0) continue
+
+		sections.push(`\n--- ${file.path} (${file.totalLines} lines) ---`)
+		sections.push(...fileLines)
+
+		if (lastShownLine < file.totalLines) {
+			sections.push(`[... ${file.totalLines - lastShownLine} lines below ...]`)
 		}
 	}
 

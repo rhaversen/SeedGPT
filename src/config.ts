@@ -66,6 +66,7 @@ export const config = {
 		minResultChars: 200, // Tool results shorter than this are never stubbed
 		maxActiveLines: 2000, // Budget for working context in system prompt; oldest regions evicted first
 		contextPadding: 5, // Extra lines shown above/below each tracked region
+		defaultReadWindow: 300, // Default line count when read_file has no endLine
 		thinkingBudget: 10_000, // Extended thinking budget for planner/builder/fixer/reflect
 	},
 
