@@ -361,7 +361,7 @@ function isLineEstablished(line: number, ranges: { start: number; end: number }[
 
 function buildWorkingContext(files: Map<string, TrackedFile>, establishedRanges: EstablishedRanges): string | null {
 	const activeFiles = [...files.values()]
-		.filter(f => !f.deleted && f.lastContent && f.regions.length > 0 && establishedRanges.has(f.path))
+		.filter(f => !f.deleted && f.lastContent && f.regions.length > 0)
 		.sort((a, b) => a.path.localeCompare(b.path))
 
 	if (activeFiles.length === 0) return null
@@ -372,7 +372,6 @@ function buildWorkingContext(files: Map<string, TrackedFile>, establishedRanges:
 	for (const file of activeFiles) {
 		if (!file.lastContent) continue
 		const lines = file.lastContent.split('\n')
-		const established = establishedRanges.get(file.path)
 		const sorted = [...file.regions].sort((a, b) => a.start - b.start)
 		if (sorted.length === 0) continue
 
@@ -384,8 +383,6 @@ function buildWorkingContext(files: Map<string, TrackedFile>, establishedRanges:
 			const end = Math.min(region.end, file.totalLines)
 
 			for (let lineNum = start; lineNum <= end; lineNum++) {
-				if (!isLineEstablished(lineNum, established)) continue
-
 				if (lastShownLine === 0 && lineNum > 1) {
 					fileLines.push(`[... ${lineNum - 1} lines above ...]`)
 				} else if (lastShownLine > 0 && lineNum > lastShownLine + 1) {
