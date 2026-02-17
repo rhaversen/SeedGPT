@@ -9,6 +9,7 @@ import { toolLogSuffix } from '../logger.js'
 interface FixContext {
 	planTitle: string
 	planDescription: string
+	implementation: string
 	createdFiles: string[]
 	modifiedFiles: string[]
 }
@@ -37,6 +38,7 @@ export class FixSession {
 
 		const sections = [
 			`You were implementing "${this.context.planTitle}": ${this.context.planDescription}`,
+			`## Implementation Instructions\n${this.context.implementation}`,
 			'The changes were applied but CI failed. Diagnose and fix the issue.',
 		]
 

@@ -36,6 +36,7 @@ beforeEach(() => {
 const fixContext = {
 	planTitle: 'test-change',
 	planDescription: 'A test change',
+	implementation: 'Add caching to the API module using a Map',
 	createdFiles: ['new.ts'],
 	modifiedFiles: ['existing.ts'],
 }
