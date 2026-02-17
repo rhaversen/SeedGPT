@@ -10,7 +10,6 @@ export interface Plan {
 	title: string
 	description: string
 	implementation: string
-	plannerReasoning?: string
 }
 
 export interface PlanResult {
@@ -40,22 +39,7 @@ export async function plan(): Promise<PlanResult> {
 		if (submitBlock && submitBlock.type === 'tool_use') {
 			const input = submitBlock.input as Plan
 
-			const reasoning = messages
-				.filter(m => m.role === 'assistant')
-				.flatMap(m => {
-					const content = m.content
-					if (typeof content === 'string') return [content]
-					if (Array.isArray(content)) return content.filter(c => c.type === 'text').map(c => (c as Anthropic.TextBlock).text)
-					return []
-				})
-				.filter(t => t.trim().length > 0)
-			const currentReasoning = response.content.filter(c => c.type === 'text').map(c => c.text).join('\n')
-			if (currentReasoning.trim()) reasoning.push(currentReasoning)
-			if (reasoning.length > 0) {
-				input.plannerReasoning = reasoning.join('\n\n---\n\n')
-			}
-
-			logger.info(`Plan: "${input.title}" — reasoning: ${(input.plannerReasoning?.length ?? 0)} chars`)
+			logger.info(`Plan: "${input.title}"`)
 			messages.push({ role: 'assistant', content: response.content })
 			return { plan: input, messages }
 		}

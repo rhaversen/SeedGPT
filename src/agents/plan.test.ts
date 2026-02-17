@@ -54,7 +54,6 @@ describe('plan', () => {
 		expect(result.plan.title).toBe('add-tests')
 		expect(result.plan.description).toBe('Add test coverage')
 		expect(result.plan.implementation).toBe('Add tests to config.ts')
-		expect(result.plan.plannerReasoning).toContain('I will improve tests.')
 	})
 
 	it('uses tools before submitting plan', async () => {
