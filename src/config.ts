@@ -10,7 +10,7 @@ export const config = {
 		planner: { model: planModel, maxTokens: 4096 },
 		builder: { model: patchModel, maxTokens: 16384 },
 		fixer: { model: fixerModel, maxTokens: 16384 },
-		reflect: { model: reflectModel, maxTokens: 512 },
+		reflect: { model: reflectModel, maxTokens: 4096 },
 		memory: { model: memoryModel, maxTokens: 64 },
 	},
 
