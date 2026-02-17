@@ -10,6 +10,9 @@ maxActiveLines: 300,
 contextPadding: 3,
 thinkingBudget: 10_000,
 },
+tools: {
+defaultReadWindow: 100,
+},
 },
 }))
 
