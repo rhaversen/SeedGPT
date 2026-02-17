@@ -94,6 +94,16 @@ export function setIterationId(id: string): void {
 	activeIterationId = id
 }
 
+function stripThinkingSignatures(content: Anthropic.ContentBlock[]): Anthropic.ContentBlock[] {
+	return content.map(block => {
+		if (block.type === 'thinking') {
+			const { signature: _, ...rest } = block as { signature?: string } & typeof block
+			return rest as Anthropic.ContentBlock
+		}
+		return block
+	})
+}
+
 async function recordGenerated(
 	phase: string,
 	params: Anthropic.MessageCreateParamsNonStreaming,
@@ -110,7 +120,7 @@ async function recordGenerated(
 			iterationId: activeIterationId,
 			system: params.system ?? [],
 			messages: params.messages,
-			response: response.content,
+			response: stripThinkingSignatures(response.content),
 			inputTokens: usage.input_tokens,
 			outputTokens: usage.output_tokens,
 			cacheWrite5mTokens: usage.cache_creation?.ephemeral_5m_input_tokens ?? totalCacheWrite,
