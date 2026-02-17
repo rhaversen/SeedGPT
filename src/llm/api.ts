@@ -144,7 +144,7 @@ export async function callApi(phase: Phase, messages: Anthropic.MessageParam[], 
 		status = poll.processing_status
 		if (status !== 'ended') {
 			const nextDelay = Math.min(maxPollInterval, delay * pollBackoff)
-			logger.info(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
+			logger.debug(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
 			delay = nextDelay
 		}
 	}
@@ -194,7 +194,7 @@ export async function callBatchApi(requests: BatchRequest[]): Promise<Anthropic.
 		status = poll.processing_status
 		if (status !== 'ended') {
 			const nextDelay = Math.min(maxPollInterval, delay * pollBackoff)
-			logger.info(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
+			logger.debug(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
 			delay = nextDelay
 		}
 	}
