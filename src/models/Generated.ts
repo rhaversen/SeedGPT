@@ -94,6 +94,26 @@ const generatedSchema = new Schema<IGenerated>({
 	timestamps: { createdAt: true, updatedAt: false },
 })
 
+function stripSignature(block: Record<string, unknown>): Record<string, unknown> {
+	if (block.type === 'thinking' && 'signature' in block) {
+		const { signature: _, ...rest } = block
+		return rest
+	}
+	return block
+}
+
+generatedSchema.pre('save', function () {
+	if (Array.isArray(this.messages)) {
+		this.messages = (this.messages as Record<string, unknown>[]).map(msg => {
+			if (msg.role !== 'assistant' || !Array.isArray(msg.content)) return msg
+			return { ...msg, content: (msg.content as Record<string, unknown>[]).map(stripSignature) }
+		})
+	}
+	if (Array.isArray(this.response)) {
+		this.response = (this.response as Record<string, unknown>[]).map(stripSignature)
+	}
+})
+
 generatedSchema.index({ createdAt: -1 })
 generatedSchema.index({ iterationId: 1 })
 
