@@ -5,9 +5,9 @@ jest.unstable_mockModule('../config.js', () => ({
 		phases: {
 			reflect: { model: 'claude-haiku-4-5', maxTokens: 512 },
 			memory: { model: 'claude-haiku-4-5', maxTokens: 64 },
-			planner: { model: 'claude-sonnet-4-5', maxTokens: 4096 },
-			builder: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
-			fixer: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
+			planner: { model: 'claude-sonnet-4-6', maxTokens: 4096 },
+			builder: { model: 'claude-sonnet-4-6', maxTokens: 16384 },
+			fixer: { model: 'claude-sonnet-4-6', maxTokens: 16384 },
 		},
 		tools: { largeFileThreshold: 500 },
 		api: { initialRetryDelay: 10, maxRetryDelay: 50 },
@@ -162,11 +162,11 @@ describe('callApi', () => {
 
 		await callApi('builder', [{ role: 'user', content: 'test' }])
 
-		expect(mockComputeCost).toHaveBeenCalledWith('claude-sonnet-4-5', fakeUsage, { batch: true })
+		expect(mockComputeCost).toHaveBeenCalledWith('claude-sonnet-4-6', fakeUsage, { batch: true })
 		expect(mockModelCreate).toHaveBeenCalledTimes(1)
 		expect((mockModelCreate.mock.calls[0] as unknown[])[0]).toMatchObject({
 			phase: 'builder',
-			modelId: 'claude-sonnet-4-5',
+			modelId: 'claude-sonnet-4-6',
 			batch: true,
 		})
 	})

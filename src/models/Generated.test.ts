@@ -2,8 +2,8 @@ import { describe, it, expect } from '@jest/globals'
 import { computeCost } from './Generated.js'
 
 describe('computeCost', () => {
-	it('computes cost for claude-sonnet-4-5 without caching', () => {
-		const cost = computeCost('claude-sonnet-4-5', { input_tokens: 1_000_000, output_tokens: 1_000_000 })
+	it('computes cost for claude-sonnet-4-6 without caching', () => {
+		const cost = computeCost('claude-sonnet-4-6', { input_tokens: 1_000_000, output_tokens: 1_000_000 })
 		expect(cost).toBe(3 + 15)
 	})
 
@@ -28,11 +28,11 @@ describe('computeCost', () => {
 	})
 
 	it('returns 0 for zero tokens', () => {
-		expect(computeCost('claude-sonnet-4-5', { input_tokens: 0, output_tokens: 0 })).toBe(0)
+		expect(computeCost('claude-sonnet-4-6', { input_tokens: 0, output_tokens: 0 })).toBe(0)
 	})
 
 	it('applies cache read rate', () => {
-		const cost = computeCost('claude-sonnet-4-5', {
+		const cost = computeCost('claude-sonnet-4-6', {
 			input_tokens: 1_000_000,
 			output_tokens: 0,
 			cache_read_input_tokens: 800_000,
@@ -43,7 +43,7 @@ describe('computeCost', () => {
 	})
 
 	it('applies 5m cache write rate by default', () => {
-		const cost = computeCost('claude-sonnet-4-5', {
+		const cost = computeCost('claude-sonnet-4-6', {
 			input_tokens: 1_000_000,
 			output_tokens: 0,
 			cache_creation_input_tokens: 500_000,
@@ -54,7 +54,7 @@ describe('computeCost', () => {
 	})
 
 	it('uses 1h cache write rate when cache_creation breakdown provided', () => {
-		const cost = computeCost('claude-sonnet-4-5', {
+		const cost = computeCost('claude-sonnet-4-6', {
 			input_tokens: 1_000_000,
 			output_tokens: 0,
 			cache_creation_input_tokens: 500_000,
@@ -79,8 +79,8 @@ describe('computeCost', () => {
 	})
 
 	it('applies 50% batch discount', () => {
-		const regular = computeCost('claude-sonnet-4-5', { input_tokens: 1_000_000, output_tokens: 1_000_000 })
-		const batch = computeCost('claude-sonnet-4-5', { input_tokens: 1_000_000, output_tokens: 1_000_000 }, { batch: true })
+		const regular = computeCost('claude-sonnet-4-6', { input_tokens: 1_000_000, output_tokens: 1_000_000 })
+		const batch = computeCost('claude-sonnet-4-6', { input_tokens: 1_000_000, output_tokens: 1_000_000 }, { batch: true })
 		expect(batch).toBe(regular * 0.5)
 	})
 
@@ -91,8 +91,8 @@ describe('computeCost', () => {
 			cache_read_input_tokens: 800_000,
 			cache_creation_input_tokens: 0,
 		}
-		const regular = computeCost('claude-sonnet-4-5', usage)
-		const batch = computeCost('claude-sonnet-4-5', usage, { batch: true })
+		const regular = computeCost('claude-sonnet-4-6', usage)
+		const batch = computeCost('claude-sonnet-4-6', usage, { batch: true })
 		expect(batch).toBeCloseTo(regular * 0.5)
 	})
 })

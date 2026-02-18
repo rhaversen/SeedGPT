@@ -1,10 +1,10 @@
 const isProduction = (process.env.NODE_ENV ?? 'production') === 'production'
 
-const planModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
-const patchModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
-const fixerModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
+const planModel = isProduction ? 'claude-sonnet-4-6' : 'claude-haiku-4-5'
+const patchModel = isProduction ? 'claude-sonnet-4-6' : 'claude-haiku-4-5'
+const fixerModel = isProduction ? 'claude-sonnet-4-6' : 'claude-haiku-4-5'
 const reflectModel = isProduction ? 'claude-haiku-4-5' : 'claude-haiku-3'
-const memoryModel = isProduction ? 'claude-sonnet-4-5' : 'claude-haiku-4-5'
+const memoryModel = isProduction ? 'claude-sonnet-4-6' : 'claude-haiku-4-5'
 export const config = {
 	phases: {
 		planner: { model: planModel, maxTokens: 4096 },
