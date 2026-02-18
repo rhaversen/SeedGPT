@@ -3,7 +3,7 @@ import { config } from '../config.js'
 import { env } from '../env.js'
 import logger from '../logger.js'
 import { getHeadSha } from './git.js'
-import { extractFailedStepOutput, extractCoverageFromLogs } from './log-parsing.js'
+import { extractFailedStepOutput, extractCoverageFromLogs } from './utils/log-parsing.js'
 
 const octokit = new Octokit({ auth: env.githubToken })
 const owner = env.githubOwner

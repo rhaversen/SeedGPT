@@ -28,7 +28,7 @@ jest.unstable_mockModule('./git.js', () => ({
 
 const mockExtractFailedStepOutput = jest.fn<(...a: unknown[]) => string>().mockReturnValue('Extracted error')
 const mockExtractCoverageFromLogs = jest.fn<(...a: unknown[]) => string | null>().mockReturnValue(null)
-jest.unstable_mockModule('./log-parsing.js', () => ({
+jest.unstable_mockModule('./utils/log-parsing.js', () => ({
 	extractFailedStepOutput: mockExtractFailedStepOutput,
 	extractCoverageFromLogs: mockExtractCoverageFromLogs,
 }))

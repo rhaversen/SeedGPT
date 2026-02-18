@@ -31,7 +31,7 @@ findUnusedFunctions: jest.fn(),
 }
 })
 
-const { prepareAndBuildContext } = await import('../tools/context.js')
+const { prepareAndBuildContext } = await import('./context.js')
 
 function toolUse(id: string, name: string, input: Record<string, unknown>): Anthropic.ToolUseBlock {
 return { type: 'tool_use', id, name, input }
