@@ -506,7 +506,7 @@ describe('findUnusedFunctions', () => {
 
 		const result = await findUnusedFunctions(tempDir)
 		expect(result).toContain('helper')
-		expect(result).toContain('Remove — only used in tests')
+		expect(result).toContain('Review — has test coverage but is never called in production code')
 	})
 
 	it('detects exported-for-tests pattern', async () => {
@@ -530,6 +530,19 @@ describe('findUnusedFunctions', () => {
 
 		const result = await findUnusedFunctions(tempDir)
 		expect(result).toContain('unusedMethod')
+	})
+
+	it('skips functions with a @keep comment', async () => {
+		await writeFile(join(tempDir, 'src', 'utils.ts'), [
+			`// @keep`,
+			`export function kept() { return 1 }`,
+			`export function notKept() { return 2 }`,
+		].join('\n'))
+		await writeFile(join(tempDir, 'src', 'utils.test.ts'), `import { kept, notKept } from './utils'\nkept()\nnotKept()`)
+
+		const result = await findUnusedFunctions(tempDir)
+		expect(result).not.toContain('kept')
+		expect(result).toContain('notKept')
 	})
 })
 

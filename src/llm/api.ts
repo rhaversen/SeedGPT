@@ -189,6 +189,7 @@ export interface BatchRequest {
 	tools?: Anthropic.Tool[]
 }
 
+// @keep
 export async function callBatchApi(requests: BatchRequest[]): Promise<Anthropic.Message[]> {
 	if (requests.length === 0) return []
 

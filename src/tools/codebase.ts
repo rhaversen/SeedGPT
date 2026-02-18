@@ -179,7 +179,7 @@ export async function findUnusedFunctions(rootPath: string): Promise<string | nu
 	const srcFiles = tsFiles.filter(f => !isTestFile(f))
 	const testFiles = tsFiles.filter(f => isTestFile(f))
 
-	const declared: Array<{ name: string; file: string; exported: boolean }> = []
+	const declared: Array<{ name: string; file: string; exported: boolean; line: number }> = []
 	const srcContents = new Map<string, string>()
 
 	for (const relPath of srcFiles) {
@@ -188,7 +188,7 @@ export async function findUnusedFunctions(rootPath: string): Promise<string | nu
 		const kind = relPath.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS
 		const sf = ts.createSourceFile(relPath, content, ts.ScriptTarget.Latest, true, kind)
 		for (const stmt of sf.statements) {
-			collectFunctionNames(stmt, relPath, declared)
+			collectFunctionNames(stmt, relPath, sf, declared)
 		}
 	}
 
@@ -200,8 +200,13 @@ export async function findUnusedFunctions(rootPath: string): Promise<string | nu
 	const exportedForTests: string[] = []
 
 	for (const fn of declared) {
+		const content = srcContents.get(fn.file) ?? ''
+		const lines = content.split('\n')
+		const precedingLine = fn.line > 1 ? lines[fn.line - 2] : ''
+		if (/@keep\b/.test(precedingLine)) continue
+
 		const re = new RegExp(`\\b${fn.name}\\b`, 'g')
-		const ownContent = srcContents.get(fn.file) ?? ''
+		const ownContent = content
 		const ownMatches = ownContent.match(re)?.length ?? 0
 
 		let otherSrcMatches = 0
@@ -225,19 +230,21 @@ export async function findUnusedFunctions(rootPath: string): Promise<string | nu
 
 	const sections: string[] = []
 	if (deadCode.length > 0) sections.push(`Remove — dead code, not used anywhere (not even in tests):\n${deadCode.join('\n')}`)
-	if (testOnly.length > 0) sections.push(`Remove — only used in tests, never called in production code (remove the function and its tests):\n${testOnly.join('\n')}`)
+	if (testOnly.length > 0) sections.push(`Review — has test coverage but is never called in production code. If this is reusable infrastructure worth keeping, add a // @keep comment above it to suppress this warning. If it is dead code with leftover tests, remove both the function and its tests:\n${testOnly.join('\n')}`)
 	if (exportedForTests.length > 0) sections.push(`Refactor — exported only because tests import it directly, but used internally (either test through the public function that calls it and remove the export, or move to a utility file where the export is justified):\n${exportedForTests.join('\n')}`)
 	return sections.length > 0 ? sections.join('\n\n') : null
 }
 
-function collectFunctionNames(node: ts.Node, file: string, out: Array<{ name: string; file: string; exported: boolean }>): void {
+function collectFunctionNames(node: ts.Node, file: string, sf: ts.SourceFile, out: Array<{ name: string; file: string; exported: boolean; line: number }>): void {
 	const exported = isExported(node)
 	if (ts.isFunctionDeclaration(node) && node.name) {
-		out.push({ name: node.name.text, file, exported })
+		const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
+		out.push({ name: node.name.text, file, exported, line })
 	} else if (ts.isClassDeclaration(node)) {
 		for (const member of node.members) {
 			if (ts.isMethodDeclaration(member) && ts.isIdentifier(member.name)) {
-				out.push({ name: member.name.text, file, exported })
+				const line = sf.getLineAndCharacterOfPosition(member.getStart(sf)).line + 1
+				out.push({ name: member.name.text, file, exported, line })
 			}
 		}
 	}
