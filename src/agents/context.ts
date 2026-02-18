@@ -209,7 +209,7 @@ function stripOldTurns(messages: Anthropic.MessageParam[]): void {
 			const kept: Anthropic.ContentBlockParam[] = []
 
 			for (const block of content) {
-				if (block.type === 'text') {
+				if (block.type === 'text' || block.type === 'thinking') {
 					kept.push(block)
 				} else if (block.type === 'tool_use') {
 					kept.push(stubToolUse(block as Anthropic.ToolUseBlock))

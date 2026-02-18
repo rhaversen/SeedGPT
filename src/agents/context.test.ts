@@ -386,7 +386,7 @@ expect(blocks.some(b => b.type === 'text' && (b as Anthropic.TextBlockParam).tex
 expect(blocks.every(b => b.type === 'text' || b.type === 'tool_use')).toBe(true)
 })
 
-it('strips thinking blocks from old assistant messages', async () => {
+it('preserves thinking blocks in old assistant messages', async () => {
 mockReadFile.mockResolvedValue(makeFileContent(5))
 
 const messages: Anthropic.MessageParam[] = [
@@ -405,7 +405,7 @@ await prepareAndBuildContext('/workspace', messages)
 
 const oldAssistant = messages[1]
 const blocks = oldAssistant.content as Anthropic.ContentBlockParam[]
-expect(blocks.some(b => b.type === 'thinking')).toBe(false)
+expect(blocks.some(b => b.type === 'thinking')).toBe(true)
 })
 
 it('replaces text-only assistant messages with marker', async () => {
