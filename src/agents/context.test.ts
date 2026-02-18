@@ -180,27 +180,71 @@ expect(wc).not.toContain('old 1')
 })
 
 describe('old turn stripping', () => {
-it('stubs old tool_result content outside protected window', async () => {
-const fileContent = makeFileContent(20)
-mockReadFile.mockResolvedValue(fileContent)
+it('stubs old read_file result with context-aware message when lines still tracked', async () => {
+		const fileContent = makeFileContent(20)
+		mockReadFile.mockResolvedValue(fileContent)
 
-const messages: Anthropic.MessageParam[] = [
-{ role: 'user', content: 'Start' },
-{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: '/workspace/src/old.ts', startLine: 1, endLine: 20 })] },
-{ role: 'user', content: [toolResult('t1', fileContent)] },
-{ role: 'assistant', content: [toolUse('t2', 'read_file', { filePath: '/workspace/src/new.ts', startLine: 1, endLine: 5 })] },
-{ role: 'user', content: [toolResult('t2', makeFileContent(5))] },
-]
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'user', content: 'Start' },
+			{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: '/workspace/src/old.ts', startLine: 1, endLine: 20 })] },
+			{ role: 'user', content: [toolResult('t1', fileContent)] },
+			{ role: 'assistant', content: [toolUse('t2', 'read_file', { filePath: '/workspace/src/new.ts', startLine: 1, endLine: 5 })] },
+			{ role: 'user', content: [toolResult('t2', makeFileContent(5))] },
+		]
 
-await prepareAndBuildContext('/workspace', messages)
+		await prepareAndBuildContext('/workspace', messages)
 
-const firstResult = messages[2]
-const blocks = firstResult.content as Anthropic.ContentBlockParam[]
-const tr = blocks[0] as Anthropic.ToolResultBlockParam
-expect(typeof tr.content === 'string' && tr.content.startsWith('[result')).toBe(true)
-})
+		const firstResult = messages[2]
+		const blocks = firstResult.content as Anthropic.ContentBlockParam[]
+		const tr = blocks[0] as Anthropic.ToolResultBlockParam
+		expect(typeof tr.content === 'string' && tr.content.startsWith('[lines in working context')).toBe(true)
+	})
 
-it('preserves last turn tool_result', async () => {
+	it('stubs old read_file result with eviction message when lines evicted', async () => {
+		const bigFile = makeFileContent(200, 'big')
+		const smallFile = makeFileContent(200, 'small')
+		mockReadFile.mockImplementation(async (_root: string, path: string) => {
+			if (path.includes('old')) return bigFile
+			return smallFile
+		})
+
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'user', content: 'Start' },
+			{ role: 'assistant', content: [toolUse('t1', 'read_file', { filePath: '/workspace/src/old.ts', startLine: 1, endLine: 200 })] },
+			{ role: 'user', content: [toolResult('t1', bigFile)] },
+			{ role: 'assistant', content: [toolUse('t2', 'read_file', { filePath: '/workspace/src/new.ts', startLine: 1, endLine: 200 })] },
+			{ role: 'user', content: [toolResult('t2', smallFile)] },
+		]
+
+		await prepareAndBuildContext('/workspace', messages)
+
+		const firstResult = messages[2]
+		const blocks = firstResult.content as Anthropic.ContentBlockParam[]
+		const tr = blocks[0] as Anthropic.ToolResultBlockParam
+		expect(typeof tr.content === 'string' && tr.content.startsWith('[lines evicted')).toBe(true)
+	})
+
+	it('stubs old non-read tool results with generic message', async () => {
+		const grepResult = Array.from({ length: 20 }, (_, i) => `src/file${i}.ts:${i + 1}: match found`).join('\n')
+		mockReadFile.mockResolvedValue(makeFileContent(5))
+
+		const messages: Anthropic.MessageParam[] = [
+			{ role: 'user', content: 'Start' },
+			{ role: 'assistant', content: [toolUse('t1', 'grep_search', { query: 'TODO', isRegexp: false })] },
+			{ role: 'user', content: [toolResult('t1', grepResult)] },
+			{ role: 'assistant', content: [toolUse('t2', 'read_file', { filePath: '/workspace/src/a.ts' })] },
+			{ role: 'user', content: [toolResult('t2', makeFileContent(5))] },
+		]
+
+		await prepareAndBuildContext('/workspace', messages)
+
+		const firstResult = messages[2]
+		const blocks = firstResult.content as Anthropic.ContentBlockParam[]
+		const tr = blocks[0] as Anthropic.ToolResultBlockParam
+		expect(typeof tr.content === 'string' && tr.content.startsWith('[result')).toBe(true)
+	})
+
+	it('preserves last turn tool_result', async () => {
 const fileContent = makeFileContent(20)
 mockReadFile.mockResolvedValue(fileContent)
 
@@ -215,7 +259,7 @@ await prepareAndBuildContext('/workspace', messages)
 const lastResult = messages[2]
 const blocks = lastResult.content as Anthropic.ContentBlockParam[]
 const tr = blocks[0] as Anthropic.ToolResultBlockParam
-expect(typeof tr.content === 'string' && !tr.content.startsWith('[result')).toBe(true)
+expect(typeof tr.content === 'string' && !tr.content.startsWith('[result') && !tr.content.startsWith('[lines')).toBe(true)
 })
 
 it('does not stub small results', async () => {
@@ -236,26 +280,6 @@ const firstResult = messages[2]
 const blocks = firstResult.content as Anthropic.ContentBlockParam[]
 const tr = blocks[0] as Anthropic.ToolResultBlockParam
 expect(tr.content).toBe(smallContent)
-})
-
-it('stubs ALL old tool_result types including grep_search', async () => {
-const grepResult = Array.from({ length: 20 }, (_, i) => `src/file${i}.ts:${i + 1}: match found`).join('\n')
-mockReadFile.mockResolvedValue(makeFileContent(5))
-
-const messages: Anthropic.MessageParam[] = [
-{ role: 'user', content: 'Start' },
-{ role: 'assistant', content: [toolUse('t1', 'grep_search', { query: 'TODO', isRegexp: false })] },
-{ role: 'user', content: [toolResult('t1', grepResult)] },
-{ role: 'assistant', content: [toolUse('t2', 'read_file', { filePath: '/workspace/src/a.ts' })] },
-{ role: 'user', content: [toolResult('t2', makeFileContent(5))] },
-]
-
-await prepareAndBuildContext('/workspace', messages)
-
-const firstResult = messages[2]
-const blocks = firstResult.content as Anthropic.ContentBlockParam[]
-const tr = blocks[0] as Anthropic.ToolResultBlockParam
-expect(typeof tr.content === 'string' && tr.content.startsWith('[result')).toBe(true)
 })
 
 it('is idempotent', async () => {

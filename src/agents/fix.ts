@@ -57,7 +57,7 @@ export class FixSession {
 			sections.push(`This is fix attempt ${attempt}. Your previous changes were applied and CI was re-run, but it still failed. Analyze the error and make a new fix.`)
 		}
 
-		sections.push('Start by reading the files implicated in the error. Make the targeted fix, then call done.')
+		sections.push('Check your working context first — files already loaded are shown there with up-to-date content. Only call read_file for files or line ranges not already visible. Read the files implicated in the error, make the targeted fix, then call done.')
 
 		const fixMessage: Anthropic.MessageParam = {
 			role: 'user',

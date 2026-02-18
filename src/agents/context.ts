@@ -28,9 +28,9 @@ export async function prepareAndBuildContext(
 ): Promise<string | null> {
 	const files = scanFileActivity(workspacePath, messages)
 
-	stripOldTurns(messages)
 	await refreshFiles(workspacePath, files)
 	evictOverBudget(files)
+	stripOldTurns(messages, files, workspacePath)
 
 	return buildWorkingContext(files)
 }
@@ -175,7 +175,14 @@ function trackDelete(files: Map<string, TrackedFile>, path: string, turn: number
 
 // --- Old Turn Stripping (combined: reasoning, write inputs, tool results) ---
 
-function stripOldTurns(messages: Anthropic.MessageParam[]): void {
+function isInContext(files: Map<string, TrackedFile>, path: string, startLine: number, endLine: number | undefined): boolean {
+	const file = files.get(path)
+	if (!file || file.deleted || file.regions.length === 0) return false
+	const effectiveEnd = endLine ?? startLine + config.tools.defaultReadWindow - 1
+	return file.regions.some(r => r.start <= effectiveEnd && r.end >= startLine)
+}
+
+function stripOldTurns(messages: Anthropic.MessageParam[], files: Map<string, TrackedFile>, workspacePath: string): void {
 	const { protectedTurns, minResultChars } = config.context
 
 	let assistantCount = 0
@@ -185,6 +192,7 @@ function stripOldTurns(messages: Anthropic.MessageParam[]): void {
 		else if (msg.role === 'user') userCount++
 	}
 
+	const toolUseMap = new Map<string, { name: string; input: Record<string, unknown> }>()
 	let assistantIdx = 0
 	let userIdx = 0
 	let strippedAssistant = 0
@@ -195,6 +203,16 @@ function stripOldTurns(messages: Anthropic.MessageParam[]): void {
 
 		if (msg.role === 'assistant') {
 			assistantIdx++
+
+			if (Array.isArray(msg.content)) {
+				for (const block of msg.content as Anthropic.ContentBlockParam[]) {
+					if (block.type === 'tool_use') {
+						const tu = block as Anthropic.ToolUseBlock
+						toolUseMap.set(tu.id, { name: tu.name, input: tu.input as Record<string, unknown> })
+					}
+				}
+			}
+
 			if (assistantCount - assistantIdx < protectedTurns) continue
 
 			if (!Array.isArray(msg.content)) {
@@ -240,9 +258,23 @@ function stripOldTurns(messages: Anthropic.MessageParam[]): void {
 				const tr = block as Anthropic.ToolResultBlockParam
 				const content = typeof tr.content === 'string' ? tr.content : ''
 				if (content.length < minResultChars) continue
-				if (content.startsWith('[result') || content.startsWith('[applied')) continue
+				if (content.startsWith('[result') || content.startsWith('[applied') || content.startsWith('[lines')) continue
 
-				blocks[j] = { ...tr, content: `[result — ${content.split('\n').length} lines]` }
+				const toolInfo = toolUseMap.get(tr.tool_use_id)
+				if (toolInfo?.name === 'read_file') {
+					const path = normalizePath(workspacePath, toolInfo.input.filePath as string)
+					const startLine = (toolInfo.input.startLine as number) ?? 1
+					const endLine = toolInfo.input.endLine as number | undefined
+
+					if (isInContext(files, path, startLine, endLine)) {
+						blocks[j] = { ...tr, content: '[lines are present in working context — refer to context instead of calling read_file again]' }
+					} else {
+						blocks[j] = { ...tr, content: '[lines are evicted from working context — call read_file again if needed]' }
+					}
+				} else {
+					blocks[j] = { ...tr, content: `[result — ${content.split('\n').length} lines]` }
+				}
+
 				changed = true
 				strippedResults++
 			}
