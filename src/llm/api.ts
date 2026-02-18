@@ -128,44 +128,59 @@ async function recordGenerated(
 	}
 }
 
+async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+	const { initialRetryDelay, maxRetryDelay } = config.api
+	for (let attempt = 0; ; attempt++) {
+		try {
+			return await fn()
+		} catch (err) {
+			const delay = Math.min(maxRetryDelay, initialRetryDelay * Math.pow(2, attempt))
+			logger.warn(`${label} failed (attempt ${attempt + 1}), retrying in ${Math.round(delay / 1000)}s...`, { error: err })
+			await new Promise(r => setTimeout(r, delay))
+		}
+	}
+}
+
 export async function callApi(phase: Phase, messages: Anthropic.MessageParam[], tools?: Anthropic.Tool[]): Promise<Anthropic.Message> {
 	const params = await buildParams(phase, messages, tools)
 
-	// We use batch API even for single requests to achieve a 50% cost reduction.
-	const customId = `req-${Date.now()}-0`
-	const batch = await client.messages.batches.create({
-		requests: [{ custom_id: customId, params }],
+	return withRetry('callApi', async () => {
+		// We use batch API even for single requests to achieve a 50% cost reduction.
+		const customId = `req-${Date.now()}-0`
+		const batch = await client.messages.batches.create({
+			requests: [{ custom_id: customId, params }],
+		})
+
+		const { pollInterval, maxPollInterval, pollBackoff } = config.batch
+		let delay: number = pollInterval
+		let status: string = batch.processing_status
+
+		while (status !== 'ended') {
+			await new Promise(r => setTimeout(r, delay))
+			const poll = await client.messages.batches.retrieve(batch.id)
+			status = poll.processing_status
+			if (status !== 'ended') {
+				const nextDelay = Math.min(maxPollInterval, delay * pollBackoff)
+				logger.debug(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
+				delay = nextDelay
+			}
+		}
+
+		const decoder = await client.messages.batches.results(batch.id)
+		for await (const entry of decoder) {
+			if (entry.result.type === 'succeeded') {
+				const response = entry.result.message
+				await recordGenerated(phase, params, response, true)
+				return response
+			}
+			const detail = entry.result.type === 'errored'
+				? JSON.stringify((entry.result as Anthropic.Messages.Batches.MessageBatchErroredResult).error)
+				: entry.result.type
+			throw new Error(`Batch request failed: ${detail}`)
+		}
+
+		throw new Error('Batch completed but returned no results')
 	})
-
-	const { pollInterval, maxPollInterval, pollBackoff } = config.batch
-	let delay: number = pollInterval
-	let status: string = batch.processing_status
-
-	while (status !== 'ended') {
-		await new Promise(r => setTimeout(r, delay))
-		const poll = await client.messages.batches.retrieve(batch.id)
-		status = poll.processing_status
-		if (status !== 'ended') {
-			const nextDelay = Math.min(maxPollInterval, delay * pollBackoff)
-			logger.debug(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
-			delay = nextDelay
-		}
-	}
-
-	const decoder = await client.messages.batches.results(batch.id)
-	for await (const entry of decoder) {
-		if (entry.result.type === 'succeeded') {
-			const response = entry.result.message
-			await recordGenerated(phase, params, response, true)
-			return response
-		}
-		const detail = entry.result.type === 'errored'
-			? JSON.stringify((entry.result as Anthropic.Messages.Batches.MessageBatchErroredResult).error)
-			: entry.result.type
-		throw new Error(`Batch request failed: ${detail}`)
-	}
-
-	throw new Error('Batch completed but returned no results')
 }
 
 export interface BatchRequest {
@@ -181,63 +196,65 @@ export async function callBatchApi(requests: BatchRequest[]): Promise<Anthropic.
 		requests.map(async r => ({ phase: r.phase, params: await buildParams(r.phase, r.messages, r.tools) }))
 	)
 
-	const idPrefix = `req-${Date.now()}-`
-	const batchRequests = entries.map((e, i) => ({ custom_id: `${idPrefix}${i}`, params: e.params }))
+	return withRetry('callBatchApi', async () => {
+		const idPrefix = `req-${Date.now()}-`
+		const batchRequests = entries.map((e, i) => ({ custom_id: `${idPrefix}${i}`, params: e.params }))
 
-	logger.info(`Submitting batch with ${entries.length} request(s)...`)
-	const batch = await client.messages.batches.create({ requests: batchRequests })
+		logger.info(`Submitting batch with ${entries.length} request(s)...`)
+		const batch = await client.messages.batches.create({ requests: batchRequests })
 
-	const { pollInterval, maxPollInterval, pollBackoff } = config.batch
-	let delay: number = pollInterval
-	let status: string = batch.processing_status
+		const { pollInterval, maxPollInterval, pollBackoff } = config.batch
+		let delay: number = pollInterval
+		let status: string = batch.processing_status
 
-	while (status !== 'ended') {
-		await new Promise(r => setTimeout(r, delay))
-		const poll = await client.messages.batches.retrieve(batch.id)
-		status = poll.processing_status
-		if (status !== 'ended') {
-			const nextDelay = Math.min(maxPollInterval, delay * pollBackoff)
-			logger.debug(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
-			delay = nextDelay
+		while (status !== 'ended') {
+			await new Promise(r => setTimeout(r, delay))
+			const poll = await client.messages.batches.retrieve(batch.id)
+			status = poll.processing_status
+			if (status !== 'ended') {
+				const nextDelay = Math.min(maxPollInterval, delay * pollBackoff)
+				logger.debug(`Batch ${batch.id} still ${status}, retrying in ${Math.round(nextDelay / 1000)}s...`)
+				delay = nextDelay
+			}
 		}
-	}
 
-	const resultMap = new Map<string, Anthropic.Message>()
-	const decoder = await client.messages.batches.results(batch.id)
+		const resultMap = new Map<string, Anthropic.Message>()
+		const decoder = await client.messages.batches.results(batch.id)
 
-	for await (const entry of decoder) {
-		if (entry.result.type === 'succeeded') {
-			resultMap.set(entry.custom_id, entry.result.message)
-		} else {
-			const detail = entry.result.type === 'errored'
-				? JSON.stringify((entry.result as Anthropic.Messages.Batches.MessageBatchErroredResult).error)
-				: entry.result.type
-			throw new Error(`Batch request ${entry.custom_id} failed: ${detail}`)
+		for await (const entry of decoder) {
+			if (entry.result.type === 'succeeded') {
+				resultMap.set(entry.custom_id, entry.result.message)
+			} else {
+				const detail = entry.result.type === 'errored'
+					? JSON.stringify((entry.result as Anthropic.Messages.Batches.MessageBatchErroredResult).error)
+					: entry.result.type
+				throw new Error(`Batch request ${entry.custom_id} failed: ${detail}`)
+			}
 		}
-	}
 
-	if (resultMap.size !== entries.length) {
-		const missing = entries.map((_, i) => i).filter(i => !resultMap.has(`${idPrefix}${i}`))
-		throw new Error(`Batch completed but missing results for indices: ${missing.join(', ')}`)
-	}
+		if (resultMap.size !== entries.length) {
+			const missing = entries.map((_, i) => i).filter(i => !resultMap.has(`${idPrefix}${i}`))
+			throw new Error(`Batch completed but missing results for indices: ${missing.join(', ')}`)
+		}
 
-	const ordered: Anthropic.Message[] = []
-	let totalCacheRead = 0
-	let totalCacheWrite = 0
-	let totalInput = 0
-	for (let i = 0; i < entries.length; i++) {
-		const response = resultMap.get(`${idPrefix}${i}`)!
-		const usage = response.usage as ApiUsage
-		totalCacheRead += usage.cache_read_input_tokens ?? 0
-		totalCacheWrite += usage.cache_creation_input_tokens ?? 0
-		totalInput += usage.input_tokens
-		await recordGenerated(entries[i].phase, entries[i].params, response, true)
-		ordered.push(response)
-	}
+		const ordered: Anthropic.Message[] = []
+		let totalCacheRead = 0
+		let totalCacheWrite = 0
+		let totalInput = 0
+		for (let i = 0; i < entries.length; i++) {
+			const response = resultMap.get(`${idPrefix}${i}`)!
+			const usage = response.usage as ApiUsage
+			totalCacheRead += usage.cache_read_input_tokens ?? 0
+			totalCacheWrite += usage.cache_creation_input_tokens ?? 0
+			totalInput += usage.input_tokens
+			await recordGenerated(entries[i].phase, entries[i].params, response, true)
+			ordered.push(response)
+		}
 
-	const cacheStatus = totalCacheRead > 0
-		? `cache hit (${totalCacheRead} read, ${totalCacheWrite} written)`
-		: totalCacheWrite > 0 ? `cache miss (${totalCacheWrite} written, 0 read)` : 'no cache'
-	logger.info(`Batch completed: ${resultMap.size} result(s), ${totalInput} input tokens, ${cacheStatus}`)
-	return ordered
+		const cacheStatus = totalCacheRead > 0
+			? `cache hit (${totalCacheRead} read, ${totalCacheWrite} written)`
+			: totalCacheWrite > 0 ? `cache miss (${totalCacheWrite} written, 0 read)` : 'no cache'
+		logger.info(`Batch completed: ${resultMap.size} result(s), ${totalInput} input tokens, ${cacheStatus}`)
+		return ordered
+	})
 }

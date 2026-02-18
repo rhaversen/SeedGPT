@@ -25,9 +25,8 @@ export const config = {
 		defaultReadWindow: 300, // Default number of lines for read_file tool calls
 	},
 
-	// Anthropic API retry strategy for rate limits
+	// Anthropic API retry strategy
 	api: {
-		maxRetries: 5,
 		initialRetryDelay: 30_000, // 30 seconds
 		maxRetryDelay: 120_000, // 2 minutes
 	},

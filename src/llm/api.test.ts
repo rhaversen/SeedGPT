@@ -9,7 +9,7 @@ jest.unstable_mockModule('../config.js', () => ({
 			builder: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
 			fixer: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
 		},
-		api: { maxRetries: 2, initialRetryDelay: 10, maxRetryDelay: 50 },
+		api: { initialRetryDelay: 10, maxRetryDelay: 50 },
 		batch: { pollInterval: 10, maxPollInterval: 50, pollBackoff: 1.5 },
 		context: { protectedTurns: 1, minResultChars: 200, maxActiveLines: 2000, contextPadding: 5 },
 	},
@@ -169,24 +169,58 @@ describe('callApi', () => {
 		})
 	})
 
-	it('throws on errored batch result', async () => {
-		mockBatchCreate.mockResolvedValue({ id: 'batch_1', processing_status: 'ended' })
-		mockBatchResults.mockImplementation(async () => {
-			return (async function*() {
-				yield { custom_id: 'req-0', result: { type: 'errored', error: { type: 'server_error', message: 'fail' } } }
-			})()
+	it('retries on errored batch result then succeeds', async () => {
+		let callCount = 0
+		mockBatchCreate.mockImplementation(async ({ requests }: { requests: Array<{ custom_id: string }> }) => {
+			return { id: `batch_${++callCount}`, processing_status: 'ended', _requestIds: requests.map(r => r.custom_id) }
 		})
+		mockBatchResults
+			.mockImplementationOnce(async () => {
+				return (async function*() {
+					yield { custom_id: 'req-0', result: { type: 'errored', error: { type: 'server_error', message: 'fail' } } }
+				})()
+			})
+			.mockImplementationOnce(async () => {
+				const ids = mockBatchCreate.mock.calls[1][0].requests.map((r: { custom_id: string }) => r.custom_id)
+				return (async function*() { yield* yieldSucceeded(ids, [fakeMessage]) })()
+			})
 
-		await expect(callApi('reflect', [{ role: 'user', content: 'test' }])).rejects.toThrow('failed')
+		const result = await callApi('reflect', [{ role: 'user', content: 'test' }])
+		expect(result).toBe(fakeMessage)
+		expect(mockBatchCreate).toHaveBeenCalledTimes(2)
 	})
 
-	it('throws when batch returns no results', async () => {
-		mockBatchCreate.mockResolvedValue({ id: 'batch_1', processing_status: 'ended' })
+	it('retries when batch returns no results then succeeds', async () => {
+		let callCount = 0
+		mockBatchCreate.mockImplementation(async ({ requests }: { requests: Array<{ custom_id: string }> }) => {
+			return { id: `batch_${++callCount}`, processing_status: 'ended', _requestIds: requests.map(r => r.custom_id) }
+		})
+		mockBatchResults
+			.mockImplementationOnce(async () => (async function*() {})())
+			.mockImplementationOnce(async () => {
+				const ids = mockBatchCreate.mock.calls[1][0].requests.map((r: { custom_id: string }) => r.custom_id)
+				return (async function*() { yield* yieldSucceeded(ids, [fakeMessage]) })()
+			})
+
+		const result = await callApi('reflect', [{ role: 'user', content: 'test' }])
+		expect(result).toBe(fakeMessage)
+		expect(mockBatchCreate).toHaveBeenCalledTimes(2)
+	})
+
+	it('retries on failure then succeeds', async () => {
+		mockBatchCreate
+			.mockRejectedValueOnce(new Error('rate limited'))
+			.mockImplementation(async ({ requests }: { requests: Array<{ custom_id: string }> }) => {
+				return { id: 'batch_1', processing_status: 'ended', _requestIds: requests.map(r => r.custom_id) }
+			})
 		mockBatchResults.mockImplementation(async () => {
-			return (async function*() {})()
+			const ids = mockBatchCreate.mock.calls[1][0].requests.map((r: { custom_id: string }) => r.custom_id)
+			return (async function*() { yield* yieldSucceeded(ids, [fakeMessage]) })()
 		})
 
-		await expect(callApi('reflect', [{ role: 'user', content: 'test' }])).rejects.toThrow('no results')
+		const result = await callApi('reflect', [{ role: 'user', content: 'test' }])
+		expect(result).toBe(fakeMessage)
+		expect(mockBatchCreate).toHaveBeenCalledTimes(2)
 	})
 
 	it('passes extra tools when provided', async () => {
@@ -354,17 +388,41 @@ describe('callBatchApi', () => {
 		expect(mockBatchRetrieve).not.toHaveBeenCalled()
 	})
 
-	it('throws on errored batch result', async () => {
-		mockBatchCreate.mockResolvedValue({ id: 'batch_1', processing_status: 'ended' })
+	it('retries on errored batch result then succeeds', async () => {
+		let callCount = 0
+		mockBatchCreate.mockImplementation(async ({ requests }: { requests: Array<{ custom_id: string }> }) => {
+			return { id: `batch_${++callCount}`, processing_status: 'ended', _requestIds: requests.map(r => r.custom_id) }
+		})
+		mockBatchResults
+			.mockImplementationOnce(async () => {
+				return (async function*() {
+					yield { custom_id: 'req-0', result: { type: 'errored', error: { type: 'server_error', message: 'fail' } } }
+				})()
+			})
+			.mockImplementationOnce(async () => {
+				const ids = mockBatchCreate.mock.calls[1][0].requests.map((r: { custom_id: string }) => r.custom_id)
+				return (async function*() { yield* yieldSucceeded(ids, [fakeMessage]) })()
+			})
+
+		const results = await callBatchApi([{ phase: 'reflect', messages: [{ role: 'user', content: 'test' }] }])
+		expect(results).toHaveLength(1)
+		expect(mockBatchCreate).toHaveBeenCalledTimes(2)
+	})
+
+	it('retries on failure then succeeds', async () => {
+		mockBatchCreate
+			.mockRejectedValueOnce(new Error('rate limited'))
+			.mockImplementation(async ({ requests }: { requests: Array<{ custom_id: string }> }) => {
+				return { id: 'batch_1', processing_status: 'ended', _requestIds: requests.map(r => r.custom_id) }
+			})
 		mockBatchResults.mockImplementation(async () => {
-			return (async function*() {
-				yield { custom_id: 'req-0', result: { type: 'errored', error: { type: 'server_error', message: 'fail' } } }
-			})()
+			const ids = mockBatchCreate.mock.calls[1][0].requests.map((r: { custom_id: string }) => r.custom_id)
+			return (async function*() { yield* yieldSucceeded(ids, [fakeMessage]) })()
 		})
 
-		await expect(
-			callBatchApi([{ phase: 'reflect', messages: [{ role: 'user', content: 'test' }] }])
-		).rejects.toThrow('failed')
+		const results = await callBatchApi([{ phase: 'reflect', messages: [{ role: 'user', content: 'test' }] }])
+		expect(results).toHaveLength(1)
+		expect(mockBatchCreate).toHaveBeenCalledTimes(2)
 	})
 
 	it('returns multiple results in input order and records each', async () => {
@@ -389,15 +447,21 @@ describe('callBatchApi', () => {
 		expect(mockComputeCost).toHaveBeenCalledWith('claude-haiku-4-5', fakeUsage, { batch: true })
 	})
 
-	it('throws when results are missing', async () => {
-		mockBatchCreate.mockResolvedValue({ id: 'batch_1', processing_status: 'ended' })
-		mockBatchResults.mockImplementation(async () => {
-			return (async function*() {})()
+	it('retries when results are missing then succeeds', async () => {
+		let callCount = 0
+		mockBatchCreate.mockImplementation(async ({ requests }: { requests: Array<{ custom_id: string }> }) => {
+			return { id: `batch_${++callCount}`, processing_status: 'ended', _requestIds: requests.map(r => r.custom_id) }
 		})
+		mockBatchResults
+			.mockImplementationOnce(async () => (async function*() {})())
+			.mockImplementationOnce(async () => {
+				const ids = mockBatchCreate.mock.calls[1][0].requests.map((r: { custom_id: string }) => r.custom_id)
+				return (async function*() { yield* yieldSucceeded(ids, [fakeMessage]) })()
+			})
 
-		await expect(
-			callBatchApi([{ phase: 'reflect', messages: [{ role: 'user', content: 'test' }] }])
-		).rejects.toThrow('missing results')
+		const results = await callBatchApi([{ phase: 'reflect', messages: [{ role: 'user', content: 'test' }] }])
+		expect(results).toHaveLength(1)
+		expect(mockBatchCreate).toHaveBeenCalledTimes(2)
 	})
 
 	it('returns empty array for empty input', async () => {

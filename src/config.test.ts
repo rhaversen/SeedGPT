@@ -30,7 +30,6 @@ describe('config', () => {
 	})
 
 	it('has valid API retry settings', () => {
-		expect(config.api.maxRetries).toBeGreaterThan(0)
 		expect(config.api.initialRetryDelay).toBeGreaterThan(0)
 		expect(config.api.maxRetryDelay).toBeGreaterThan(config.api.initialRetryDelay)
 	})
