@@ -7,7 +7,7 @@
 		"build": "tsc",
 		"start": "node index.js",
 		"dev": "npm run build && node --env-file=.env dist/index.js",
-		"test": "npm run build && node --enable-source-maps --experimental-vm-modules node_modules/jest/bin/jest.js --passWithNoTests --silent"
+		"test": "npm run build && node --disable-warning=ExperimentalWarning --enable-source-maps --experimental-vm-modules node_modules/jest/bin/jest.js --passWithNoTests --silent"
 	},
 	"engines": {
 		"node": ">=22.0.0"
