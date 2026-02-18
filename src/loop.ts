@@ -28,6 +28,7 @@ export async function run(): Promise<void> {
 		const message = error instanceof Error ? error.message : String(error)
 		try {
 			await storeReflection(`Iteration crashed before reflection could run. Error: ${message}`)
+			await writeIterationLog()
 		} catch { /* Swallowed because the crash itself may have been caused by a DB failure */ }
 		throw error
 	} finally {
@@ -109,14 +110,6 @@ async function iterate(): Promise<boolean> {
 		}
 	}
 
-	if (merged) {
-		await mergePR(prNumber!)
-		await deleteRemoteBranch(branchName).catch(() => {})
-		logger.info(`PR #${prNumber} merged, branch deleted. Change is now on main.`)
-	}
-
-	await resetWorkspace()
-
 	if (!merged) {
 		if (prNumber !== null) {
 			await closePR(prNumber)
@@ -126,12 +119,21 @@ async function iterate(): Promise<boolean> {
 			logger.error('FAILED — No PR was opened. No changes were made.')
 		}
 		logger.error(`Plan "${iterationPlan.title}" failed — starting fresh plan.`)
+	} else {
+		logger.info(`PR #${prNumber} merged, branch deleted. Change is now on main.`)
 	}
 
 	const allMessages = [...plannerMessages, ...session.conversation, ...(fixer?.conversation ?? [])]
 	const reflection = await reflect(outcome, allMessages)
 	await storeReflection(reflection)
 	await writeIterationLog()
+
+	if (merged) {
+		await mergePR(prNumber!)
+		await deleteRemoteBranch(branchName).catch(() => {})
+	}
+
+	await resetWorkspace()
 
 	return merged
 }
