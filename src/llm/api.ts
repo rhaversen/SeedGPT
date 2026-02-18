@@ -27,7 +27,6 @@ const PHASE_EXTRAS: Record<Phase, {
 }
 
 const THINKING_PHASES = new Set<Phase>(['planner', 'builder', 'fixer', 'reflect'])
-const MIN_OUTPUT_TOKENS = 2048
 
 async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], tools?: Anthropic.Tool[]): Promise<Anthropic.MessageCreateParamsNonStreaming> {
 	const useContext = phase !== 'memory'
@@ -79,16 +78,14 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 
 	const modelSupportsThinking = !model.includes('haiku')
 	const useThinking = THINKING_PHASES.has(phase) && modelSupportsThinking
-	const thinkingBudget = Math.min(config.context.thinkingBudget, maxTokens - MIN_OUTPUT_TOKENS)
-	const effectiveMaxTokens = useThinking ? maxTokens + thinkingBudget : maxTokens
 
 	return {
 		model,
-		max_tokens: effectiveMaxTokens,
+		max_tokens: maxTokens,
 		system,
 		messages,
 		...(allTools.length > 0 && { tools: allTools }),
-		...(useThinking && { thinking: { type: 'enabled' as const, budget_tokens: thinkingBudget } }),
+		...(useThinking && { thinking: { type: 'adaptive' as const } }),
 	}
 }
 
