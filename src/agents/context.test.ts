@@ -197,7 +197,7 @@ it('stubs old read_file result with context-aware message when lines still track
 		const firstResult = messages[2]
 		const blocks = firstResult.content as Anthropic.ContentBlockParam[]
 		const tr = blocks[0] as Anthropic.ToolResultBlockParam
-		expect(typeof tr.content === 'string' && tr.content.startsWith('[lines in working context')).toBe(true)
+		expect(typeof tr.content === 'string' && tr.content.startsWith('[lines are present')).toBe(true)
 	})
 
 	it('stubs old read_file result with eviction message when lines evicted', async () => {
@@ -221,7 +221,7 @@ it('stubs old read_file result with context-aware message when lines still track
 		const firstResult = messages[2]
 		const blocks = firstResult.content as Anthropic.ContentBlockParam[]
 		const tr = blocks[0] as Anthropic.ToolResultBlockParam
-		expect(typeof tr.content === 'string' && tr.content.startsWith('[lines evicted')).toBe(true)
+		expect(typeof tr.content === 'string' && tr.content.startsWith('[lines are evicted')).toBe(true)
 	})
 
 	it('stubs old non-read tool results with generic message', async () => {
