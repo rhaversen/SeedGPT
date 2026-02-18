@@ -90,7 +90,7 @@ const dismissNote = {
 
 const recallMemory = {
 	name: 'recall_memory' as const,
-	description: 'Look up a past memory in full detail. Search by keyword, or provide a specific memory ID from your context.',
+	description: 'Look up a past memory in full detail, including notes to self and reflections. Search by keyword, or provide a specific memory ID from your context.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {
