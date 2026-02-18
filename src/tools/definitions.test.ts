@@ -42,7 +42,7 @@ jest.unstable_mockModule('./git.js', () => ({
 	getDiff: mockGetDiff,
 }))
 
-const { handleTool, getEditOperation } = await import('./definitions.js')
+const { handleTool, getEditOperation } = await import('./handlers.js')
 
 beforeEach(() => {
 	jest.clearAllMocks()

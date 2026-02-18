@@ -15,7 +15,7 @@ jest.unstable_mockModule('../logger.js', () => ({
 const mockHandleTool = jest.fn<(name: string, input: Record<string, unknown>, id: string) => Promise<{ type: string; tool_use_id: string; content: string; is_error?: boolean }>>()
 const mockGetEditOperation = jest.fn<(name: string, input: Record<string, unknown>) => { type: string; filePath: string } | null>()
 
-jest.unstable_mockModule('../tools/definitions.js', () => ({
+jest.unstable_mockModule('../tools/handlers.js', () => ({
 	handleTool: mockHandleTool,
 	getEditOperation: mockGetEditOperation,
 }))

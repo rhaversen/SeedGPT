@@ -1,8 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { config } from '../config.js'
 import logger from '../logger.js'
-import { handleTool } from '../tools/definitions.js'
-import type { ToolResult } from '../tools/definitions.js'
+import { handleTool } from '../tools/handlers.js'
+import type { ToolResult } from '../tools/handlers.js'
 import { callApi } from '../llm/api.js'
 import { toolLogSuffix } from '../logger.js'
 
