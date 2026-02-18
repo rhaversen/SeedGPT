@@ -235,6 +235,31 @@ export async function findUnusedFunctions(rootPath: string): Promise<string | nu
 	return sections.length > 0 ? sections.join('\n\n') : null
 }
 
+export async function findLargeFiles(rootPath: string, maxLines: number): Promise<string | null> {
+	const allFiles: string[] = []
+	await walk(rootPath, '', allFiles)
+
+	const large: Array<{ file: string; lines: number }> = []
+
+	for (const relPath of allFiles) {
+		if (relPath.endsWith('/')) continue
+		if (!TS_EXTENSIONS.has(extname(relPath))) continue
+		if (isTestFile(relPath)) continue
+
+		try {
+			const content = await fsReadFile(join(rootPath, relPath), 'utf-8')
+			const lineCount = content.split('\n').length
+			if (lineCount > maxLines) large.push({ file: relPath, lines: lineCount })
+		} catch { /* skip unreadable */ }
+	}
+
+	if (large.length === 0) return null
+
+	large.sort((a, b) => b.lines - a.lines)
+	const entries = large.map(f => `${f.file}: ${f.lines} lines`)
+	return `Consider splitting — these source files exceed ${maxLines} lines. Large files are harder to understand, edit, and test. Look for natural boundaries (e.g. groups of related functions) that could become separate modules:\n${entries.join('\n')}`
+}
+
 function collectFunctionNames(node: ts.Node, file: string, sf: ts.SourceFile, out: Array<{ name: string; file: string; exported: boolean; line: number }>): void {
 	const exported = isExported(node)
 	if (ts.isFunctionDeclaration(node) && node.name) {

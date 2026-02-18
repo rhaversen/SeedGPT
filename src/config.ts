@@ -23,6 +23,7 @@ export const config = {
 
 	tools: {
 		defaultReadWindow: 300, // Default number of lines for read_file tool calls
+		largeFileThreshold: 500, // Source files exceeding this line count are flagged for the planner
 	},
 
 	// Anthropic API retry strategy

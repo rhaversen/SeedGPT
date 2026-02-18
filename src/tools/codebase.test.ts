@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 import { mkdtemp, writeFile, rm, mkdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { getCodebaseContext, grepSearch, fileSearch, listDirectory, findUnusedFunctions, readFile } from './codebase.js'
+import { getCodebaseContext, grepSearch, fileSearch, listDirectory, findUnusedFunctions, findLargeFiles, readFile } from './codebase.js'
 
 function extractDeclarations(ctx: string): string {
 	return ctx.split('## Declarations')[1] ?? ''
@@ -543,6 +543,57 @@ describe('findUnusedFunctions', () => {
 		const result = await findUnusedFunctions(tempDir)
 		expect(result).not.toContain('kept')
 		expect(result).toContain('notKept')
+	})
+})
+
+describe('findLargeFiles', () => {
+	let tempDir: string
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), 'seedgpt-large-'))
+		await mkdir(join(tempDir, 'src'), { recursive: true })
+	})
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true })
+	})
+
+	it('returns null when no files exceed the threshold', async () => {
+		await writeFile(join(tempDir, 'src', 'small.ts'), 'export const x = 1\n')
+		const result = await findLargeFiles(tempDir, 100)
+		expect(result).toBeNull()
+	})
+
+	it('reports files exceeding the threshold', async () => {
+		const bigContent = Array.from({ length: 150 }, (_, i) => `const line${i} = ${i}`).join('\n')
+		await writeFile(join(tempDir, 'src', 'big.ts'), bigContent)
+		await writeFile(join(tempDir, 'src', 'small.ts'), 'export const x = 1\n')
+
+		const result = await findLargeFiles(tempDir, 100)
+		expect(result).toContain('big.ts: 150 lines')
+		expect(result).toContain('Consider splitting')
+		expect(result).not.toContain('small.ts')
+	})
+
+	it('sorts by line count descending', async () => {
+		const medium = Array.from({ length: 120 }, (_, i) => `const m${i} = ${i}`).join('\n')
+		const large = Array.from({ length: 200 }, (_, i) => `const l${i} = ${i}`).join('\n')
+		await writeFile(join(tempDir, 'src', 'medium.ts'), medium)
+		await writeFile(join(tempDir, 'src', 'large.ts'), large)
+
+		const result = await findLargeFiles(tempDir, 100)!
+		const lines = result!.split('\n')
+		const largeIdx = lines.findIndex(l => l.includes('large.ts'))
+		const mediumIdx = lines.findIndex(l => l.includes('medium.ts'))
+		expect(largeIdx).toBeLessThan(mediumIdx)
+	})
+
+	it('skips test files', async () => {
+		const bigTest = Array.from({ length: 150 }, (_, i) => `const t${i} = ${i}`).join('\n')
+		await writeFile(join(tempDir, 'src', 'big.test.ts'), bigTest)
+
+		const result = await findLargeFiles(tempDir, 100)
+		expect(result).toBeNull()
 	})
 })
 

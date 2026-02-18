@@ -9,6 +9,7 @@ jest.unstable_mockModule('../config.js', () => ({
 			builder: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
 			fixer: { model: 'claude-sonnet-4-5', maxTokens: 16384 },
 		},
+		tools: { largeFileThreshold: 500 },
 		api: { initialRetryDelay: 10, maxRetryDelay: 50 },
 		batch: { pollInterval: 10, maxPollInterval: 50, pollBackoff: 1.5 },
 		context: { protectedTurns: 1, minResultChars: 200, maxActiveLines: 2000, contextPadding: 5 },
@@ -43,6 +44,7 @@ jest.unstable_mockModule('../tools/definitions.js', () => ({
 jest.unstable_mockModule('../tools/codebase.js', () => ({
 	getCodebaseContext: jest.fn<() => Promise<string>>().mockResolvedValue('codebase context'),
 	findUnusedFunctions: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
+	findLargeFiles: jest.fn<() => Promise<string | null>>().mockResolvedValue(null),
 	readFile: jest.fn<() => Promise<string>>().mockResolvedValue('file content'),
 }))
 

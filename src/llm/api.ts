@@ -4,7 +4,7 @@ import { env } from '../env.js'
 import logger from '../logger.js'
 import { prepareAndBuildContext } from '../tools/context.js'
 import { PLANNER_TOOLS, BUILDER_TOOLS } from '../tools/definitions.js'
-import { getCodebaseContext, findUnusedFunctions } from '../tools/codebase.js'
+import { getCodebaseContext, findUnusedFunctions, findLargeFiles } from '../tools/codebase.js'
 import { SYSTEM_PLAN, SYSTEM_BUILD, SYSTEM_FIX, SYSTEM_REFLECT, SYSTEM_MEMORY } from '../llm/prompts.js'
 import GeneratedModel, { computeCost, type ApiUsage } from '../models/Generated.js'
 import { getMemoryContext } from '../agents/memory.js'
@@ -67,6 +67,10 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 		const unusedFunctions = await findUnusedFunctions(env.workspacePath)
 		if (unusedFunctions) {
 			system.push({ type: 'text', text: `\n\n## Unused Functions\n${unusedFunctions}` })
+		}
+		const largeFiles = await findLargeFiles(env.workspacePath, config.tools.largeFileThreshold)
+		if (largeFiles) {
+			system.push({ type: 'text', text: `\n\n## Large Files\n${largeFiles}` })
 		}
 	}
 
