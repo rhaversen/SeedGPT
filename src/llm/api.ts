@@ -57,9 +57,12 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 		system.push({ type: 'text', text: `\n\n${codebaseContext}` })
 	}
 
-	if (phase === 'planner') {
+	if (phase === 'planner' || phase === 'reflect') {
 		const memoryContext = await getMemoryContext()
 		system.push({ type: 'text', text: `\n\n${memoryContext}` })
+	}
+
+	if (phase === 'planner') {
 		const unusedFunctions = await findUnusedFunctions(env.workspacePath)
 		if (unusedFunctions) {
 			system.push({ type: 'text', text: `\n\n## Unused Functions\n${unusedFunctions}` })
