@@ -11,7 +11,7 @@ jest.unstable_mockModule('../config.js', () => ({
 		},
 		api: { maxRetries: 2, initialRetryDelay: 10, maxRetryDelay: 50 },
 		batch: { pollInterval: 10, maxPollInterval: 50, pollBackoff: 1.5 },
-		context: { protectedTurns: 1, minResultChars: 200, maxActiveLines: 2000, contextPadding: 5, thinkingBudget: 10_000 },
+		context: { protectedTurns: 1, minResultChars: 200, maxActiveLines: 2000, contextPadding: 5 },
 	},
 }))
 
@@ -265,23 +265,23 @@ describe('callApi', () => {
 		expect(result).toBe(fakeMessage)
 	})
 
-	it('enables extended thinking for builder phase', async () => {
+	it('enables adaptive thinking for builder phase', async () => {
 		setupBatchMocks()
 
 		await callApi('builder', [{ role: 'user', content: 'build' }])
 
-		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { thinking?: { type: string; budget_tokens: number }; max_tokens: number } }> }
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { thinking?: { type: string }; max_tokens: number } }> }
 		const params = batchParams.requests[0].params
-		expect(params.thinking).toEqual({ type: 'enabled', budget_tokens: 10_000 })
-		expect(params.max_tokens).toBe(16384 + 10_000)
+		expect(params.thinking).toEqual({ type: 'adaptive' })
+		expect(params.max_tokens).toBe(16384)
 	})
 
-	it('does not enable extended thinking for reflect phase with haiku model', async () => {
+	it('does not enable thinking for reflect phase with haiku model', async () => {
 		setupBatchMocks()
 
 		await callApi('reflect', [{ role: 'user', content: 'test' }])
 
-		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { thinking?: { type: string; budget_tokens: number }; max_tokens: number } }> }
+		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { thinking?: { type: string }; max_tokens: number } }> }
 		const params = batchParams.requests[0].params
 		expect(params.thinking).toBeUndefined()
 		expect(params.max_tokens).toBe(512)
