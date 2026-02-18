@@ -497,7 +497,7 @@ describe('findUnusedFunctions', () => {
 
 		const result = await findUnusedFunctions(tempDir)
 		expect(result).toContain('dead')
-		expect(result).toContain('Not used anywhere')
+		expect(result).toContain('Remove — dead code')
 	})
 
 	it('detects functions only used in tests', async () => {
@@ -506,7 +506,7 @@ describe('findUnusedFunctions', () => {
 
 		const result = await findUnusedFunctions(tempDir)
 		expect(result).toContain('helper')
-		expect(result).toContain('Only used in tests')
+		expect(result).toContain('Remove — only used in tests')
 	})
 
 	it('detects exported-for-tests pattern', async () => {
@@ -518,7 +518,7 @@ describe('findUnusedFunctions', () => {
 
 		const result = await findUnusedFunctions(tempDir)
 		expect(result).toContain('compute')
-		expect(result).toContain('Exported only for tests')
+		expect(result).toContain('Refactor — exported only because tests import it directly')
 	})
 
 	it('detects class method declarations as unused', async () => {

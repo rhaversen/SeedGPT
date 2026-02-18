@@ -224,9 +224,9 @@ export async function findUnusedFunctions(rootPath: string): Promise<string | nu
 	}
 
 	const sections: string[] = []
-	if (deadCode.length > 0) sections.push(`Not used anywhere:\n${deadCode.join('\n')}`)
-	if (testOnly.length > 0) sections.push(`Only used in tests:\n${testOnly.join('\n')}`)
-	if (exportedForTests.length > 0) sections.push(`Exported only for tests (used internally, consider testing through public API, or exporting the function from a utility file):\n${exportedForTests.join('\n')}`)
+	if (deadCode.length > 0) sections.push(`Remove — dead code, not used anywhere (not even in tests):\n${deadCode.join('\n')}`)
+	if (testOnly.length > 0) sections.push(`Remove — only used in tests, never called in production code (remove the function and its tests):\n${testOnly.join('\n')}`)
+	if (exportedForTests.length > 0) sections.push(`Refactor — exported only because tests import it directly, but used internally (either test through the public function that calls it and remove the export, or move to a utility file where the export is justified):\n${exportedForTests.join('\n')}`)
 	return sections.length > 0 ? sections.join('\n\n') : null
 }
 
