@@ -74,7 +74,8 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 
 	const allTools = [...(extras.tools ?? []), ...(tools ?? [])]
 
-	const useThinking = THINKING_PHASES.has(phase)
+	const modelSupportsThinking = !model.includes('haiku')
+	const useThinking = THINKING_PHASES.has(phase) && modelSupportsThinking
 	const thinkingBudget = Math.min(config.context.thinkingBudget, maxTokens - MIN_OUTPUT_TOKENS)
 	const effectiveMaxTokens = useThinking ? maxTokens + thinkingBudget : maxTokens
 

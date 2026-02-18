@@ -276,15 +276,15 @@ describe('callApi', () => {
 		expect(params.max_tokens).toBe(16384 + 10_000)
 	})
 
-	it('enables extended thinking for reflect phase', async () => {
+	it('does not enable extended thinking for reflect phase with haiku model', async () => {
 		setupBatchMocks()
 
 		await callApi('reflect', [{ role: 'user', content: 'test' }])
 
 		const batchParams = mockBatchCreate.mock.calls[0][0] as { requests: Array<{ params: { thinking?: { type: string; budget_tokens: number }; max_tokens: number } }> }
 		const params = batchParams.requests[0].params
-		expect(params.thinking).toEqual({ type: 'enabled', budget_tokens: expect.any(Number) })
-		expect(params.max_tokens).toBe(512 + params.thinking!.budget_tokens)
+		expect(params.thinking).toBeUndefined()
+		expect(params.max_tokens).toBe(512)
 	})
 
 	it('polls batch until ended with backoff', async () => {
