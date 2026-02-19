@@ -10,6 +10,7 @@ import { PatchSession } from './agents/build.js'
 import { FixSession } from './agents/fix.js'
 import { reflect } from './agents/reflect.js'
 import { setIterationId } from './llm/api.js'
+import { persistContext } from './tools/context.js'
 
 export async function run(): Promise<void> {
 	logger.info('SeedGPT starting iteration...')
@@ -41,6 +42,8 @@ async function iterate(): Promise<boolean> {
 
 	const { plan: iterationPlan, messages: plannerMessages } = await plan()
 	logger.info(`Planned: "${iterationPlan.title}" — ${iterationPlan.description}`)
+
+	persistContext()
 
 	const session = new PatchSession(iterationPlan)
 	const branchName = await createBranch(iterationPlan.title)

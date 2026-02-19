@@ -17,15 +17,46 @@ interface TrackedFile {
 const WRITE_TOOLS = new Set(['edit_file', 'create_file'])
 const STRIPPED_MARKER = '[reasoning stripped]'
 
+let lastTrackedFiles: Map<string, TrackedFile> | null = null
+let lastWorkspacePath: string | null = null
+let carryOverFiles: Map<string, TrackedFile> | null = null
+
+export function persistContext(): void {
+	if (lastTrackedFiles && lastTrackedFiles.size > 0) {
+		carryOverFiles = new Map(
+			[...lastTrackedFiles].map(([path, file]) => [
+				path,
+				{ ...file, regions: file.regions.map(r => ({ ...r })) },
+			])
+		)
+		logger.info(`Context: persisted ${carryOverFiles.size} file(s) for next phase`)
+	}
+}
+
 export async function prepareAndBuildContext(
 	workspacePath: string,
 	messages: Anthropic.MessageParam[],
 ): Promise<string | null> {
 	const files = scanFileActivity(workspacePath, messages)
 
+	if (carryOverFiles && files.size === 0) {
+		for (const [path, carried] of carryOverFiles) {
+			files.set(path, {
+				...carried,
+				regions: carried.regions.map(r => ({ ...r, lastUseTurn: 0 })),
+				lastEditTurn: 0,
+			})
+		}
+		carryOverFiles = null
+		logger.info(`Context: restored ${files.size} file(s) from previous phase`)
+	}
+
 	await refreshFiles(workspacePath, files)
 	evictOverBudget(files)
 	stripOldTurns(messages, files, workspacePath)
+
+	lastTrackedFiles = files
+	lastWorkspacePath = workspacePath
 
 	return buildWorkingContext(files)
 }

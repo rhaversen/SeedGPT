@@ -44,7 +44,7 @@ export class PatchSession {
 				text: [
 					`--- PLAN ---\n**${plan.title}**\n${plan.description}`,
 					`--- IMPLEMENTATION INSTRUCTIONS ---\n${plan.implementation}`,
-					`--- BEGIN ---\nStart by reading the files you need based on the implementation instructions and the codebase index in your system prompt. Use read_file to load files or specific line ranges, then use edit_file, create_file, and delete_file to make changes. Batch independent read_file calls together. Call done when the implementation is complete.`,
+					`--- BEGIN ---\nYour working context already contains files the planner read during planning. Check it before reading any files. Use edit_file, create_file, and delete_file to make changes. Call done when the implementation is complete.`,
 				].join('\n\n')
 			}],
 		}
