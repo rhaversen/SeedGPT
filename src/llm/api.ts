@@ -58,7 +58,7 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 		system.push({ type: 'text', text: `\n\n${codebaseContext}` })
 	}
 
-	if (phase === 'planner' || phase === 'reflect') {
+	if (phase === 'planner') {
 		const memoryContext = await getMemoryContext()
 		system.push({ type: 'text', text: `\n\n${memoryContext}` })
 	}
