@@ -75,11 +75,9 @@ export class PatchSession {
 
 			const toolBlocks = response.content.filter(c => c.type === 'tool_use')
 			if (toolBlocks.length === 0) {
-				if (this.edits.length > 0) {
-					logger.info(`Builder stopped responding after ${this.edits.length} edit(s) — treating as done`)
-					return this.edits
-				}
-				throw new Error('Builder did not call any tools')
+				logger.warn(`Builder turn ${this.roundsUsed} returned no tool_use block — retrying with conversation`)
+				this.pushMessage({ role: 'user', content: `You must use tools to make changes (edit_file, create_file, delete_file) and then call done. (Turn ${this.roundsUsed} of ${maxRounds})` })
+				continue
 			}
 
 			const toolResults: ToolResult[] = []

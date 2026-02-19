@@ -32,7 +32,10 @@ export async function plan(): Promise<PlanResult> {
 
 		const toolBlocks = response.content.filter(c => c.type === 'tool_use')
 		if (toolBlocks.length === 0) {
-			throw new Error('LLM did not return a tool_use block during planning')
+			logger.warn(`Planner turn ${round + 1} returned no tool_use block — retrying with conversation`)
+			messages.push({ role: 'assistant', content: response.content })
+			messages.push({ role: 'user', content: `You must use tools to gather context and then call submit_plan. (Turn ${round + 1} of ${maxRounds})` })
+			continue
 		}
 
 		const submitBlock = toolBlocks.find(b => b.type === 'tool_use' && b.name === 'submit_plan')

@@ -86,11 +86,9 @@ export class FixSession {
 
 			const toolBlocks = response.content.filter(c => c.type === 'tool_use')
 			if (toolBlocks.length === 0) {
-				if (this.edits.length > 0) {
-					logger.info(`Fixer stopped responding after ${this.edits.length} edit(s) — treating as done`)
-					return this.edits
-				}
-				throw new Error('Fixer did not call any tools')
+				logger.warn(`Fixer turn ${this.roundsUsed} returned no tool_use block — retrying with conversation`)
+				this.pushMessage({ role: 'user', content: `You must use tools to read files and make edits. (Turn ${this.roundsUsed} of ${maxRounds})` })
+				continue
 			}
 
 			const toolResults: ToolResult[] = []
