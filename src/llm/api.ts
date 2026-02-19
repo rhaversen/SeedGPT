@@ -47,7 +47,7 @@ async function buildParams(phase: Phase, messages: Anthropic.MessageParam[], too
 	if (phase === 'planner') {
 		const coverage = await getLatestMainCoverage()
 		if (coverage) {
-			system.push({ type: 'text', text: `\n\n## Code Coverage (last CI run on main)\n${coverage}` })
+			system.push({ type: 'text', text: `\n\n## Code Coverage (last CI run on main)\nFor context when deciding whether files you are changing have adequate tests. Coverage does not need to be perfect and should not distract from furthering capabilities.\n${coverage}` })
 		}
 		const gitLog = await getRecentLog()
 		system.push({ type: 'text', text: `\n\nRecent git log:\n${gitLog}` })
