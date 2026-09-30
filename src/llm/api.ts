@@ -115,7 +115,7 @@ async function recordGenerated(
 			phase,
 			modelId: params.model,
 			iterationId: activeIterationId,
-			system: params.system ?? [],
+			system: (params.system ?? []) as unknown[],
 			messages: params.messages,
 			response: response.content,
 			inputTokens: usage.input_tokens,

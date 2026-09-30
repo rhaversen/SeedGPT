@@ -20,6 +20,10 @@ jest.unstable_mockModule('../tools/handlers.js', () => ({
 	getEditOperation: mockGetEditOperation,
 }))
 
+jest.unstable_mockModule('../tools/context.js', () => ({
+	isReadRedundant: jest.fn().mockReturnValue(false),
+}))
+
 const mockCallApi = jest.fn<(phase: string, messages: Anthropic.MessageParam[]) => Promise<Anthropic.Message>>()
 
 jest.unstable_mockModule('../llm/api.js', () => ({
@@ -68,17 +72,20 @@ describe('FixSession', () => {
 		expect(edits.length).toBe(1)
 	})
 
-	it('throws when fixer does not call any tools', async () => {
+	it('retries when fixer does not call any tools, then hits max rounds', async () => {
 		const session = new FixSession(fixContext)
 
-		mockCallApi.mockResolvedValueOnce({
-			id: 'msg1', type: 'message', role: 'assistant', model: 'test',
+		const noToolResponse = {
+			id: 'msg', type: 'message', role: 'assistant', model: 'test',
 			stop_reason: 'end_turn', stop_sequence: null,
 			usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
 			content: [{ type: 'text', text: 'I cannot fix this.' }],
-		} as unknown as Anthropic.Message)
+		} as unknown as Anthropic.Message
 
-		await expect(session.fix('error')).rejects.toThrow('did not call any tools')
+		mockCallApi.mockResolvedValue(noToolResponse)
+
+		await expect(session.fix('error')).rejects.toThrow('exceeded maximum rounds')
+		expect(mockCallApi).toHaveBeenCalledTimes(3)
 	})
 
 	it('returns edits on max rounds if edits exist', async () => {
@@ -124,7 +131,7 @@ describe('FixSession', () => {
 		await expect(session.fix('error')).rejects.toThrow('exceeded maximum rounds')
 	})
 
-	it('treats no tools as done if edits exist', async () => {
+	it('returns edits when fixer retries after no-tool turn', async () => {
 		const session = new FixSession(fixContext)
 
 		mockCallApi.mockResolvedValueOnce({
@@ -146,8 +153,19 @@ describe('FixSession', () => {
 			content: [{ type: 'text', text: 'Fixed.' }],
 		} as unknown as Anthropic.Message)
 
+		mockCallApi.mockResolvedValueOnce({
+			id: 'msg3', type: 'message', role: 'assistant', model: 'test',
+			stop_reason: 'tool_use', stop_sequence: null,
+			usage: { input_tokens: 300, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+			content: [{ type: 'tool_use', id: 't2', name: 'done', input: { summary: 'Done' } }],
+		} as unknown as Anthropic.Message)
+
+		mockHandleTool.mockResolvedValueOnce({ type: 'tool_result', tool_use_id: 't2', content: 'ok' })
+		mockGetEditOperation.mockReturnValueOnce(null)
+
 		const edits = await session.fix('some error')
 		expect(edits.length).toBe(1)
+		expect(mockCallApi).toHaveBeenCalledTimes(3)
 	})
 
 	it('includes attempt number in subsequent fix calls', async () => {
@@ -177,32 +195,24 @@ describe('FixSession', () => {
 	it('includes warning on attempt 2 after a failed first attempt', async () => {
 		const session = new FixSession(fixContext)
 
-		mockCallApi.mockResolvedValueOnce({
-			id: 'msg1', type: 'message', role: 'assistant', model: 'test',
-			stop_reason: 'end_turn', stop_sequence: null,
-			usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-			content: [{ type: 'text', text: 'I cannot fix this.' }],
-		} as unknown as Anthropic.Message)
-
-		await expect(session.fix('first error')).rejects.toThrow('did not call any tools')
-
 		const doneResponse = {
-			id: 'msg2', type: 'message', role: 'assistant', model: 'test',
+			id: 'msg1', type: 'message', role: 'assistant', model: 'test',
 			stop_reason: 'tool_use', stop_sequence: null,
 			usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
 			content: [{ type: 'tool_use', id: 't1', name: 'done', input: { summary: 'Fixed' } }],
 		} as unknown as Anthropic.Message
 
-		mockCallApi.mockResolvedValueOnce(doneResponse)
+		mockCallApi.mockResolvedValue(doneResponse)
 		mockHandleTool.mockResolvedValue({ type: 'tool_result', tool_use_id: 't1', content: 'ok' })
 		mockGetEditOperation.mockReturnValue(null)
 
+		await session.fix('first error')
 		await session.fix('second error')
 
 		const allMessages = session.conversation
 		const userMessages = allMessages.filter(m => m.role === 'user' && typeof m.content === 'string')
-		const secondFixMsg = userMessages[1]
-		expect(secondFixMsg.content).toContain('fix attempt 2')
-		expect(secondFixMsg.content).toContain('CI was re-run')
+		const secondFixMsg = userMessages.find(m => (m.content as string).includes('fix attempt 2'))
+		expect(secondFixMsg).toBeDefined()
+		expect(secondFixMsg!.content).toContain('CI was re-run')
 	})
 })

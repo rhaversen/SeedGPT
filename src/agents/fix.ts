@@ -3,6 +3,7 @@ import { config } from '../config.js'
 import logger from '../logger.js'
 import { handleTool, getEditOperation } from '../tools/handlers.js'
 import type { EditOperation, ToolResult } from '../tools/handlers.js'
+import { isReadRedundant } from '../tools/context.js'
 import { callApi } from '../llm/api.js'
 import { toolLogSuffix } from '../logger.js'
 
@@ -97,7 +98,25 @@ export class FixSession {
 				if (block.type !== 'tool_use') continue
 				logger.info(`Fixer calling ${block.name}${toolLogSuffix(block)}`)
 
-				const result = await handleTool(block.name, block.input as Record<string, unknown>, block.id)
+				let result: ToolResult
+				if (block.name === 'read_file') {
+					const input = block.input as Record<string, unknown>
+					const start = input.startLine as number | undefined
+						const end = input.endLine as number | undefined
+						if (isReadRedundant(input.filePath as string, start, end)) {
+							const lineRange = end ? `lines ${start ?? 1}–${end}` : `line ${start ?? 1}+`
+							logger.info('  → skipped (lines already in working context)')
+							result = {
+								type: 'tool_result',
+								tool_use_id: block.id,
+								content: `${input.filePath} ${lineRange} is already in your working context. Use the working context directly.`,
+							}
+					} else {
+						result = await handleTool(block.name, block.input as Record<string, unknown>, block.id)
+					}
+				} else {
+					result = await handleTool(block.name, block.input as Record<string, unknown>, block.id)
+				}
 				if (!result.is_error) {
 					const op = getEditOperation(block.name, block.input as Record<string, unknown>)
 					if (op) this.edits.push(op)

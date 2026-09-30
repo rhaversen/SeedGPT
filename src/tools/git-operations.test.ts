@@ -137,7 +137,7 @@ describe('getDiff', () => {
 		expect(mockGitClient.raw).toHaveBeenCalledWith(['add', '-N', '.'])
 	})
 
-	it('summarizes new files instead of showing full content', async () => {
+	it('shows full diff for new files', async () => {
 		const newFileDiff = [
 			'diff --git a/new.ts b/new.ts',
 			'new file mode 100644',
@@ -149,11 +149,11 @@ describe('getDiff', () => {
 		mockGitClient.diff.mockResolvedValue(newFileDiff as never)
 
 		const result = await git.getDiff()
-		expect(result).toContain('[new file: new.ts')
-		expect(result).toContain('2 lines')
+		expect(result).toContain('+export const x = 1')
+		expect(result).toContain('+export const y = 2')
 	})
 
-	it('summarizes deleted files', async () => {
+	it('shows full diff for deleted files', async () => {
 		const deletedDiff = [
 			'diff --git a/old.ts b/old.ts',
 			'deleted file mode 100644',
@@ -166,8 +166,8 @@ describe('getDiff', () => {
 		mockGitClient.diff.mockResolvedValue(deletedDiff as never)
 
 		const result = await git.getDiff()
-		expect(result).toContain('[deleted file: old.ts')
-		expect(result).toContain('3 lines')
+		expect(result).toContain('-const x = 1')
+		expect(result).toContain('-const z = 3')
 	})
 
 	it('keeps modified file diffs as-is', async () => {

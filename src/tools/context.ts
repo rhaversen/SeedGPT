@@ -61,6 +61,12 @@ export async function prepareAndBuildContext(
 	return buildWorkingContext(files)
 }
 
+export function isReadRedundant(filePath: string, startLine?: number, endLine?: number): boolean {
+	if (!lastTrackedFiles || !lastWorkspacePath) return false
+	const path = normalizePath(lastWorkspacePath, filePath)
+	return isInContext(lastTrackedFiles, path, startLine ?? 1, endLine)
+}
+
 // --- State Derivation ---
 
 function scanFileActivity(
@@ -169,7 +175,18 @@ function isInContext(files: Map<string, TrackedFile>, path: string, startLine: n
 	const file = files.get(path)
 	if (!file || file.deleted || file.regions.length === 0) return false
 	const effectiveEnd = endLine ?? startLine + config.tools.defaultReadWindow - 1
-	return file.regions.some(r => r.start <= effectiveEnd && r.end >= startLine)
+
+	const sorted = file.regions
+		.filter(r => r.end >= startLine && r.start <= effectiveEnd)
+		.sort((a, b) => a.start - b.start)
+	if (sorted.length === 0) return false
+
+	let covered = startLine - 1
+	for (const r of sorted) {
+		if (r.start > covered + 1) return false
+		covered = Math.max(covered, r.end)
+	}
+	return covered >= effectiveEnd
 }
 
 function stripOldTurns(messages: Anthropic.MessageParam[], files: Map<string, TrackedFile>, workspacePath: string): void {
@@ -247,23 +264,30 @@ function stripOldTurns(messages: Anthropic.MessageParam[], files: Map<string, Tr
 
 				const tr = block as Anthropic.ToolResultBlockParam
 				const content = typeof tr.content === 'string' ? tr.content : ''
-				if (content.length < minResultChars) continue
-				if (content.startsWith('[result') || content.startsWith('[applied') || content.startsWith('[lines')) continue
 
 				const toolInfo = toolUseMap.get(tr.tool_use_id)
 				if (toolInfo?.name === 'read_file') {
 					const path = normalizePath(workspacePath, toolInfo.input.filePath as string)
 					const startLine = (toolInfo.input.startLine as number) ?? 1
 					const endLine = toolInfo.input.endLine as number | undefined
+					const lineRange = endLine ? `lines ${startLine}–${endLine}` : `line ${startLine}+`
 
-					if (isInContext(files, path, startLine, endLine)) {
-						blocks[j] = { ...tr, content: '[lines are present in working context — refer to context instead of calling read_file again]' }
-					} else {
-						blocks[j] = { ...tr, content: '[lines are evicted from working context — call read_file again if needed]' }
+					const stub = isInContext(files, path, startLine, endLine)
+						? `[${path} ${lineRange} was added to your working context.]`
+						: `[${path} ${lineRange} was added to your working context, but was later removed when unused. Call read_file again if needed.]`
+
+					if (content !== stub) {
+						blocks[j] = { ...tr, content: stub }
+						changed = true
+						strippedResults++
 					}
-				} else {
-					blocks[j] = { ...tr, content: `[result — ${content.split('\n').length} lines]` }
+					continue
 				}
+
+				if (content.length < minResultChars) continue
+				if (content.startsWith('[result') || content.startsWith('[applied')) continue
+
+				blocks[j] = { ...tr, content: `[result — ${content.split('\n').length} lines]` }
 
 				changed = true
 				strippedResults++

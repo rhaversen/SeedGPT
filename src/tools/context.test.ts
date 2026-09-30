@@ -34,7 +34,7 @@ findUnusedFunctions: jest.fn(),
 const { prepareAndBuildContext } = await import('./context.js')
 
 function toolUse(id: string, name: string, input: Record<string, unknown>): Anthropic.ToolUseBlock {
-return { type: 'tool_use', id, name, input }
+return { type: 'tool_use', id, name, input } as Anthropic.ToolUseBlock
 }
 
 function toolResult(toolUseId: string, content: string): Anthropic.ToolResultBlockParam {
@@ -142,7 +142,7 @@ it('stubs old read_file result with context-aware message when lines still track
 		const firstResult = messages[2]
 		const blocks = firstResult.content as Anthropic.ContentBlockParam[]
 		const tr = blocks[0] as Anthropic.ToolResultBlockParam
-		expect(typeof tr.content === 'string' && tr.content.startsWith('[lines are present')).toBe(true)
+		expect(typeof tr.content === 'string' && tr.content.includes('working context')).toBe(true)
 	})
 
 	it('stubs old read_file result with eviction message when lines evicted', async () => {
@@ -166,7 +166,7 @@ it('stubs old read_file result with context-aware message when lines still track
 		const firstResult = messages[2]
 		const blocks = firstResult.content as Anthropic.ContentBlockParam[]
 		const tr = blocks[0] as Anthropic.ToolResultBlockParam
-		expect(typeof tr.content === 'string' && tr.content.startsWith('[lines are evicted')).toBe(true)
+		expect(typeof tr.content === 'string' && tr.content.includes('removed when unused')).toBe(true)
 	})
 
 	it('stubs old non-read tool results with generic message', async () => {
@@ -207,7 +207,7 @@ const tr = blocks[0] as Anthropic.ToolResultBlockParam
 expect(typeof tr.content === 'string' && !tr.content.startsWith('[result') && !tr.content.startsWith('[lines')).toBe(true)
 })
 
-it('does not stub small results', async () => {
+it('stubs small read_file results with context-aware message', async () => {
 const smallContent = 'OK'
 mockReadFile.mockResolvedValue(smallContent)
 
@@ -224,7 +224,7 @@ await prepareAndBuildContext('/workspace', messages)
 const firstResult = messages[2]
 const blocks = firstResult.content as Anthropic.ContentBlockParam[]
 const tr = blocks[0] as Anthropic.ToolResultBlockParam
-expect(tr.content).toBe(smallContent)
+expect(typeof tr.content === 'string' && tr.content.includes('working context')).toBe(true)
 })
 
 it('is idempotent', async () => {

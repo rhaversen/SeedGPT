@@ -88,7 +88,7 @@ describe('plan', () => {
 		expect(result.plan.title).toBe('refactor')
 	})
 
-	it('throws when no tool_use blocks returned', async () => {
+	it('retries when no tool_use blocks returned, then succeeds', async () => {
 		mockCallApi.mockResolvedValueOnce({
 			id: 'msg1', type: 'message', role: 'assistant', model: 'test',
 			stop_reason: 'end_turn', stop_sequence: null,
@@ -96,7 +96,38 @@ describe('plan', () => {
 			content: [{ type: 'text', text: 'I have no plan.' }],
 		} as unknown as Anthropic.Message)
 
-		await expect(plan()).rejects.toThrow('did not return a tool_use block')
+		mockCallApi.mockResolvedValueOnce({
+			id: 'msg2', type: 'message', role: 'assistant', model: 'test',
+			stop_reason: 'tool_use', stop_sequence: null,
+			usage: { input_tokens: 200, output_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+			content: [
+				{ type: 'tool_use', id: 't1', name: 'submit_plan',
+					input: { title: 'retry-plan', description: 'Plan after retry', implementation: 'impl' } },
+			],
+		} as unknown as Anthropic.Message)
+
+		const result = await plan()
+		expect(result.plan.title).toBe('retry-plan')
+		expect(mockCallApi).toHaveBeenCalledTimes(2)
+		const secondCallMessages = mockCallApi.mock.calls[1][1] as Anthropic.MessageParam[]
+		const userRetryMsg = [...secondCallMessages].reverse().find(m => m.role === 'user')
+		expect(userRetryMsg).toEqual({
+			role: 'user',
+			content: expect.stringContaining('You must use tools'),
+		})
+	})
+
+	it('exceeds max rounds when repeatedly no tool_use blocks returned', async () => {
+		const noToolResponse = {
+			id: 'msg', type: 'message', role: 'assistant', model: 'test',
+			stop_reason: 'end_turn', stop_sequence: null,
+			usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+			content: [{ type: 'text', text: 'Still no tools.' }],
+		} as unknown as Anthropic.Message
+
+		mockCallApi.mockResolvedValue(noToolResponse)
+
+		await expect(plan()).rejects.toThrow('exceeded maximum rounds')
 	})
 
 	it('throws when max rounds exceeded without submit_plan', async () => {

@@ -235,7 +235,7 @@ describe('callApi', () => {
 		expect(batchParams.requests[0].params.tools).toEqual([extraTool])
 	})
 
-	it('includes coverage, git log, codebase, memory in planner system prompt', async () => {
+	it('includes coverage with framing, git log, codebase, memory in planner system prompt', async () => {
 		setupBatchMocks()
 		mockGetLatestMainCoverage.mockResolvedValueOnce('85.5%')
 		mockGetRecentLog.mockResolvedValueOnce('abc123 test commit')
@@ -248,6 +248,7 @@ describe('callApi', () => {
 		const joined = systemTexts.join('\n')
 
 		expect(joined).toContain('85.5%')
+		expect(joined).toContain('For context')
 		expect(joined).toContain('abc123 test commit')
 		expect(joined).toContain('codebase context')
 		expect(joined).toContain('Memory: learned X')

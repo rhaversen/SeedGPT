@@ -1,4 +1,5 @@
-import simpleGit, { SimpleGit } from 'simple-git'
+import { simpleGit } from 'simple-git'
+import type { SimpleGit } from 'simple-git'
 import { writeFile, unlink, readFile, mkdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import { config } from '../config.js'
